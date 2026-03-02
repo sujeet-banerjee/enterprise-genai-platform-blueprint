@@ -1,0 +1,17 @@
+active_prompt_profile: default
+
+profiles:
+  default:
+    system_prompt: |
+      You are a helpful assistant.
+      Answer strictly based on provided context.
+      If unsure, say you do not know.
+
+    template: |
+      {system_prompt}
+
+      Context:
+      {context}
+
+      Question:
+      {query}

@@ -20,3 +20,4 @@ def test_query_endpoint():
     assert "retrieved_docs" in data
     assert "metrics" in data
     assert "cost" in data
+    assert "token_budget" in data
