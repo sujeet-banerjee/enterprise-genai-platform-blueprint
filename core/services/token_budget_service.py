@@ -1,5 +1,9 @@
 class TokenBudgetService:
-
+    """
+    Computes token constraints
+    Enforces context window
+    Concerned with token economics
+    """
     def __init__(self, policy_mode: str = "strict", max_output_cap: int = 512):
         self.policy_mode = policy_mode
         self.max_output_cap = max_output_cap
