@@ -194,9 +194,61 @@ Each request generates:
 * evaluation\_scores
 
 # System Architecture
-
+The high-level architecture looks like this, which contains plug-and-play layered components, and configuration driven
+```
+                +----------------------+
+                |      User Query      |
+                +----------+-----------+
+                           |
+                           v
+                    Embedding Model
+                           |
+                           v
+                +----------------------+
+                | RetrievalPolicySvc   |
+                +----------+-----------+
+                           |
+                           v
+                      Retriever
+                           |
+                           v
+                     PromptBuilder
+                           |
+                           v
+                   TokenBudgetService
+                           |
+                           v
+                         LLM
+                           |
+                           v
+                    EvaluationEngine
+                           |
+                           v
+                     CostTracker
+```
 ## Separation of concerns
-TBD
+These layers do not depend on each other, and interact only through the pipeline:
+### Generation layer
+- Embedder
+- Retriever
+- LLM
+### Governance layer
+- TokenBudgetService
+- RetrievalPolicyService
+- CostGovernor
+### Observability layer
+- EvaluationEngine
+- Metrics
+- CostTracker
+
+#### Why This Matters
+Each layer looks after its own concern, and that avoid cross-dependencies. And thus, enterprises can easily swap components, for example,
+```
+OpenAI → vLLM
+Milvus → Pinecone
+RAGAS → internal evaluator
+```
+without touching the pipeline. That’s the whole point of the architecture.
 
 ## Config-driven behavior 
 TBD
@@ -205,7 +257,20 @@ TBD
 TBD
 
 ## Evaluation-first design
-TBD
+
+
+```
+                 Pipeline
+                    │
+        ┌───────────┼───────────────┐
+        │           │               │
+   Generation   Governance     Observability
+    Layer         Layer              Layer
+     │             │                    │
+     \_ Embedder   \_ TokenBudget       \_ EvaluationEngine
+     \_ Retriever  \_ RetrievalPolicy   \_ Metrics
+     \_ LLM        \_ CostGovernor      \_ CostTracker
+```
 
 ## Cost transparency
 TBD
@@ -224,8 +289,34 @@ Details \- TBD
 
 ## Low Level
 
-Details \- TBD
-# Operational Maturity Path {#operational-maturity-path}
+### Evaluation Engine
+The EE (short for Evaluation Engine) is an important component of the Observability Layer. It is an 
+orchestrator for evaluating the RAG performance based on the injected Metrics. The Metrics statically 
+specify the lambdas of how each metric is computed. When injected to the EvaluationEngine, it acts on 
+the runtime data and artifacts (query, retrieved-docs, response, ...) and calculates the metrics.
+
+The Metrics abstraction allows plug-n-play and mixin different types of calculators, as you may be 
+having, for instance: 
+```python
+class LLMJudgeMetrics:
+    def faithfulness(...)
+        # calls GPT to evaluate
+
+class EmbeddingMetrics:
+    def answer_relevance(...)
+        # cosine similarity
+
+class HybridMetrics:
+    ...
+```
+
+Architecture Pattern followed:
+```
+Strategy Pattern + Dependency Injection
+```
+
+# Operational Maturity Path 
+{#operational-maturity-path}
 
 ## Stage 1 – Passive Evaluation
 TDB

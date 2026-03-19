@@ -1,6 +1,11 @@
-active_model: gpt-4
+active_model: dummy
 
 models:
+  dummy:
+    provider: dummy
+    context_window: 4096
+    temperature: 0.2
+
   gpt-4:
     provider: openai
     context_window: 128000
