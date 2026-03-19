@@ -6,7 +6,9 @@ class Metrics:
         if not retrieved_docs:
             return 0
 
-        intersection = set(relevant_docs) & set(retrieved_docs)
+        intersection = set(
+            [d for d in relevant_docs]) & set(
+                [d for d in retrieved_docs])
 
         return len(intersection) / len(retrieved_docs)
 

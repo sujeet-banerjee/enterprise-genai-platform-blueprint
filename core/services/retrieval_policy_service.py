@@ -25,6 +25,9 @@ class RetrievalPolicyService:
                       query_tokens:int,
                       avg_chunk_tokens:int):
 
+        if avg_chunk_tokens <= 0:
+            raise ValueError("Invalid chunk size")
+
         available_tokens = (
             self.context_window
             - self.system_prompt_tokens
