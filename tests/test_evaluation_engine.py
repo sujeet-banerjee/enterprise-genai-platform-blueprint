@@ -27,3 +27,4 @@ def test_evaluation_engine_returns_metrics():
     assert "faithfulness" in result
 
     assert result["context_precision"] == metrics.context_precision()
+

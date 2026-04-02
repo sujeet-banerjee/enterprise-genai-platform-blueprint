@@ -1,6 +1,9 @@
+from core.evaluation.metrics import Metrics
+
+
 class EvaluationEngine:
 
-    def __init__(self, metrics):
+    def __init__(self, metrics:Metrics):
         self.metrics = metrics
 
     def evaluate(self, query, docs, response):
@@ -21,7 +24,10 @@ class EvaluationEngine:
         total_claims = 10
 
         return {
-            "context_precision": self.metrics.context_precision(relevant_docs, docs),
-            "answer_relevance": self.metrics.answer_relevance(similarity_score),
-            "faithfulness": self.metrics.faithfulness(supported_claims, total_claims)
+            "context_precision": self.metrics.context_precision(
+                query, relevant_docs, docs),
+            "answer_relevance": self.metrics.answer_relevance(
+                similarity_score),
+            "faithfulness": self.metrics.faithfulness(
+                supported_claims, total_claims)
         }

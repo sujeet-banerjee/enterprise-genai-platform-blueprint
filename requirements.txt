@@ -3,3 +3,5 @@ openai==2.29.0
 pydantic==2.12.5
 pytest==9.0.2
 PyYAML==6.0.3
+torch>=2.4.0
+sentence-transformers>=3.0.0
