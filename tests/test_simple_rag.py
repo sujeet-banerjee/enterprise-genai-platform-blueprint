@@ -20,6 +20,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 PROMPT_CONFIG_PATH = BASE_DIR / "config" / "prompt_config.yaml"
 
 def build_pipeline(docs):
+    '''
+    Helper test method to build the pipeline from docs
+
+    :param docs:
+    :return:
+    '''
     prompt_builder = PromptBuilder(str(PROMPT_CONFIG_PATH))
     embedder = SimpleEmbedder()
     retriever = SimpleRetriever(docs=docs, embedder=embedder)
@@ -27,7 +33,6 @@ def build_pipeline(docs):
     llm = DummyLLM()
     metrics = Metrics()
     evaluator = EvaluationEngine(metrics)
-
     token_budget_service = TokenBudgetService()
     cost_tracker = CostTracker()
 
@@ -45,18 +50,15 @@ def build_pipeline(docs):
     return pipeline
 
 
-def test_real_rag_basic_flow():
+def _do_pipline_invoke(docs: list[dict[str, str]], query: str):
+    '''
+    Helper test method to invoke the pipeline with docs
 
-    docs = [
-        {"content": "Artificial Intelligence is the simulation of human intelligence."},
-        {"content": "Machine Learning is a subset of AI focused on learning from data."},
-        {"content": "Neural networks are inspired by the human brain."}
-    ]
-
+    :param docs:
+    :param query:
+    :return:
+    '''
     pipeline = build_pipeline(docs)
-
-    query = "What is AI?"
-
     result = pipeline.run(query)
 
     # --- Basic assertions ---
@@ -69,27 +71,101 @@ def test_real_rag_basic_flow():
 
     # At least one doc should contain "intelligence" or "AI"
     retrieved_text = " ".join(result["retrieved_docs"]).lower()
+    print("\n===============================")
+    print(f"Query: {query}")
+    print(f"Retrieved Text: {retrieved_text}")
     assert "intelligence" in retrieved_text or "ai" in retrieved_text
 
     # --- Metrics assertions ---
     metrics = result["metrics"]
-
+    print(f"Metrics: {metrics}")
     assert "context_precision" in metrics
     assert metrics["context_precision"] >= 0
+    return result
+
+
+def test_real_rag_basic_flow_qry_explain_ai():
+    docs = [
+        {"content": "Artificial Intelligence is the simulation of human intelligence."},
+        {"content": "Machine Learning is a subset of AI focused on learning from data."},
+        {"content": "Neural networks are inspired by the human brain."}
+    ]
+    query = "What is AI?"
+    _do_pipline_invoke(docs, query)
+
+
+def test_real_rag_basic_flow_qry_explain_artificial_intelligence():
+    docs = [
+        {"content": "Artificial Intelligence is the simulation of human intelligence."},
+        {"content": "Machine Learning is a subset of AI focused on learning from data."},
+        {"content": "Neural networks are inspired by the human brain."}
+    ]
+    query = "What is artificial intelligence?"
+    _do_pipline_invoke(docs, query)
+
+
+def test_real_rag_basic_flow_qry_Explain_intelligence():
+    docs = [
+        {"content": "Artificial Intelligence is the simulation of human intelligence."},
+        {"content": "Machine Learning is a subset of AI focused on learning from data."},
+        {"content": "Neural networks are inspired by the human brain."}
+    ]
+    query = "Explain Intelligence?"
+    _do_pipline_invoke(docs, query)
+
+def test_real_rag_basic_flow_qry_Neural_networks():
+    docs = [
+        {"content": "Artificial Intelligence is the simulation of human intelligence."},
+        {"content": "Machine Learning is a subset of AI focused on learning from data."},
+        {"content": "Neural networks are inspired by the human brain."}
+    ]
+    query = "What are Neural networks?"
+    _do_pipline_invoke(docs, query)
+
+
+def test_real_rag_basic_flow_qry_which_technique_inspired_by_human_brain():
+    docs = [
+        {"content": "Artificial Intelligence is the simulation of human intelligence."},
+        {"content": "Machine Learning is a subset of AI focused on learning from data."},
+        {"content": "Neural networks are inspired by the human brain."}
+    ]
+    query = "Which technique is inspired by human brain?"
+    _do_pipline_invoke(docs, query)
+
+
+def test_real_rag_basic_flow_qry_explain_quantum_computing_HIGH():
+    docs = [
+        {"content": "Artificial Intelligence is the simulation of human intelligence."},
+        {"content": "Machine Learning is a subset of AI focused on learning from data."},
+        {"content": "Neural networks are inspired by the human brain."},
+        {"content": "Quantum computing is inspired by Schrodinger's cat!"}
+    ]
+    query = "Explain Quantum Computing?"
+    _do_pipline_invoke(docs, query)
+
+
+def test_real_rag_basic_flow_qry_explain_quantum_computing_LOW():
+    docs = [
+        {"content": "Machine Learning is a subset of AI focused on learning from data."},
+        {"content": "Neural networks are inspired by the human brain."},
+        {"content": "Artificial Intelligence is the simulation of human intelligence."},
+    ]
+    query = "Explain Quantum Computing?"
+    _do_pipline_invoke(docs, query)
 
 
 def test_real_rag_query_variation_changes_retrieval():
-
     docs = [
         {"content": "Artificial Intelligence is the simulation of human intelligence."},
         {"content": "Machine Learning is a subset of AI."},
         {"content": "Neural networks model brain-like structures."}
     ]
+    query1_ai = "What is AI?"
+    query2_nn = "What are neural networks?"
 
     pipeline = build_pipeline(docs)
-
-    result_ai = pipeline.run("What is AI?")
-    result_nn = pipeline.run("What are neural networks?")
+    result_ai = _do_pipline_invoke(docs, query1_ai)
+    result_nn = _do_pipline_invoke(docs, query2_nn)
 
     docs_ai = " ".join(result_ai["retrieved_docs"]).lower()
     docs_nn = " ".join(result_nn["retrieved_docs"]).lower()
@@ -99,7 +175,6 @@ def test_real_rag_query_variation_changes_retrieval():
 
 
 def test_real_rag_top_k_effect():
-
     docs = [
         {"content": "Artificial Intelligence is the simulation of human intelligence."},
         {"content": "Machine Learning is a subset of AI."},
@@ -109,7 +184,6 @@ def test_real_rag_top_k_effect():
 
     embedder = SimpleEmbedder()
     retriever = SimpleRetriever(docs=docs, embedder=embedder)
-
     query_embedding = embedder.embed("What is AI?")
 
     docs_k1 = retriever.retrieve(query_embedding, top_k=1)

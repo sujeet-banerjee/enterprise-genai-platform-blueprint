@@ -1,3 +1,9 @@
+import logging
+import sys
+
+from core.interfaces.retriever import Document
+
+
 class Metrics:
 
     @staticmethod
@@ -23,6 +29,12 @@ class Metrics:
         if not retrieved_docs:
             return 0
 
+        def _extract_text(doc:Document):
+            return doc.content if hasattr(doc, "content") else doc
+
+        logger = logging.getLogger(__name__)
+        logger.setLevel(logging.INFO)
+
             # --- Mode 1: True IR evaluation (future) ---
         if relevant_docs is not None:
             intersection = set(relevant_docs) & set(retrieved_docs)
@@ -33,27 +45,29 @@ class Metrics:
             query_words = set(query.lower().split())
 
             retrieved_words = set()
-            for doc in retrieved_docs:
+            normalized_docs = [_extract_text(doc) for doc in retrieved_docs]
+            for doc in normalized_docs:
                 retrieved_words.update(doc.lower().split())
+
+            logger.info("Retrieved words: {}".format(retrieved_words))
+            logger.info("Query words: {}".format(query_words))
+            logger.info("Query & Retrieved words: {}".format(
+                (query_words & retrieved_words)))
 
             if not query_words:
                 return 0
 
             return len(query_words & retrieved_words) / len(query_words)
-
         raise ValueError("Either relevant_docs or query must be provided")
 
 
     @staticmethod
     def answer_relevance(similarity_score):
-
         return similarity_score
 
 
     @staticmethod
     def faithfulness(supported_claims, total_claims):
-
         if total_claims == 0:
             return 0
-
         return supported_claims / total_claims

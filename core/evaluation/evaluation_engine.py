@@ -16,7 +16,7 @@ class EvaluationEngine:
         # TODO Calculate the relevant docs
 
         # temporary assumption
-        relevant_docs = docs
+        relevant_docs = None
 
         # FIXME: Dummy placeholders for now
         similarity_score = 0.8
