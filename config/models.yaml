@@ -19,3 +19,6 @@ models:
     context_window: 8192
     input_cost_per_1k: 0.002
     output_cost_per_1k: 0.002
+
+embedding_models:
+  
