@@ -6,7 +6,8 @@ profiles:
       You are a helpful assistant.
       Answer strictly based on provided context.
       If unsure, say you do not know.
-
+    context_separator: "\n"
+    empty_context_message: "No relevant context available."
     template: |
       {system_prompt}
 
@@ -14,4 +15,35 @@ profiles:
       {context}
 
       Question:
+      {query}
+
+  concise:
+    system_prompt: |
+      You are a concise enterprise AI assistant.
+      Provide brief, factual answers strictly grounded in the provided context.
+    context_separator: "\n---\n"
+    empty_context_message: "No context found."
+    template: |
+      {system_prompt}
+
+      Retrieved Context:
+      {context}
+
+      User Query:
+      {query}
+
+  analytical:
+    system_prompt: |
+      You are an analytical domain expert.
+      Synthesize information across all provided context passages and cite key facts.
+    context_separator: "\n\n"
+    empty_context_message: "Insufficient context provided."
+    template: |
+      System Instructions:
+      {system_prompt}
+
+      Supporting Documents:
+      {context}
+
+      Analysis Question:
       {query}

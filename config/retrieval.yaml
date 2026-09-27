@@ -1,0 +1,42 @@
+retrieval:
+  default_retriever: faiss
+  top_k: 3
+  similarity_metric: cosine
+  low_score_threshold: 0.25
+
+reranking:
+  enabled: true
+  strategy: lexical_hybrid
+  lexical_weight: 0.6
+  initial_score_weight: 0.4
+  top_k: 3
+
+chunking:
+  active_strategy: small
+  strategies:
+    small:
+      chunk_size: 120
+      chunk_overlap: 20
+      separator: " "
+    large:
+      chunk_size: 400
+      chunk_overlap: 50
+      separator: " "
+
+token_budget:
+  default_mode: strict
+  max_output_cap: 512
+  min_output_tokens: 16
+  chars_per_token: 4
+
+observability:
+  log_level: INFO
+  redact_sensitive_data: true
+  low_retrieval_score_threshold: 0.25
+  sensitive_patterns:
+    - "api[_-]?key"
+    - "password"
+    - "secret"
+    - "token"
+    - "authorization"
+    - "bearer"
