@@ -1,0 +1,26 @@
+chunking:
+  active_strategy: small
+  strategies:
+    small:
+      type: small
+      chunk_size: 150
+      chunk_overlap: 30
+    large:
+      type: large
+      chunk_size: 600
+      chunk_overlap: 60
+    word:
+      type: word
+      chunk_size: 50
+      chunk_overlap: 10
+
+retrieval:
+  top_k: 3
+  index_type: flat_ip
+  similarity_threshold: 0.0
+
+reranker:
+  enabled: true
+  type: simple
+  initial_weight: 0.5
+  lexical_weight: 0.5

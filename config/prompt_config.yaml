@@ -15,3 +15,28 @@ profiles:
 
       Question:
       {query}
+
+  concise:
+    system_prompt: |
+      You are a concise enterprise assistant. Provide direct, factual answers without fluff.
+
+    template: |
+      System: {system_prompt}
+      Context Sources:
+      {context}
+      User Query: {query}
+      Answer:
+
+  detailed:
+    system_prompt: |
+      You are a comprehensive Gen-AI assistant. Explain your answer thoroughly referencing context.
+
+    template: |
+      Instructions: {system_prompt}
+
+      Background Documents:
+      {context}
+
+      Inquiry: {query}
+
+      Response:
