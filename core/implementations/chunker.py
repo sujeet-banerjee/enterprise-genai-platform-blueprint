@@ -133,6 +133,83 @@ class ConfigurableChunker(BaseChunker):
         return chunks
 
 
+class FixedSizeChunker(ConfigurableChunker):
+    """
+    Character-based fixed-size chunking without separator-aware break points.
+    """
+
+    def __init__(
+        self,
+        chunk_size: Optional[int] = None,
+        chunk_overlap: Optional[int] = None,
+        config_path: Optional[str] = None,
+    ):
+        super().__init__(
+            strategy="small",
+            chunk_size=chunk_size,
+            chunk_overlap=chunk_overlap,
+            separator="",
+            config_path=config_path,
+        )
+
+
+class WordChunker(BaseChunker):
+    """
+    Word-based chunking strategy (whitespace delimited) with optional word overlap.
+    """
+
+    def __init__(self, chunk_size: int = 50, chunk_overlap: int = 10):
+        if chunk_size <= 0:
+            raise ValueError(f"chunk_size must be positive, got {chunk_size}")
+        if chunk_overlap < 0:
+            raise ValueError(f"chunk_overlap cannot be negative, got {chunk_overlap}")
+        if chunk_overlap >= chunk_size:
+            raise ValueError(f"chunk_overlap ({chunk_overlap}) must be less than chunk_size ({chunk_size})")
+
+        self._chunk_size = chunk_size
+        self._chunk_overlap = chunk_overlap
+
+    @property
+    def chunk_size(self) -> int:
+        return self._chunk_size
+
+    @property
+    def chunk_overlap(self) -> int:
+        return self._chunk_overlap
+
+    def chunk_text(self, text: str, metadata: Optional[dict] = None) -> List[Document]:
+        words = (text or "").split()
+        if not words:
+            return []
+
+        base_meta = dict(metadata) if metadata else {}
+        chunks: List[Document] = []
+        start = 0
+        step = self._chunk_size - self._chunk_overlap
+        chunk_idx = 0
+
+        while start < len(words):
+            end = min(start + self._chunk_size, len(words))
+            piece = " ".join(words[start:end]).strip()
+            if piece:
+                meta = dict(base_meta)
+                meta.update(
+                    {
+                        "chunk_index": chunk_idx,
+                        "chunk_strategy": "word",
+                        "chunk_size": self._chunk_size,
+                        "chunk_overlap": self._chunk_overlap,
+                    }
+                )
+                chunks.append(Document(content=piece, metadata=meta))
+                chunk_idx += 1
+            if end >= len(words):
+                break
+            start = end - self._chunk_overlap if end - self._chunk_overlap > start else start + step
+
+        return chunks
+
+
 class SmallChunker(ConfigurableChunker):
     """
     Chunker preconfigured for the 'small' strategy from config/retrieval.yaml.
@@ -195,6 +272,11 @@ class ChunkerFactory:
                 chunk_size=chunk_size,
                 chunk_overlap=chunk_overlap,
                 config_path=config_path,
+            )
+        if norm == "word":
+            return WordChunker(
+                chunk_size=chunk_size if chunk_size is not None else 50,
+                chunk_overlap=chunk_overlap if chunk_overlap is not None else 10,
             )
         return ConfigurableChunker(
             strategy=strategy,
