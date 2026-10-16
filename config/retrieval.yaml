@@ -4,6 +4,16 @@ retrieval:
   similarity_metric: cosine
   low_score_threshold: 0.25
   avg_chunk_tokens: 128
+  retrievers:
+    faiss:
+      provider: faiss
+      similarity_metric: cosine
+      documents_path: data/docs.json
+    simple:
+      provider: simple
+      documents_path: data/docs.json
+    dummy:
+      provider: dummy
 
 governance:
   enabled: true
