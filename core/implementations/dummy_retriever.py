@@ -1,10 +1,11 @@
-from typing import List
+from typing import List, Optional
+
 from core.interfaces.retriever import BaseRetriever, Document, ScoredDocument
 
 
 class DummyRetriever(BaseRetriever):
 
-    def __init__(self, docs: List[Document] = None, dimension: int = 10):
+    def __init__(self, docs: Optional[List[Document]] = None, dimension: int = 10):
         self._dimension = dimension
         if docs is not None:
             self._docs = [

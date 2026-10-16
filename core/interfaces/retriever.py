@@ -6,9 +6,10 @@ class Document:
     """
     Document or Chunk retrieved
     """
-    def __init__(self, content: str, metadata: dict = None, score: Optional[float] = None):
+    def __init__(self, content: str, metadata: Optional[dict] = None, score: Optional[float] = None):
         self.content = content
         self.metadata = dict(metadata) if metadata is not None else {}
+        self.score: Optional[float] = None
         if score is not None:
             self.score = float(score)
             self.metadata["score"] = float(score)
@@ -34,7 +35,7 @@ class ScoredDocument(Document):
     def __init__(
         self,
         content: str = "",
-        metadata: dict = None,
+        metadata: Optional[dict] = None,
         score: float = 0.0,
         document: Optional[Document] = None,
     ):
@@ -84,7 +85,7 @@ class BaseRetriever(ABC):
         docs = self.retrieve(embedding, top_k=top_k)
         scored: List[ScoredDocument] = []
         for idx, doc in enumerate(docs):
-            score = doc.score if getattr(doc, "score", None) is not None else round(max(0.0, 1.0 - idx * 0.1), 4)
+            score = float(doc.score) if doc.score is not None else round(max(0.0, 1.0 - idx * 0.1), 4)
             scored.append(ScoredDocument(document=doc, score=score))
         return scored
 

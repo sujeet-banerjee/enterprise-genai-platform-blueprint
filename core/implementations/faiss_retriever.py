@@ -1,4 +1,5 @@
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Sequence, Union
+
 import faiss
 import numpy as np
 
@@ -14,7 +15,7 @@ class FAISSRetriever(BaseRetriever):
 
     def __init__(
         self,
-        docs: Optional[List[Union[dict, Document, str]]] = None,
+        docs: Optional[Sequence[Union[dict, Document, str]]] = None,
         embedder=None,
         dimension: Optional[int] = None,
         similarity_metric: str = "cosine",
@@ -68,7 +69,7 @@ class FAISSRetriever(BaseRetriever):
 
     def add_documents(
         self,
-        docs: List[Union[dict, Document, str]],
+        docs: Sequence[Union[dict, Document, str]],
         embeddings: Optional[List[List[float]]] = None,
     ) -> int:
         if not docs:
@@ -106,7 +107,7 @@ class FAISSRetriever(BaseRetriever):
 
     def build_index(
         self,
-        docs: List[Union[dict, Document, str]],
+        docs: Sequence[Union[dict, Document, str]],
         embeddings: Optional[List[List[float]]] = None,
     ) -> int:
         self.index = self._create_index(self._dimension)

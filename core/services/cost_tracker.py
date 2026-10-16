@@ -1,5 +1,6 @@
 import time
 
+
 class CostTracker:
 
     def compute(self, model_name: str, start_time: float) -> dict:

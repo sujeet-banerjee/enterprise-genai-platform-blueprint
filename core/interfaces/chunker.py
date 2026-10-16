@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import List, Optional, Union
+
 from core.interfaces.retriever import Document
 
 

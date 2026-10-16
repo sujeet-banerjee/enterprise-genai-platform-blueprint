@@ -1,9 +1,10 @@
 import pytest
-from core.registry.model_registry import ModelRegistry
+
 from core.implementations.dummy_llm import DummyLLM
 from core.implementations.simple_embedder import SimpleEmbedder
-from core.interfaces.llm import BaseLLM
 from core.interfaces.embedder import BaseEmbedder
+from core.interfaces.llm import BaseLLM
+from core.registry.model_registry import ModelRegistry
 
 
 def test_registry_loads_config():

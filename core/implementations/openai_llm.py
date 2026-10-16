@@ -1,5 +1,7 @@
-from core.interfaces.llm import BaseLLM
 from openai import OpenAI
+
+from core.interfaces.llm import BaseLLM
+
 
 class OpenAILLM(BaseLLM):
 

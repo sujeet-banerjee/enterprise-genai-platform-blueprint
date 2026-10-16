@@ -1,8 +1,14 @@
 import inspect
+
 import pytest
 
 from app.pipeline import RAGPipeline
-from core.implementations.chunker import ChunkerFactory, ConfigurableChunker, LargeChunker, SmallChunker
+from core.implementations.chunker import (
+    ChunkerFactory,
+    ConfigurableChunker,
+    LargeChunker,
+    SmallChunker,
+)
 from core.implementations.faiss_retriever import FAISSRetriever
 from core.implementations.simple_embedder import SimpleEmbedder
 from core.services.experiment_runner import ExperimentRunner

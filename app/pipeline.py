@@ -1,7 +1,8 @@
+import time
 from copy import deepcopy
 from pathlib import Path
-import time
 from typing import Any, Dict, List, Optional
+
 import yaml
 
 from core.interfaces.reranker import BaseReranker
@@ -26,6 +27,8 @@ class RAGPipeline:
         top_k: Optional[int] = None,
         config_path: Optional[str] = None,
         raise_on_failure: bool = True,
+        cost_governor: Optional[Any] = None,
+        retrieval_policy_service: Optional[Any] = None,
     ):
         self.embedder = embedder
         self.prompt_builder = prompt_builder
@@ -37,6 +40,8 @@ class RAGPipeline:
         self.generation_config = generation_config
         self.reranker = reranker
         self.raise_on_failure = raise_on_failure
+        self.cost_governor = cost_governor
+        self.retrieval_policy_service = retrieval_policy_service
         self.config_path = config_path or str(
             Path(__file__).resolve().parent.parent / "config" / "retrieval.yaml"
         )
@@ -44,8 +49,10 @@ class RAGPipeline:
 
         ret_cfg = self._retrieval_config.get("retrieval") or {}
         obs_cfg = self._retrieval_config.get("observability") or {}
+        gov_cfg = self._retrieval_config.get("governance") or {}
 
         self.top_k = int(top_k if top_k is not None else ret_cfg.get("top_k", 3))
+        self.avg_chunk_tokens = int(gov_cfg.get("avg_chunk_tokens", ret_cfg.get("avg_chunk_tokens", 128)))
         self.low_score_threshold = float(
             obs_cfg.get("low_retrieval_score_threshold", ret_cfg.get("low_score_threshold", 0.25))
         )
@@ -84,7 +91,7 @@ class RAGPipeline:
                     doc_obj.score = score_val
             elif isinstance(item, Document):
                 doc_obj = item
-                if getattr(doc_obj, "score", None) is not None:
+                if doc_obj.score is not None:
                     score_val = float(doc_obj.score)
                 elif isinstance(doc_obj.metadata, dict) and doc_obj.metadata.get("score") is not None:
                     score_val = float(doc_obj.metadata["score"])
@@ -109,7 +116,7 @@ class RAGPipeline:
         should_raise: bool,
     ) -> Dict[str, Any]:
         failure_tag = FailureClassifier.classify_exception(exc, stage=stage)
-        exc.failure_type = failure_tag
+        setattr(exc, "failure_type", failure_tag)
         tracker.add_failure_tag(failure_tag)
         self.last_failure = failure_tag
 
@@ -159,6 +166,22 @@ class RAGPipeline:
         should_raise = self.raise_on_failure if raise_on_failure is None else bool(raise_on_failure)
         tracker = PipelineObservabilityTracker(config_path=self.config_path)
 
+        # 0. Retrieval depth governance (token economics tuned by RetrievalPolicyService)
+        if self.retrieval_policy_service is not None and top_k is None:
+            try:
+                query_tokens = self.token_budget_service.estimate_tokens(query)
+                policy_top_k = int(
+                    self.retrieval_policy_service.compute_top_k(
+                        query_tokens=query_tokens,
+                        avg_chunk_tokens=self.avg_chunk_tokens,
+                    )
+                )
+                effective_top_k = max(1, min(effective_top_k, policy_top_k))
+            except Exception as exc:
+                return self._record_and_handle_stage_error(
+                    "retrieval_policy", exc, tracker, query, effective_top_k, should_raise
+                )
+
         # 1. Embedding stage
         try:
             with tracker.measure_stage("embedding"):
@@ -201,6 +224,7 @@ class RAGPipeline:
         try:
             with tracker.measure_stage("reranking"):
                 if self.reranker is not None and docs:
+                    reranked: List[Any]
                     if hasattr(self.reranker, "rerank_with_scores"):
                         reranked = self.reranker.rerank_with_scores(
                             query=query, documents=docs, top_k=effective_top_k
@@ -269,6 +293,16 @@ class RAGPipeline:
             )
 
         cost = self.cost_tracker.compute(self.llm.model_name, start_time)
+
+        # 8. Cost governance stage
+        if self.cost_governor is not None:
+            try:
+                self.cost_governor.check_cost(cost.get("estimated_cost_usd", 0.0))
+            except Exception as exc:
+                return self._record_and_handle_stage_error(
+                    "cost_governance", exc, tracker, query, effective_top_k, should_raise
+                )
+
         latency_report = tracker.get_latency_report()
         final_ordering_summary = tracker.summarize_documents(docs)
         public_budget = {k: v for k, v in budget.items() if k != "retained_docs"}

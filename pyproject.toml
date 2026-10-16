@@ -1,0 +1,31 @@
+[project]
+name = "enterprise-genai-platform-blueprint"
+version = "0.2.0"
+description = "Enterprise GenAI / RAG platform blueprint with pluggable, vendor-neutral components"
+requires-python = ">=3.11"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+exclude = [".git", "__pycache__", ".venv", "venv", "build", "dist"]
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I"]
+
+[tool.mypy]
+python_version = "3.11"
+ignore_missing_imports = true
+warn_unused_configs = true
+no_implicit_optional = true
+
+[tool.coverage.run]
+source = ["app", "core"]
+omit = ["tests/*"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+    "pass",
+]

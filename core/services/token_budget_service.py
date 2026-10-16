@@ -1,5 +1,6 @@
 from pathlib import Path
 from typing import List, Optional, Union
+
 import yaml
 
 from core.interfaces.retriever import Document
@@ -79,7 +80,7 @@ class TokenBudgetService:
     @staticmethod
     def _extract_doc_score(doc: Union[Document, dict, str], default_rank: int, total: int) -> float:
         if isinstance(doc, Document):
-            if getattr(doc, "score", None) is not None:
+            if doc.score is not None:
                 return float(doc.score)
             if isinstance(doc.metadata, dict) and doc.metadata.get("score") is not None:
                 return float(doc.metadata["score"])
@@ -269,7 +270,7 @@ class TokenBudgetService:
         # Need to remove/truncate lowest-priority context
         documents_removed = 0
         documents_truncated = 0
-        retained_docs: List[Document] = []
+        retained_docs = []
 
         if docs_list:
             total_docs = len(docs_list)

@@ -3,6 +3,13 @@ retrieval:
   top_k: 3
   similarity_metric: cosine
   low_score_threshold: 0.25
+  avg_chunk_tokens: 128
+
+governance:
+  enabled: true
+  max_cost_per_request_usd: 0.05
+  safety_margin_tokens: 200
+  avg_chunk_tokens: 128
 
 reranking:
   enabled: true

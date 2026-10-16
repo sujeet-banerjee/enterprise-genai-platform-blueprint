@@ -1,20 +1,16 @@
-import pytest
 
-from core.config.generation_config import GenerationConfig
-from core.implementations.simple_embedder import SimpleEmbedder
-from core.implementations.simple_retriever import SimpleRetriever
-from core.implementations.dummy_llm import DummyLLM
-from core.implementations.dummy_evaluator import DummyEvaluator  # if still used
 from pathlib import Path
 
-from core.evaluation.metrics import Metrics
-from core.evaluation.evaluation_engine import EvaluationEngine
-from core.services.prompt_builder import PromptBuilder
-
-from core.services.token_budget_service import TokenBudgetService
-from core.services.cost_tracker import CostTracker
-
 from app.pipeline import RAGPipeline
+from core.config.generation_config import GenerationConfig
+from core.evaluation.evaluation_engine import EvaluationEngine
+from core.evaluation.metrics import Metrics
+from core.implementations.dummy_llm import DummyLLM
+from core.implementations.simple_embedder import SimpleEmbedder
+from core.implementations.simple_retriever import SimpleRetriever
+from core.services.cost_tracker import CostTracker
+from core.services.prompt_builder import PromptBuilder
+from core.services.token_budget_service import TokenBudgetService
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 PROMPT_CONFIG_PATH = BASE_DIR / "config" / "prompt_config.yaml"
@@ -163,7 +159,6 @@ def test_real_rag_query_variation_changes_retrieval():
     query1_ai = "What is AI?"
     query2_nn = "What are neural networks?"
 
-    pipeline = build_pipeline(docs)
     result_ai = _do_pipline_invoke(docs, query1_ai)
     result_nn = _do_pipline_invoke(docs, query2_nn)
 

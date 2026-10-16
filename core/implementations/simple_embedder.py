@@ -1,7 +1,8 @@
 import hashlib
-from pathlib import Path
 import re
+from pathlib import Path
 from typing import List, Optional
+
 import numpy as np
 import yaml
 from sentence_transformers import SentenceTransformer
@@ -118,7 +119,7 @@ class SimpleEmbedder(BaseEmbedder):
 
     @staticmethod
     def _resolve_model_name(model_name: Optional[str], config_path: str) -> str:
-        config_data = {}
+        config_data: dict = {}
         try:
             with open(config_path, "r") as f:
                 config_data = yaml.safe_load(f) or {}

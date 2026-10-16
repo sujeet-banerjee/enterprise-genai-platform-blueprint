@@ -1,5 +1,6 @@
 from core.services.retrieval_policy_service import RetrievalPolicyService
 
+
 def test_top_k_calculation():
 
     policy = RetrievalPolicyService(

@@ -6,9 +6,9 @@ from core.evaluation.evaluation_engine import EvaluationEngine
 from core.evaluation.metrics import Metrics
 from core.implementations.chunker import ChunkerFactory
 from core.implementations.faiss_retriever import FAISSRetriever
-from core.implementations.simple_retriever import SimpleRetriever
 from core.implementations.simple_reranker import SimpleReranker
-from core.interfaces.retriever import Document
+from core.implementations.simple_retriever import SimpleRetriever
+from core.interfaces.retriever import BaseRetriever, Document
 from core.registry.model_registry import ModelRegistry
 from core.services.cost_tracker import CostTracker
 from core.services.prompt_builder import PromptBuilder
@@ -55,12 +55,12 @@ class ExperimentRunner:
 
         if chunk_strategy:
             chunker = ChunkerFactory.create(strategy=chunk_strategy, config_path=self.retrieval_config_path)
-            indexed_docs = chunker.chunk_documents(docs)
+            indexed_docs: Sequence[Union[dict, Document, str]] = chunker.chunk_documents(docs)
         else:
             indexed_docs = docs
 
         if retriever_backend.lower() == "faiss":
-            retriever = FAISSRetriever(docs=indexed_docs, embedder=embedder)
+            retriever: BaseRetriever = FAISSRetriever(docs=indexed_docs, embedder=embedder)
         else:
             retriever = SimpleRetriever(docs=indexed_docs, embedder=embedder)
 

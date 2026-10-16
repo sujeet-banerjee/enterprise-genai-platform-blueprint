@@ -1,5 +1,6 @@
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Union
+
 import yaml
 
 from core.implementations.dummy_embedder import DummyEmbedder

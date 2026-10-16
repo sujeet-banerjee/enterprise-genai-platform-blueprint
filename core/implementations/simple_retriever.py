@@ -1,11 +1,13 @@
+from typing import List, Optional, Sequence, Union
+
 import numpy as np
-from typing import List, Union
+
 from core.interfaces.retriever import BaseRetriever, Document, ScoredDocument
 
 
 class SimpleRetriever(BaseRetriever):
 
-    def __init__(self, docs: List[Union[dict, Document, str]], embedder):
+    def __init__(self, docs: Optional[Sequence[Union[dict, Document, str]]], embedder):
         self.embedder = embedder
         self.docs: List[Document] = []
         for idx, doc in enumerate(docs or []):

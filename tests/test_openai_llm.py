@@ -1,7 +1,9 @@
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock
 
 from core.implementations.openai_llm import OpenAILLM
+
 
 def test_generate_handles_empty_response():
 

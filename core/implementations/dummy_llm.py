@@ -1,10 +1,12 @@
+from typing import Optional
+
 from core.config.generation_config import GenerationConfig
 from core.interfaces.llm import BaseLLM
 
 
 class DummyLLM(BaseLLM):
 
-    def generate(self, prompt: str, config: GenerationConfig = None) -> str:
+    def generate(self, prompt: str, config: Optional[GenerationConfig] = None) -> str:
         return f"Dummy response for prompt: {prompt}, with config: {config}"
 
     @property

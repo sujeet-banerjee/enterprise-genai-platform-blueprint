@@ -1,4 +1,5 @@
 from typing import List, Optional
+
 from core.interfaces.reranker import BaseReranker
 from core.interfaces.retriever import Document
 

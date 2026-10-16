@@ -1,5 +1,4 @@
 import logging
-import sys
 
 from core.interfaces.retriever import Document
 

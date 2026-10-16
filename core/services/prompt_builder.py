@@ -1,5 +1,6 @@
 from pathlib import Path
 from typing import Dict, List, Optional, Union
+
 import yaml
 
 from core.interfaces.retriever import Document
