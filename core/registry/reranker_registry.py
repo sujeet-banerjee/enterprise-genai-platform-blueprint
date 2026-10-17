@@ -13,6 +13,7 @@ class RerankerRegistry:
     Reads the ``reranking`` block from config/retrieval.yaml:
 
         reranking:
+          enabled: true
           strategy: lexical_hybrid
           lexical_weight: 0.6
           initial_score_weight: 0.4
@@ -22,6 +23,9 @@ class RerankerRegistry:
             simple: {provider: simple}
             dummy:  {provider: dummy}
             none:   {provider: none}
+
+    Setting ``enabled: false`` makes ``create()`` return ``None`` so the pipeline
+    skips the reranking stage entirely (latency/observability then reflect the skip).
 
     Adding a new reranker follows the blueprint's customization path: implement
     ``BaseReranker`` in ``core/implementations`` and register a provider here (or
@@ -89,6 +93,10 @@ class RerankerRegistry:
     def list_rerankers(self) -> List[str]:
         return sorted((self.config.get("reranking") or {}).get("rerankers", {}).keys())
 
+    def is_enabled(self) -> bool:
+        reranking = self.config.get("reranking") or {}
+        return bool(reranking.get("enabled", True))
+
     def resolve(self, name: Optional[str] = None) -> Tuple[str, str, Dict[str, Any]]:
         """
         Resolve a reranker key to (key, provider, provider_config) using config.
@@ -114,7 +122,14 @@ class RerankerRegistry:
             )
         return str(key), provider, entry
 
-    def create(self, name: Optional[str] = None, **overrides: Any) -> Optional[BaseReranker]:
+    def create(
+        self, name: Optional[str] = None, enabled: Optional[bool] = None, **overrides: Any
+    ) -> Optional[BaseReranker]:
+        if enabled is None:
+            enabled = self.is_enabled()
+        if not enabled:
+            return None
+
         _key, provider, entry = self.resolve(name)
         options = {**entry, **overrides}
         options.pop("provider", None)

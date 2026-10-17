@@ -133,6 +133,7 @@ class RAGPipeline:
             "retriever": self.retriever.__class__.__name__,
             "top_k": effective_top_k,
             "reranker": getattr(self.reranker, "reranker_name", "none") if self.reranker else "none",
+            "reranking_enabled": self.reranker is not None,
             "llm_model": getattr(self.llm, "model_name", self.llm.__class__.__name__),
             "latency": latency_report,
         }
@@ -220,26 +221,29 @@ class RAGPipeline:
                 "retrieval", exc, tracker, query, effective_top_k, should_raise
             )
 
-        # 3. Reranking stage
-        try:
-            with tracker.measure_stage("reranking"):
-                if self.reranker is not None and docs:
-                    reranked: List[Any]
-                    if hasattr(self.reranker, "rerank_with_scores"):
-                        reranked = self.reranker.rerank_with_scores(
-                            query=query, documents=docs, top_k=effective_top_k
-                        )
+        # 3. Reranking stage (optional; skipped entirely when reranking.enabled is false)
+        if self.reranker is not None:
+            try:
+                with tracker.measure_stage("reranking"):
+                    if docs:
+                        reranked: List[Any]
+                        if hasattr(self.reranker, "rerank_with_scores"):
+                            reranked = self.reranker.rerank_with_scores(
+                                query=query, documents=docs, top_k=effective_top_k
+                            )
+                        else:
+                            reranked = self.reranker.rerank(
+                                query=query, documents=docs, top_k=effective_top_k
+                            )
+                        docs, final_scores = self._extract_docs_and_scores(reranked)
                     else:
-                        reranked = self.reranker.rerank(
-                            query=query, documents=docs, top_k=effective_top_k
-                        )
-                    docs, final_scores = self._extract_docs_and_scores(reranked)
-                else:
-                    final_scores = list(initial_scores)
-        except Exception as exc:
-            return self._record_and_handle_stage_error(
-                "reranking", exc, tracker, query, effective_top_k, should_raise
-            )
+                        final_scores = list(initial_scores)
+            except Exception as exc:
+                return self._record_and_handle_stage_error(
+                    "reranking", exc, tracker, query, effective_top_k, should_raise
+                )
+        else:
+            final_scores = list(initial_scores)
 
         # 4. Token Budget Governance stage (delegated to TokenBudgetService; system_prompt from PromptBuilder)
         try:
@@ -323,6 +327,7 @@ class RAGPipeline:
             "reranker": getattr(self.reranker, "reranker_name", self.reranker.__class__.__name__)
             if self.reranker
             else "none",
+            "reranking_enabled": self.reranker is not None,
             "final_document_ordering": final_ordering_summary,
             "retrieved_documents": final_ordering_summary,
             "retrieval_scores": final_scores,
