@@ -1,39 +1,17 @@
 import pytest
 
-from app.pipeline import RAGPipeline
-from core.config.generation_config import GenerationConfig
-from core.implementations.dummy_embedder import DummyEmbedder
-from core.implementations.dummy_evaluator import DummyEvaluator
-from core.implementations.dummy_llm import DummyLLM
-from core.implementations.dummy_retriever import DummyRetriever
 from core.interfaces.retriever import Document
-from core.services.cost_tracker import CostTracker
-from core.services.prompt_builder import PromptBuilder
 from core.services.token_budget_service import TokenBudgetExceededError, TokenBudgetService
 
 
-def build_test_pipeline(policy_mode: str = "strict"):
-    return RAGPipeline(
-        embedder=DummyEmbedder(),
-        prompt_builder=PromptBuilder("config/prompt_config.yaml"),
-        retriever=DummyRetriever(),
-        llm=DummyLLM(),
-        token_budget_service=TokenBudgetService(policy_mode=policy_mode),
-        evaluator=DummyEvaluator(),
-        generation_config=GenerationConfig(max_tokens=512),
-        cost_tracker=CostTracker(),
-    )
-
-
-def test_token_budget_reduces_output():
-    pipeline = build_test_pipeline()
-
-    # Force small max tokens
-    pipeline.generation_config.max_tokens = 100
+def test_token_budget_reduces_output(make_pipeline):
+    pipeline = make_pipeline(max_tokens=100)
 
     result = pipeline.run("Short question?")
 
+    assert result["response"]
     assert result["token_budget"]["allowed_output_tokens"] <= 100
+    assert result["token_budget"]["budget_mode"] == "strict"
 
 
 def test_token_budget_strict_mode_exact_calculation():
@@ -86,6 +64,17 @@ def test_token_budget_truncate_mode_removes_and_truncates_low_priority_docs():
     assert len(result["retained_docs"]) <= len(docs)
     # Highest priority document should be preserved first
     assert "High priority context." in result["retained_docs"][0].content
+
+
+def test_token_budget_truncate_mode_end_to_end(make_pipeline):
+    pipeline = make_pipeline(policy_mode="truncate", max_tokens=64)
+
+    result = pipeline.run("What is machine learning?")
+
+    assert result["response"]
+    assert result["token_budget"]["budget_mode"] == "truncate"
+    assert result["token_budget"]["final_context_tokens"] <= result["token_budget"]["original_context_tokens"]
+    assert result["failure_tags"] == []
 
 
 def test_token_budget_invalid_mode_raises():

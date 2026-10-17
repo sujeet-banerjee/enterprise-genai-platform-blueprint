@@ -1,23 +1,26 @@
 import pytest
 
-from core.implementations.dummy_embedder import DummyEmbedder
-from core.implementations.dummy_retriever import DummyRetriever
 from core.implementations.faiss_retriever import FAISSRetriever
-from core.implementations.simple_embedder import SimpleEmbedder
 from core.implementations.simple_retriever import SimpleRetriever
 from core.interfaces.retriever import Document, ScoredDocument
 
+AI_DOCS = [
+    {"content": "Artificial Intelligence is the simulation of human intelligence."},
+    {"content": "Machine Learning is a subset of AI focused on learning from data."},
+    {"content": "Quantum physics studies subatomic particles and wave functions."},
+]
 
-def test_simple_retriever_returns_similarity_scores():
-    docs = [
-        {"content": "Artificial Intelligence is the simulation of human intelligence."},
-        {"content": "Machine Learning is a subset of AI focused on learning from data."},
-        {"content": "Quantum physics studies subatomic particles and wave functions."},
-    ]
-    embedder = SimpleEmbedder(model_name="all-MiniLM-L6-v2")
-    retriever = SimpleRetriever(docs=docs, embedder=embedder)
+NN_DOCS = [
+    {"content": "Neural networks are models inspired by the human brain.", "metadata": {"topic": "nn"}},
+    {"content": "Deep learning uses multi-layer neural networks.", "metadata": {"topic": "dl"}},
+    {"content": "Financial accounting tracks corporate balance sheets.", "metadata": {"topic": "finance"}},
+]
 
-    query_emb = embedder.embed("What is Artificial Intelligence?")
+
+def test_simple_retriever_returns_similarity_scores(real_embedder):
+    retriever = SimpleRetriever(docs=AI_DOCS, embedder=real_embedder)
+
+    query_emb = real_embedder.embed("What is Artificial Intelligence?")
     scored_docs = retriever.retrieve_with_scores(query_emb, top_k=2)
 
     assert len(scored_docs) == 2
@@ -33,14 +36,8 @@ def test_simple_retriever_returns_similarity_scores():
     assert scored_docs[0]["score"] == score_val
 
 
-def test_faiss_retriever_index_creation_insertion_querying_and_mapping():
-    docs = [
-        {"content": "Neural networks are models inspired by the human brain.", "metadata": {"topic": "nn"}},
-        {"content": "Deep learning uses multi-layer neural networks.", "metadata": {"topic": "dl"}},
-        {"content": "Financial accounting tracks corporate balance sheets.", "metadata": {"topic": "finance"}},
-    ]
-    embedder = SimpleEmbedder(model_name="all-MiniLM-L6-v2")
-    faiss_retriever = FAISSRetriever(docs=docs, embedder=embedder)
+def test_faiss_retriever_index_creation_insertion_querying_and_mapping(real_embedder):
+    faiss_retriever = FAISSRetriever(docs=NN_DOCS, embedder=real_embedder)
 
     assert faiss_retriever.index_dimension == 384
     assert faiss_retriever.total_documents == 3
@@ -52,7 +49,7 @@ def test_faiss_retriever_index_creation_insertion_querying_and_mapping():
     assert added == 1
     assert faiss_retriever.total_documents == 4
 
-    query_emb = embedder.embed("How do neural networks relate to the human brain?")
+    query_emb = real_embedder.embed("How do neural networks relate to the human brain?")
     results_with_scores = faiss_retriever.retrieve_with_scores(query_emb, top_k=3)
 
     assert len(results_with_scores) == 3
@@ -72,12 +69,12 @@ def test_faiss_retriever_index_creation_insertion_querying_and_mapping():
     assert all(d.score is not None for d in plain_docs)
 
 
-def test_faiss_retriever_negative_scenarios():
-    embedder = DummyEmbedder(dimension=10)
-    retriever = FAISSRetriever(embedder=embedder)
+def test_faiss_retriever_negative_scenarios(real_embedder):
+    dimension = real_embedder.dimension
+    retriever = FAISSRetriever(embedder=real_embedder)
 
     # Empty index returns empty list without crashing
-    assert retriever.retrieve([0.1] * 10, top_k=3) == []
+    assert retriever.retrieve([0.1] * dimension, top_k=3) == []
 
     # Query dimension mismatch raises ValueError
     retriever.add_documents([{"content": "Sample doc"}])
@@ -97,9 +94,14 @@ def test_faiss_retriever_negative_scenarios():
         FAISSRetriever(dimension=0)
 
 
-def test_dummy_retriever_exposes_scores():
-    retriever = DummyRetriever()
-    scored = retriever.retrieve_with_scores([0.1] * 10, top_k=2)
-    assert len(scored) == 2
-    assert scored[0].score == 0.91
-    assert scored[1].score == 0.84
+def test_retrievers_expose_ordered_real_scores(real_embedder):
+    simple = SimpleRetriever(docs=AI_DOCS, embedder=real_embedder)
+    faiss = FAISSRetriever(docs=AI_DOCS, embedder=real_embedder)
+    query_emb = real_embedder.embed("What is Machine Learning?")
+
+    for retriever in (simple, faiss):
+        scored = retriever.retrieve_with_scores(query_emb, top_k=3)
+        assert len(scored) == 3
+        assert all(isinstance(s.score, float) for s in scored)
+        assert scored[0].score >= scored[-1].score
+        assert "Machine Learning" in scored[0].content

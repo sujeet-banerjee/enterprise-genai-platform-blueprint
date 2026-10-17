@@ -36,7 +36,19 @@ class SemanticEvaluator(BaseEvaluator):
         embedder: Optional[BaseEmbedder] = None,
         model_name: str = "sentence-transformers/all-MiniLM-L6-v2",
     ):
-        self._embedder = embedder or SimpleEmbedder(model_name)
+        self._embedder = embedder
+        self._model_name = model_name
+
+    @property
+    def embedder(self) -> BaseEmbedder:
+        """Lazily construct the default embedder on first use.
+
+        Building an evaluator is cheap and should not force an expensive model
+        load; only evaluating actually needs embeddings.
+        """
+        if self._embedder is None:
+            self._embedder = SimpleEmbedder(self._model_name)
+        return self._embedder
 
     @staticmethod
     def _content(doc: object) -> str:
@@ -52,11 +64,12 @@ class SemanticEvaluator(BaseEvaluator):
         response = response or ""
         docs = list(retrieved_docs or [])
 
-        query_vec = self._embedder.embed(query)
-        answer_vec = self._embedder.embed(response)
+        embedder = self.embedder
+        query_vec = embedder.embed(query)
+        answer_vec = embedder.embed(response)
 
         if docs:
-            doc_vecs = [self._embedder.embed(self._content(doc)) for doc in docs]
+            doc_vecs = [embedder.embed(self._content(doc)) for doc in docs]
             context_precision = sum(_cosine(query_vec, vec) for vec in doc_vecs) / len(doc_vecs)
             faithfulness = sum(_cosine(answer_vec, vec) for vec in doc_vecs) / len(doc_vecs)
         else:

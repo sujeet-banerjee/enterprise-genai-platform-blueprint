@@ -5,8 +5,8 @@ from typing import List, Optional
 
 import numpy as np
 import yaml
-from sentence_transformers import SentenceTransformer
 
+from core.implementations._local_models import get_sentence_transformer
 from core.interfaces.embedder import BaseEmbedder
 
 
@@ -149,12 +149,12 @@ class SimpleEmbedder(BaseEmbedder):
     @staticmethod
     def _load_model(model_name: str, allow_offline_fallback: bool = False):
         try:
-            return SentenceTransformer(model_name, local_files_only=True)
+            return get_sentence_transformer(model_name, local_files_only=True)
         except Exception:
             pass
         try:
             # Not cached locally: download the real model (requires internet).
-            return SentenceTransformer(model_name)
+            return get_sentence_transformer(model_name, local_files_only=False)
         except Exception:
             if allow_offline_fallback:
                 return _LocalSentenceEncoder(model_name)

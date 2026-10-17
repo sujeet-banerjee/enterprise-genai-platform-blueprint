@@ -1,31 +1,18 @@
 from core.evaluation.evaluation_engine import EvaluationEngine
+from core.evaluation.metrics import Metrics
+from core.interfaces.retriever import Document
 
 
-class MockMetrics:
-
-    def context_precision(self, *args, **kwargs):
-        return 0.75
-
-    def answer_relevance(self, *args, **kwargs):
-        return 0.8
-
-    def faithfulness(self, *args, **kwargs):
-        return 0.9
-
-def test_evaluation_engine_returns_metrics():
-
-    metrics = MockMetrics()
-    engine = EvaluationEngine(metrics)
+def test_evaluation_engine_returns_real_metrics():
+    engine = EvaluationEngine(Metrics())
+    docs = [Document(content="Artificial intelligence is the simulation of human intelligence.")]
 
     result = engine.evaluate(
-        query="What is AI?",
-        docs=["doc1", "doc2"],
-        response="AI is artificial intelligence."
+        query="What is artificial intelligence?",
+        docs=docs,
+        response="Artificial intelligence simulates human intelligence.",
     )
 
-    assert "context_precision" in result
-    assert "answer_relevance" in result
-    assert "faithfulness" in result
-
-    assert result["context_precision"] == metrics.context_precision()
-
+    assert set(result) == {"context_precision", "answer_relevance", "faithfulness"}
+    assert all(0.0 <= value <= 1.0 for value in result.values())
+    assert result["context_precision"] > 0.0

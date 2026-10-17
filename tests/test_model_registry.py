@@ -1,6 +1,6 @@
 import pytest
 
-from core.implementations.dummy_llm import DummyLLM
+from core.implementations.hf_local_llm import LocalHFLLM
 from core.implementations.simple_embedder import SimpleEmbedder
 from core.interfaces.embedder import BaseEmbedder
 from core.interfaces.llm import BaseLLM
@@ -12,15 +12,23 @@ def test_registry_loads_config():
     assert registry.config is not None
 
 
-def test_registry_returns_active_model():
+def test_registry_returns_genuine_active_model():
     registry = ModelRegistry("config/models.yaml")
     model = registry.get_active_model()
-    assert isinstance(model, DummyLLM)
+    assert isinstance(model, LocalHFLLM)
+    assert model.context_window > 0
+
+
+def test_registry_returns_configured_local_model_by_name():
+    registry = ModelRegistry("config/models.yaml")
+    model = registry.get_model("local-qwen")
+    assert isinstance(model, LocalHFLLM)
+    assert model.model_name.endswith("Qwen2.5-0.5B-Instruct")
 
 
 def test_registry_unknown_provider():
     registry = ModelRegistry("config/models.yaml")
-    registry.config["models"]["dummy"]["provider"] = "unknown"
+    registry.config["models"]["local-qwen"]["provider"] = "unknown"
     with pytest.raises(ValueError):
         registry.get_active_model()
 
@@ -71,10 +79,21 @@ def test_registry_loads_configured_embedding_models():
     registry = ModelRegistry("config/models.yaml")
     minilm = registry.get_embedder("all-MiniLM-L6-v2")
     mpnet = registry.get_embedder("all-mpnet-base-v2")
+    bge = registry.get_embedder("bge-small-en-v1.5")
     assert isinstance(minilm, SimpleEmbedder)
     assert isinstance(mpnet, SimpleEmbedder)
+    assert isinstance(bge, SimpleEmbedder)
     assert minilm.dimension == 384
     assert mpnet.dimension == 768
+    assert bge.dimension == 384
+
+
+def test_registry_embedder_produces_real_vectors():
+    registry = ModelRegistry("config/models.yaml")
+    embedder = registry.get_embedder("all-MiniLM-L6-v2")
+    vector = embedder.embed("Artificial intelligence")
+    assert len(vector) == embedder.dimension == 384
+    assert any(abs(value) > 0.0 for value in vector)
 
 
 def test_registry_invalid_model_raises():

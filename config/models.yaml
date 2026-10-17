@@ -1,4 +1,4 @@
-active_model: dummy
+active_model: local-qwen
 active_embedding_model: all-MiniLM-L6-v2
 
 models:

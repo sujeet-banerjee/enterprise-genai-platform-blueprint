@@ -34,9 +34,39 @@ def _models_config(tmp_path: Path, embedding_model: str = "dummy") -> str:
             "active_embedding_model": embedding_model,
             "models": {
                 "dummy": {"provider": "dummy", "context_window": 4096, "temperature": 0.2},
+                "local-qwen": {
+                    "provider": "local_hf",
+                    "model_name": "Qwen/Qwen2.5-0.5B-Instruct",
+                    "context_window": 32768,
+                    "max_new_tokens": 64,
+                },
             },
             "embedding_models": {
                 "dummy": {"provider": "dummy", "model_name": "dummy-embedder"},
+                "all-MiniLM-L6-v2": {
+                    "provider": "sentence_transformers",
+                    "model_name": "sentence-transformers/all-MiniLM-L6-v2",
+                },
+            },
+        },
+    )
+
+
+def _genuine_models_config(tmp_path: Path) -> str:
+    return _write_yaml(
+        tmp_path / "models.yaml",
+        {
+            "active_model": "local-qwen",
+            "active_embedding_model": "all-MiniLM-L6-v2",
+            "models": {
+                "local-qwen": {
+                    "provider": "local_hf",
+                    "model_name": "Qwen/Qwen2.5-0.5B-Instruct",
+                    "context_window": 32768,
+                    "max_new_tokens": 64,
+                },
+            },
+            "embedding_models": {
                 "all-MiniLM-L6-v2": {
                     "provider": "sentence_transformers",
                     "model_name": "sentence-transformers/all-MiniLM-L6-v2",
@@ -52,6 +82,7 @@ def _retrieval_config(
     default_retriever: str = "dummy",
     retrievers: dict | None = None,
     evaluation_enabled: bool = True,
+    active_evaluator: str = "dummy",
     active_reranker: str | None = None,
     rerankers: dict | None = None,
 ) -> str:
@@ -67,6 +98,13 @@ def _retrieval_config(
     if rerankers is not None:
         reranking["rerankers"] = rerankers
 
+    evaluators: dict = {"dummy": {"provider": "dummy"}}
+    if active_evaluator == "semantic":
+        evaluators["semantic"] = {
+            "provider": "semantic",
+            "model_name": "sentence-transformers/all-MiniLM-L6-v2",
+        }
+
     return _write_yaml(
         tmp_path / "retrieval.yaml",
         {
@@ -78,12 +116,57 @@ def _retrieval_config(
             },
             "evaluation": {
                 "enabled": evaluation_enabled,
-                "active_evaluator": "dummy",
-                "evaluators": {"dummy": {"provider": "dummy"}},
+                "active_evaluator": active_evaluator,
+                "evaluators": evaluators,
             },
             "reranking": reranking,
             "token_budget": {"default_mode": "strict", "max_output_cap": 512},
             "observability": {"low_retrieval_score_threshold": 0.25},
+        },
+    )
+
+
+def _genuine_retrieval_config(tmp_path: Path, docs_path: str) -> str:
+    return _write_yaml(
+        tmp_path / "retrieval.yaml",
+        {
+            "retrieval": {
+                "default_retriever": "simple",
+                "top_k": 3,
+                "similarity_metric": "cosine",
+                "retrievers": {
+                    "simple": {"provider": "simple", "documents_path": docs_path},
+                },
+            },
+            "governance": {
+                "enabled": True,
+                "max_cost_per_request_usd": 0.05,
+                "safety_margin_tokens": 200,
+            },
+            "evaluation": {
+                "enabled": True,
+                "active_evaluator": "semantic",
+                "evaluators": {
+                    "semantic": {
+                        "provider": "semantic",
+                        "model_name": "sentence-transformers/all-MiniLM-L6-v2",
+                    },
+                },
+            },
+            "reranking": {
+                "strategy": "lexical_hybrid",
+                "top_k": 3,
+                "active_reranker": "cross_encoder",
+                "rerankers": {
+                    "cross_encoder": {
+                        "provider": "cross_encoder",
+                        "model_name": "cross-encoder/ms-marco-MiniLM-L-6-v2",
+                        "top_k": 3,
+                    },
+                },
+            },
+            "token_budget": {"default_mode": "strict", "max_output_cap": 64},
+            "observability": {"low_retrieval_score_threshold": 0.0},
         },
     )
 
@@ -198,6 +281,53 @@ def test_evaluation_disabled_yields_null_evaluator(tmp_path):
     )
 
     assert type(pipeline.evaluator).__name__ == "NullEvaluator"
+
+
+def test_genuine_components_resolve_from_config(tmp_path):
+    docs_path = _write_docs(tmp_path / "docs.json")
+    pipeline = build_pipeline(
+        models_config_path=Path(_genuine_models_config(tmp_path)),
+        retrieval_config_path=Path(_genuine_retrieval_config(tmp_path, docs_path)),
+    )
+
+    assert type(pipeline.embedder).__name__ == "SimpleEmbedder"
+    assert type(pipeline.retriever).__name__ == "SimpleRetriever"
+    assert type(pipeline.reranker).__name__ == "CrossEncoderReranker"
+    assert type(pipeline.evaluator).__name__ == "SemanticEvaluator"
+    assert type(pipeline.llm).__name__ == "LocalHFLLM"
+    assert pipeline.embedder.dimension == pipeline.retriever.index_dimension == 384
+
+
+def test_pipeline_runs_query_end_to_end_with_genuine_components(tmp_path):
+    docs_path = _write_docs(tmp_path / "docs.json")
+    pipeline = build_pipeline(
+        models_config_path=Path(_genuine_models_config(tmp_path)),
+        retrieval_config_path=Path(_genuine_retrieval_config(tmp_path, docs_path)),
+    )
+
+    result = pipeline.run("What is artificial intelligence?")
+
+    assert result["response"]
+    assert result["failure_tags"] == []
+    assert len(result["retrieved_docs"]) >= 1
+    assert result["observability"]["top_k"] >= 1
+    assert result["observability"]["llm_model"].endswith("Qwen2.5-0.5B-Instruct")
+    assert result["observability"]["reranker"] == "CrossEncoderReranker"
+    assert set(result["metrics"]) >= {"context_precision", "answer_relevance", "faithfulness"}
+
+
+def test_genuine_pipeline_reranks_with_cross_encoder(tmp_path):
+    docs_path = _write_docs(tmp_path / "docs.json")
+    pipeline = build_pipeline(
+        models_config_path=Path(_genuine_models_config(tmp_path)),
+        retrieval_config_path=Path(_genuine_retrieval_config(tmp_path, docs_path)),
+    )
+
+    result = pipeline.run("What is machine learning?")
+
+    assert "Machine Learning" in result["retrieved_docs"][0]
+    assert result["observability"]["reranking_enabled"] is True
+    assert result["retrieval_scores"] == result["observability"]["retrieval_scores"]
 
 
 def test_pipeline_runs_query_end_to_end(tmp_path):

@@ -4,6 +4,7 @@ import yaml
 from core.evaluation.evaluation_engine import EvaluationEngine
 from core.implementations.dummy_evaluator import DummyEvaluator
 from core.implementations.null_evaluator import NullEvaluator
+from core.implementations.semantic_evaluator import SemanticEvaluator
 from core.interfaces.evaluator import BaseEvaluator
 from core.registry.evaluator_registry import EvaluatorRegistry
 
@@ -17,7 +18,7 @@ def _write_config(tmp_path, payload: dict) -> str:
 def test_registry_loads_evaluation_section():
     registry = EvaluatorRegistry()
     assert registry.is_enabled() is True
-    assert registry.config["evaluation"]["active_evaluator"] == "dummy"
+    assert registry.config["evaluation"]["active_evaluator"] == "semantic"
 
 
 def test_registry_lists_builtin_providers():
@@ -33,8 +34,8 @@ def test_registry_lists_configured_evaluators():
 def test_resolve_default_evaluator():
     registry = EvaluatorRegistry()
     key, provider, _entry = registry.resolve()
-    assert key == "dummy"
-    assert provider == "dummy"
+    assert key == "semantic"
+    assert provider == "semantic"
 
 
 def test_resolve_explicit_evaluator():
@@ -53,12 +54,13 @@ def test_resolve_unknown_provider_raises(tmp_path):
         registry.resolve()
 
 
-def test_create_returns_dummy_evaluator():
+def test_create_returns_configured_semantic_evaluator():
     registry = EvaluatorRegistry()
     evaluator = registry.create()
-    assert isinstance(evaluator, DummyEvaluator)
+    assert isinstance(evaluator, SemanticEvaluator)
     metrics = evaluator.evaluate("q", [], "r")
     assert "faithfulness" in metrics
+    assert -1.0 <= metrics["faithfulness"] <= 1.0
 
 
 def test_create_engine_evaluator_returns_metrics():

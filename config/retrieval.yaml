@@ -23,7 +23,7 @@ governance:
 
 evaluation:
   enabled: true
-  active_evaluator: dummy
+  active_evaluator: semantic
   evaluators:
     dummy:
       provider: dummy

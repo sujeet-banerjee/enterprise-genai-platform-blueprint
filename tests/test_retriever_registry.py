@@ -91,6 +91,16 @@ def test_create_dummy_uses_embedder_dimension(tmp_path):
     assert retriever.index_dimension == 42
 
 
+def test_create_dummy_uses_real_embedder_dimension(tmp_path, real_embedder):
+    config_path = _write_config(
+        tmp_path,
+        {"retrieval": {"default_retriever": "dummy", "retrievers": {"dummy": {"provider": "dummy"}}}},
+    )
+    registry = RetrieverRegistry(config_path)
+    retriever = registry.create(embedder=real_embedder)
+    assert retriever.index_dimension == real_embedder.dimension == 384
+
+
 def test_create_faiss_retriever_with_explicit_dimension(tmp_path):
     config_path = _write_config(
         tmp_path,
@@ -102,7 +112,7 @@ def test_create_faiss_retriever_with_explicit_dimension(tmp_path):
     assert retriever.index_dimension == 8
 
 
-def test_create_faiss_loads_documents_from_configured_path(tmp_path):
+def test_create_faiss_loads_documents_from_configured_path(tmp_path, real_embedder):
     corpus = tmp_path / "corpus.json"
     corpus.write_text(
         json.dumps([{"content": "alpha"}, {"content": "beta"}, {"content": "gamma"}]),
@@ -120,9 +130,10 @@ def test_create_faiss_loads_documents_from_configured_path(tmp_path):
         },
     )
     registry = RetrieverRegistry(config_path)
-    retriever = registry.create(embedder=DummyEmbedder())
+    retriever = registry.create(embedder=real_embedder)
     assert isinstance(retriever, FAISSRetriever)
     assert retriever.total_documents == 3
+    assert len(retriever.retrieve(real_embedder.embed("alpha"), top_k=1)) == 1
 
 
 def test_create_simple_retriever_requires_embedder(tmp_path):
@@ -135,18 +146,18 @@ def test_create_simple_retriever_requires_embedder(tmp_path):
         registry.create()
 
 
-def test_create_simple_retriever_with_embedder_and_docs(tmp_path):
+def test_create_simple_retriever_with_embedder_and_docs(tmp_path, real_embedder):
     config_path = _write_config(
         tmp_path,
         {"retrieval": {"default_retriever": "simple", "retrievers": {"simple": {"provider": "simple"}}}},
     )
     registry = RetrieverRegistry(config_path)
     retriever = registry.create(
-        embedder=DummyEmbedder(dimension=4),
+        embedder=real_embedder,
         docs=[{"content": "hello"}, {"content": "world"}],
     )
     assert isinstance(retriever, SimpleRetriever)
-    assert retriever.index_dimension == 4
+    assert retriever.index_dimension == real_embedder.dimension == 384
 
 
 class _EchoRetriever(BaseRetriever):
@@ -170,7 +181,7 @@ def test_register_custom_provider_is_plug_and_play(tmp_path):
     assert retriever.retrieve([0.0] * 5)[0].content == "custom"
 
 
-def test_create_faiss_uses_similarity_metric_from_config(tmp_path):
+def test_create_faiss_uses_similarity_metric_from_config(tmp_path, real_embedder):
     corpus = tmp_path / "corpus.json"
     corpus.write_text(json.dumps([{"content": "alpha"}]), encoding="utf-8")
     config_path = _write_config(
@@ -189,5 +200,5 @@ def test_create_faiss_uses_similarity_metric_from_config(tmp_path):
         },
     )
     registry = RetrieverRegistry(config_path)
-    retriever = registry.create(embedder=DummyEmbedder())
+    retriever = registry.create(embedder=real_embedder)
     assert retriever.similarity_metric == "l2"

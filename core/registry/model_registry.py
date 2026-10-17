@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Union
 
@@ -11,6 +12,20 @@ from core.implementations.openai_llm import OpenAILLM
 from core.implementations.simple_embedder import SimpleEmbedder
 from core.interfaces.embedder import BaseEmbedder
 from core.interfaces.llm import BaseLLM
+
+
+def _resolve_openai_api_key(cfg: Dict[str, Any]) -> str:
+    """
+    Resolve an OpenAI API key without ever committing one.
+
+    Precedence: explicit ``api_key`` in configuration, then the ``OPENAI_API_KEY``
+    environment variable (typically injected from CI secrets). Returns an empty
+    string when neither is present, which keeps anonymous/offline usage working.
+    """
+    api_key = cfg.get("api_key")
+    if api_key:
+        return str(api_key)
+    return os.getenv("OPENAI_API_KEY", "")
 
 
 class _ConfigurableDummyLLM(DummyLLM):
@@ -70,7 +85,7 @@ class ModelRegistry:
         )
         self.register_llm_provider(
             "openai",
-            lambda name, cfg: OpenAILLM(api_key=cfg.get("api_key", "dummy")),
+            lambda name, cfg: OpenAILLM(api_key=_resolve_openai_api_key(cfg)),
         )
         self.register_llm_provider(
             "local_hf",
@@ -119,7 +134,7 @@ class ModelRegistry:
         self.register_embedder_provider(
             "openai",
             lambda name, cfg: OpenAIEmbedder(
-                api_key=cfg.get("api_key", ""),
+                api_key=_resolve_openai_api_key(cfg),
                 model_name=cfg.get("model_name", name),
                 dimension=cfg.get("dimension"),
             ),

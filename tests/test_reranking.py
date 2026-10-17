@@ -1,14 +1,5 @@
-from app.pipeline import RAGPipeline
-from core.config.generation_config import GenerationConfig
-from core.implementations.dummy_embedder import DummyEmbedder
-from core.implementations.dummy_evaluator import DummyEvaluator
-from core.implementations.dummy_llm import DummyLLM
-from core.implementations.dummy_retriever import DummyRetriever
 from core.implementations.simple_reranker import SimpleReranker
 from core.interfaces.retriever import Document
-from core.services.cost_tracker import CostTracker
-from core.services.prompt_builder import PromptBuilder
-from core.services.token_budget_service import TokenBudgetService
 
 
 def test_simple_reranker_changes_document_ordering():
@@ -49,26 +40,61 @@ def test_reranker_custom_scoring_callable_and_top_k():
     assert "Medium document" in top2[1].content
 
 
-def test_reranker_integrated_in_rag_pipeline():
-    docs = [
+def test_simple_reranker_promotes_lexically_relevant_document():
+    query = "Explain quantum computing qubits"
+    candidates = [
         Document(content="Unrelated filler text about gardening.", score=0.88),
         Document(content="Quantum computing uses qubits and superposition principles.", score=0.72),
     ]
-    retriever = DummyRetriever(docs=docs, dimension=10)
     reranker = SimpleReranker(strategy="lexical", top_k=2)
 
-    pipeline = RAGPipeline(
-        embedder=DummyEmbedder(dimension=10),
-        retriever=retriever,
-        llm=DummyLLM(),
-        prompt_builder=PromptBuilder("config/prompt_config.yaml"),
-        evaluator=DummyEvaluator(),
-        token_budget_service=TokenBudgetService(policy_mode="strict"),
-        generation_config=GenerationConfig(max_tokens=256),
-        cost_tracker=CostTracker(),
-        reranker=reranker,
-    )
+    reranked = reranker.rerank(query, candidates)
+
+    assert "Quantum computing" in reranked[0].content
+    assert reranked[0].metadata["final_rank"] == 0
+
+
+def test_cross_encoder_reranker_promotes_relevant_document(real_reranker):
+    query = "How do neural networks and deep learning work?"
+    candidates = [
+        Document(content="Cafeteria menu for Tuesday afternoon."),
+        Document(content="Neural networks and deep learning architectures inspired by the human brain."),
+        Document(content="Corporate travel reimbursement policy."),
+    ]
+
+    scored = real_reranker.rerank_with_scores(query, candidates, top_k=2)
+
+    assert len(scored) == 2
+    assert "Neural networks and deep learning" in scored[0].document.content
+    assert scored[0].score > scored[1].score
+    assert scored[0].document.metadata["reranker"] == "CrossEncoderReranker"
+
+
+def test_reranker_integrated_in_rag_pipeline(make_pipeline, real_reranker):
+    docs = [
+        {"content": "Unrelated filler text about gardening and travel."},
+        {"content": "Quantum computing uses qubits and superposition principles."},
+        {"content": "Cafeteria menu for the week."},
+    ]
+    pipeline = make_pipeline(docs=docs, reranker=real_reranker, top_k=3)
 
     result = pipeline.run("Explain quantum computing qubits")
+
     assert "Quantum computing uses qubits" in result["retrieved_docs"][0]
-    assert result["observability"]["reranker"] == "SimpleReranker"
+    assert result["observability"]["reranker"] == "CrossEncoderReranker"
+    assert result["observability"]["reranking_enabled"] is True
+
+
+def test_reranking_ordering_differs_from_initial_retrieval(make_pipeline, real_reranker):
+    docs = [
+        {"content": "Cafeteria menu for Tuesday afternoon."},
+        {"content": "Quantum computing relies on qubits and superposition."},
+    ]
+    pipeline = make_pipeline(docs=docs, reranker=real_reranker)
+
+    result = pipeline.run("What are qubits in quantum computing?")
+
+    observability = result["observability"]
+    assert observability["initial_retrieved_documents"]
+    assert observability["final_document_ordering"]
+    assert observability["initial_retrieval_scores"] != result["retrieval_scores"]
