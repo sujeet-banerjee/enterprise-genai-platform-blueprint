@@ -6,7 +6,7 @@ client = TestClient(app)
 
 
 def test_query_endpoint_happy_path():
-    response = client.post("/query", json={"query": "Hello world"})
+    response = client.post("/query", json={"query": "What is machine learning?"})
     assert response.status_code == 200
 
     data = response.json()
