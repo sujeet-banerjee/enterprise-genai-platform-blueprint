@@ -279,6 +279,13 @@ class ChunkerFactory:
                 chunk_size=chunk_size if chunk_size is not None else 50,
                 chunk_overlap=chunk_overlap if chunk_overlap is not None else 10,
             )
+        if norm == "token":
+            from core.implementations.hf_tokenizer_chunker import HFTokenizerChunker
+
+            return HFTokenizerChunker(
+                chunk_size=chunk_size if chunk_size is not None else 128,
+                chunk_overlap=chunk_overlap if chunk_overlap is not None else 20,
+            )
         return ConfigurableChunker(
             strategy=strategy,
             chunk_size=chunk_size,

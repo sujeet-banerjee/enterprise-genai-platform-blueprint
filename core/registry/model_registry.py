@@ -5,6 +5,8 @@ import yaml
 
 from core.implementations.dummy_embedder import DummyEmbedder
 from core.implementations.dummy_llm import DummyLLM
+from core.implementations.hf_local_llm import LocalHFLLM
+from core.implementations.openai_embedder import OpenAIEmbedder
 from core.implementations.openai_llm import OpenAILLM
 from core.implementations.simple_embedder import SimpleEmbedder
 from core.interfaces.embedder import BaseEmbedder
@@ -70,6 +72,22 @@ class ModelRegistry:
             "openai",
             lambda name, cfg: OpenAILLM(api_key=cfg.get("api_key", "dummy")),
         )
+        self.register_llm_provider(
+            "local_hf",
+            lambda name, cfg: LocalHFLLM(
+                model_name=cfg.get("model_name", name),
+                context_window=cfg.get("context_window", 32768),
+                max_new_tokens=cfg.get("max_new_tokens", 128),
+            ),
+        )
+        self.register_llm_provider(
+            "huggingface",
+            lambda name, cfg: LocalHFLLM(
+                model_name=cfg.get("model_name", name),
+                context_window=cfg.get("context_window", 32768),
+                max_new_tokens=cfg.get("max_new_tokens", 128),
+            ),
+        )
 
         self.register_embedder_provider(
             "dummy",
@@ -96,6 +114,14 @@ class ModelRegistry:
             lambda name, cfg: SimpleEmbedder(
                 model_name=cfg.get("model_name", name),
                 config_path=self.config_path,
+            ),
+        )
+        self.register_embedder_provider(
+            "openai",
+            lambda name, cfg: OpenAIEmbedder(
+                api_key=cfg.get("api_key", ""),
+                model_name=cfg.get("model_name", name),
+                dimension=cfg.get("dimension"),
             ),
         )
 

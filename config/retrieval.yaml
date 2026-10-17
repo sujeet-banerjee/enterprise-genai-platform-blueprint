@@ -29,6 +29,13 @@ evaluation:
       provider: dummy
     engine:
       provider: engine
+    semantic:
+      provider: semantic
+      model_name: sentence-transformers/all-MiniLM-L6-v2
+    llm_judge:
+      provider: llm_judge
+      model_name: Qwen/Qwen2.5-0.5B-Instruct
+      max_new_tokens: 128
     noop:
       provider: noop
 
@@ -38,6 +45,18 @@ reranking:
   lexical_weight: 0.6
   initial_score_weight: 0.4
   top_k: 3
+  active_reranker: simple
+  rerankers:
+    simple:
+      provider: simple
+    cross_encoder:
+      provider: cross_encoder
+      model_name: cross-encoder/ms-marco-MiniLM-L-6-v2
+      top_k: 3
+    dummy:
+      provider: dummy
+    none:
+      provider: none
 
 chunking:
   active_strategy: small
@@ -50,6 +69,9 @@ chunking:
       chunk_size: 400
       chunk_overlap: 50
       separator: " "
+    token:
+      chunk_size: 128
+      chunk_overlap: 20
 
 token_budget:
   default_mode: strict

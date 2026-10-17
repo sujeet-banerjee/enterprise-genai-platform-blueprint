@@ -21,6 +21,12 @@ models:
     input_cost_per_1k: 0.002
     output_cost_per_1k: 0.002
 
+  local-qwen:
+    provider: local_hf
+    model_name: Qwen/Qwen2.5-0.5B-Instruct
+    context_window: 32768
+    max_new_tokens: 128
+
 embedding_models:
   all-MiniLM-L6-v2:
     provider: sentence_transformers
@@ -37,6 +43,19 @@ embedding_models:
   sentence-transformers/all-mpnet-base-v2:
     provider: sentence_transformers
     model_name: sentence-transformers/all-mpnet-base-v2
+
+  bge-small-en-v1.5:
+    provider: sentence_transformers
+    model_name: BAAI/bge-small-en-v1.5
+
+  e5-small-v2:
+    provider: sentence_transformers
+    model_name: intfloat/e5-small-v2
+
+  openai-text-embedding-3-small:
+    provider: openai
+    model_name: text-embedding-3-small
+    dimension: 1536
 
   dummy:
     provider: dummy

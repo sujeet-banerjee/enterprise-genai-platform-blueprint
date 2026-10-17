@@ -27,7 +27,7 @@ def test_registry_lists_builtin_providers():
 
 def test_registry_lists_configured_evaluators():
     registry = EvaluatorRegistry()
-    assert set(registry.list_evaluators()) == {"dummy", "engine", "noop"}
+    assert {"dummy", "engine", "noop", "semantic", "llm_judge"} <= set(registry.list_evaluators())
 
 
 def test_resolve_default_evaluator():

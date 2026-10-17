@@ -109,12 +109,13 @@ class SimpleEmbedder(BaseEmbedder):
         self,
         model_name: Optional[str] = None,
         config_path: Optional[str] = None,
+        allow_offline_fallback: bool = False,
     ):
         self.config_path = config_path or str(
             Path(__file__).resolve().parent.parent.parent / "config" / "models.yaml"
         )
         self._model_name = self._resolve_model_name(model_name, self.config_path)
-        self.model = self._load_model(self._model_name)
+        self.model = self._load_model(self._model_name, allow_offline_fallback)
         self._dimension = self._obtain_model_dimension()
 
     @staticmethod
@@ -146,17 +147,18 @@ class SimpleEmbedder(BaseEmbedder):
         return str(target_key)
 
     @staticmethod
-    def _load_model(model_name: str):
+    def _load_model(model_name: str, allow_offline_fallback: bool = False):
         try:
             return SentenceTransformer(model_name, local_files_only=True)
-        except TypeError:
-            # Handle mocked SentenceTransformer in unit tests that may not accept local_files_only
-            try:
-                return SentenceTransformer(model_name)
-            except Exception:
-                return _LocalSentenceEncoder(model_name)
         except Exception:
-            return _LocalSentenceEncoder(model_name)
+            pass
+        try:
+            # Not cached locally: download the real model (requires internet).
+            return SentenceTransformer(model_name)
+        except Exception:
+            if allow_offline_fallback:
+                return _LocalSentenceEncoder(model_name)
+            raise
 
     def _obtain_model_dimension(self) -> int:
         if hasattr(self.model, "get_sentence_embedding_dimension"):

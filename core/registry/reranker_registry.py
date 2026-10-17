@@ -55,6 +55,7 @@ class RerankerRegistry:
 
     def _register_default_providers(self) -> None:
         self.register("simple", self._build_simple)
+        self.register("cross_encoder", self._build_cross_encoder)
         self.register("dummy", self._build_dummy)
         self.register("noop", self._build_none)
         self.register("none", self._build_none)
@@ -65,6 +66,14 @@ class RerankerRegistry:
         config_path = options.pop("config_path", None) or self.config_path
         kwargs = {k: v for k, v in options.items() if k in self._SIMPLE_OPTIONS}
         return SimpleReranker(config_path=config_path, **kwargs)
+
+    @staticmethod
+    def _build_cross_encoder(**options: Any) -> BaseReranker:
+        from core.implementations.cross_encoder_reranker import CrossEncoderReranker
+
+        model_name = options.get("model_name", "cross-encoder/ms-marco-MiniLM-L-6-v2")
+        top_k = options.get("top_k")
+        return CrossEncoderReranker(model_name=model_name, top_k=top_k)
 
     @staticmethod
     def _build_dummy(**options: Any) -> BaseReranker:

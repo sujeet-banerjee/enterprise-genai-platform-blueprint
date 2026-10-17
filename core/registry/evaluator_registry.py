@@ -43,8 +43,27 @@ class EvaluatorRegistry:
     def _register_default_providers(self) -> None:
         self.register("dummy", lambda **_: DummyEvaluator())
         self.register("engine", lambda **_: EvaluationEngine(Metrics()))
+        self.register("semantic", self._build_semantic)
+        self.register("llm_judge", self._build_llm_judge)
         self.register("noop", lambda **_: NullEvaluator())
         self.register("null", lambda **_: NullEvaluator())
+
+    @staticmethod
+    def _build_semantic(**options: Any) -> BaseEvaluator:
+        from core.implementations.semantic_evaluator import SemanticEvaluator
+
+        model_name = options.get("model_name", "sentence-transformers/all-MiniLM-L6-v2")
+        return SemanticEvaluator(model_name=model_name)
+
+    @staticmethod
+    def _build_llm_judge(**options: Any) -> BaseEvaluator:
+        from core.implementations.llm_judge_evaluator import LLMJudgeEvaluator
+
+        return LLMJudgeEvaluator(
+            model_name=options.get("model_name", "Qwen/Qwen2.5-0.5B-Instruct"),
+            context_window=options.get("context_window", 32768),
+            max_new_tokens=options.get("max_new_tokens", 128),
+        )
 
     def register(self, provider_name: str, factory: Callable[..., BaseEvaluator]) -> None:
         self._providers[str(provider_name).lower()] = factory
