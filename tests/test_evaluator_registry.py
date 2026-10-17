@@ -1,5 +1,5 @@
-import yaml
 import pytest
+import yaml
 
 from core.evaluation.evaluation_engine import EvaluationEngine
 from core.implementations.dummy_evaluator import DummyEvaluator

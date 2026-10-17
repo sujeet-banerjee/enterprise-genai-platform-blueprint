@@ -1,17 +1,21 @@
+from typing import Dict, List
+
 from core.evaluation.metrics import Metrics
+from core.interfaces.evaluator import BaseEvaluator
+from core.interfaces.retriever import Document
 
 
-class EvaluationEngine:
+class EvaluationEngine(BaseEvaluator):
 
-    def __init__(self, metrics:Metrics):
+    def __init__(self, metrics: Metrics):
         self.metrics = metrics
 
-    def evaluate(self, query, docs, response):
+    def evaluate(self, query: str, docs: List[Document], response: str) -> Dict[str, float]:
         '''
-        :param query: 
-        :param docs: 
-        :param response: 
-        :return: 
+        :param query:
+        :param docs:
+        :param response:
+        :return:
         '''
         # TODO Calculate the relevant docs
 
