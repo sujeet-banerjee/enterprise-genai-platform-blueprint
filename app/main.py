@@ -7,9 +7,9 @@ from pydantic import BaseModel, Field
 from app.pipeline import RAGPipeline
 from core.config.generation_config import GenerationConfig
 from core.implementations.dummy_embedder import DummyEmbedder
-from core.implementations.dummy_evaluator import DummyEvaluator
 from core.implementations.dummy_retriever import DummyRetriever
 from core.implementations.simple_reranker import SimpleReranker
+from core.registry.evaluator_registry import EvaluatorRegistry
 from core.registry.model_registry import ModelRegistry
 from core.services.cost_governor import CostGovernor
 from core.services.cost_tracker import CostTracker
@@ -41,6 +41,8 @@ active_llm = model_registry.get_active_model()
 prompt_builder = PromptBuilder(str(PROMPT_CONFIG_PATH))
 generation_config = GenerationConfig(max_tokens=512)
 token_budget_service = TokenBudgetService(policy_mode="strict", config_path=str(RETRIEVAL_CONFIG_PATH))
+evaluator_registry = EvaluatorRegistry(str(RETRIEVAL_CONFIG_PATH))
+evaluator = evaluator_registry.create()
 
 # Governance services wired into the composition root so every request is cost- and
 # token-governed. Both are optional in RAGPipeline, so the pipeline stays vendor-neutral.
@@ -59,7 +61,7 @@ pipeline = RAGPipeline(
     prompt_builder=prompt_builder,
     retriever=DummyRetriever(),
     llm=active_llm,
-    evaluator=DummyEvaluator(),
+    evaluator=evaluator,
     token_budget_service=token_budget_service,
     generation_config=generation_config,
     cost_tracker=CostTracker(),

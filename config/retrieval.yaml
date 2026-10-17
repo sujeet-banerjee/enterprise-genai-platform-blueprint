@@ -21,6 +21,17 @@ governance:
   safety_margin_tokens: 200
   avg_chunk_tokens: 128
 
+evaluation:
+  enabled: true
+  active_evaluator: dummy
+  evaluators:
+    dummy:
+      provider: dummy
+    engine:
+      provider: engine
+    noop:
+      provider: noop
+
 reranking:
   enabled: true
   strategy: lexical_hybrid

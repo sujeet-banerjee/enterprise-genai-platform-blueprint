@@ -286,7 +286,10 @@ class RAGPipeline:
         # 7. Evaluation stage
         try:
             with tracker.measure_stage("evaluation"):
-                metrics = self.evaluator.evaluate(query, docs, response)
+                if self.evaluator is not None:
+                    metrics = self.evaluator.evaluate(query, docs, response)
+                else:
+                    metrics = {}
         except Exception as exc:
             return self._record_and_handle_stage_error(
                 "evaluation", exc, tracker, query, effective_top_k, should_raise
