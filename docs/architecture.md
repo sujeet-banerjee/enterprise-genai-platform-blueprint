@@ -748,6 +748,19 @@ Focus:
 
 Tracked via repository issues (#5–#18).
 
+## Phase 3 — Roadmap extensions
+
+Focus:
+* Truthful evaluation & benchmarking: real metrics + labeled ground-truth dataset (#21, #22)
+* Retrieval breadth: query expansion / multi-query (#23), knowledge-graph retrieval (#24), hybrid keyword + vector (#25)
+* Runtime economics: response / prefix caching (#26), batching / parallel inference (#27)
+* Governance & platform: audit logging (#28), RBAC / persona control (#29), API hardening (#30)
+* Showcase & hygiene: runnable examples + README quickstart (#31), remove dead code (#32)
+
+Derived from the repo's `Daywise-4hourly-execution-plan.csv` (Hour 2-3 build column).
+
+Tracked via repository issues (#21–#32).
+
 ---
 
 # 18. References
