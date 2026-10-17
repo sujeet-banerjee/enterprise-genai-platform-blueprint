@@ -252,7 +252,33 @@ class LargeChunker(ConfigurableChunker):
 class ChunkerFactory:
     """
     Factory for creating chunkers based on declarative strategy names.
+
+    Every strategy is configuration-driven: parameters are read from
+    ``chunking.strategies.<name>`` in ``config/retrieval.yaml`` (or the config
+    passed via ``config_path``), and the active strategy comes from
+    ``chunking.active_strategy`` when no strategy is supplied. Explicit
+    ``chunk_size``/``chunk_overlap`` arguments always win over configuration.
     """
+
+    _DEFAULT_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
+
+    @staticmethod
+    def _load_chunking_config(config_path: Optional[str] = None) -> dict:
+        cfg = ConfigurableChunker._load_config(config_path)
+        return cfg.get("chunking") or {}
+
+    @staticmethod
+    def _resolve_params(
+        strategy: str,
+        config_path: Optional[str],
+        chunk_size: Optional[int],
+        chunk_overlap: Optional[int],
+    ) -> tuple:
+        strategies = (ChunkerFactory._load_chunking_config(config_path)).get("strategies") or {}
+        params = strategies.get(strategy) or {}
+        size = chunk_size if chunk_size is not None else params.get("chunk_size")
+        overlap = chunk_overlap if chunk_overlap is not None else params.get("chunk_overlap")
+        return params, size, overlap
 
     @staticmethod
     def create(
@@ -261,30 +287,42 @@ class ChunkerFactory:
         chunk_size: Optional[int] = None,
         chunk_overlap: Optional[int] = None,
     ) -> BaseChunker:
-        norm = (strategy or "").lower()
-        if norm == "small":
+        chunking_cfg = ChunkerFactory._load_chunking_config(config_path)
+        resolved = (strategy or chunking_cfg.get("active_strategy") or "small").lower()
+        params, size, overlap = ChunkerFactory._resolve_params(
+            resolved, config_path, chunk_size, chunk_overlap
+        )
+
+        if resolved == "small":
             return SmallChunker(
-                chunk_size=chunk_size,
-                chunk_overlap=chunk_overlap,
+                chunk_size=int(size) if size is not None else 120,
+                chunk_overlap=int(overlap) if overlap is not None else 20,
                 config_path=config_path,
             )
-        if norm == "large":
+        if resolved == "large":
             return LargeChunker(
-                chunk_size=chunk_size,
-                chunk_overlap=chunk_overlap,
+                chunk_size=int(size) if size is not None else 400,
+                chunk_overlap=int(overlap) if overlap is not None else 50,
                 config_path=config_path,
             )
-        if norm == "word":
+        if resolved == "word":
             return WordChunker(
-                chunk_size=chunk_size if chunk_size is not None else 50,
-                chunk_overlap=chunk_overlap if chunk_overlap is not None else 10,
+                chunk_size=int(size) if size is not None else 50,
+                chunk_overlap=int(overlap) if overlap is not None else 10,
             )
-        if norm == "token":
+        if resolved == "fixed":
+            return FixedSizeChunker(
+                chunk_size=int(size) if size is not None else 100,
+                chunk_overlap=int(overlap) if overlap is not None else 10,
+                config_path=config_path,
+            )
+        if resolved == "token":
             from core.implementations.hf_tokenizer_chunker import HFTokenizerChunker
 
             return HFTokenizerChunker(
-                chunk_size=chunk_size if chunk_size is not None else 128,
-                chunk_overlap=chunk_overlap if chunk_overlap is not None else 20,
+                model_name=str(params.get("model_name") or ChunkerFactory._DEFAULT_MODEL),
+                chunk_size=int(size) if size is not None else 128,
+                chunk_overlap=int(overlap) if overlap is not None else 20,
             )
         return ConfigurableChunker(
             strategy=strategy,
@@ -292,3 +330,12 @@ class ChunkerFactory:
             chunk_overlap=chunk_overlap,
             config_path=config_path,
         )
+
+    @staticmethod
+    def create_from_config(config_path: Optional[str] = None) -> BaseChunker:
+        """
+        Build the chunker selected by ``chunking.active_strategy`` in configuration.
+        """
+        chunking_cfg = ChunkerFactory._load_chunking_config(config_path)
+        strategy = chunking_cfg.get("active_strategy") or "small"
+        return ChunkerFactory.create(strategy=strategy, config_path=config_path)

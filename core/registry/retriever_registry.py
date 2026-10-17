@@ -4,6 +4,7 @@ from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, Union
 
 import yaml
 
+from core.interfaces.chunker import BaseChunker
 from core.interfaces.retriever import BaseRetriever, Document
 
 DocsInput = Optional[Sequence[Union[dict, Document, str]]]
@@ -149,9 +150,43 @@ class RetrieverRegistry:
         docs: DocsInput = None,
         embedder: Any = None,
         dimension: Optional[int] = None,
+        chunk: Optional[bool] = None,
+        chunker: Optional[BaseChunker] = None,
     ) -> BaseRetriever:
         _key, provider, entry = self.resolve(name)
         if docs is None and entry.get("documents_path"):
             docs = self._load_documents(str(entry["documents_path"]))
+
+        docs = self._maybe_chunk(docs, enabled=chunk, chunker=chunker)
+
         factory = self._providers[provider]
         return factory(docs=docs, embedder=embedder, dimension=dimension, **entry)
+
+    def _chunking_enabled(self, override: Optional[bool]) -> bool:
+        """
+        Chunking is active when explicitly requested, when ``chunking.enabled`` is
+        true, or (by default) when ``chunking.active_strategy`` is configured.
+        """
+        if override is not None:
+            return bool(override)
+        chunking_cfg = self.config.get("chunking") or {}
+        if "enabled" in chunking_cfg:
+            return bool(chunking_cfg["enabled"])
+        return bool(chunking_cfg.get("active_strategy"))
+
+    def _maybe_chunk(
+        self,
+        docs: DocsInput,
+        *,
+        enabled: Optional[bool],
+        chunker: Optional[BaseChunker],
+    ) -> DocsInput:
+        if not docs:
+            return docs
+        if chunker is None:
+            if not self._chunking_enabled(enabled):
+                return docs
+            from core.implementations.chunker import ChunkerFactory
+
+            chunker = ChunkerFactory.create_from_config(self.config_path)
+        return chunker.chunk_documents(list(docs))
