@@ -60,7 +60,7 @@ def build_pipeline(
 
     prompt_builder = PromptBuilder(str(prompt_config_path))
     generation_config = GenerationConfig(max_tokens=512)
-    token_budget_service = TokenBudgetService(
+    token_budget_service = TokenBudgetService(config_path=str(retrieval_config_path))
         policy_mode="strict", config_path=str(retrieval_config_path)
     )
 

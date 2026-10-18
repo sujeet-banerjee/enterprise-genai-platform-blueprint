@@ -51,7 +51,11 @@ class TokenBudgetService:
 
         self.policy_mode = resolved_mode
         self.budget_mode = resolved_mode
-        self.max_output_cap = max_output_cap
+        resolved_max_output_cap = tb_cfg.get("max_output_cap", max_output_cap)
+        if resolved_max_output_cap is not None:
+            self.max_output_cap = int(resolved_max_output_cap)
+        else:
+            self.max_output_cap = None
         self.min_output_tokens = int(tb_cfg.get("min_output_tokens", 16))
         self.chars_per_token = max(1, int(tb_cfg.get("chars_per_token", 4)))
 
