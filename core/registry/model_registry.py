@@ -230,6 +230,23 @@ class ModelRegistry:
     def get_active_model(self) -> BaseLLM:
         return self.get_model(self.config.get("active_model"))
 
+    def get_model_config(self, model_name: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Return the raw configuration mapping for a model (defaults to the active
+        model) so the composition root can derive generation parameters
+        (temperature, max_tokens, top_p, stop, ...) without instantiating the LLM.
+        """
+        target_name = model_name or self.config.get("active_model")
+        models_map = self.config.get("models") or {}
+        if not target_name or target_name not in models_map:
+            raise ValueError(
+                f"Invalid model: {target_name}; no such model found in config file: {self.config_path}"
+            )
+        return dict(models_map[target_name] or {})
+
+    def get_active_model_config(self) -> Dict[str, Any]:
+        return self.get_model_config(self.config.get("active_model"))
+
     def get_embedder(self, model_name: Optional[str] = None) -> BaseEmbedder:
         target_name = model_name or self.config.get("active_embedding_model", "all-MiniLM-L6-v2")
         emb_map = self.config.get("embedding_models") or {}

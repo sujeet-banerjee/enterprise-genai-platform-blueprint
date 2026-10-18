@@ -32,6 +32,22 @@ def _load_config(config_path: Path) -> dict:
         return {}
 
 
+def _generation_config_from_model(model_cfg: dict) -> GenerationConfig:
+    """
+    Derive GenerationConfig from the active model's configuration so
+    temperature / max_tokens / top_p / stop are tunable via models.yaml
+    (issue #12). ``max_new_tokens`` (HuggingFace naming) is honored as a
+    fallback for ``max_tokens``. Defaults match GenerationConfig's own.
+    """
+    max_tokens = int(model_cfg.get("max_tokens") or model_cfg.get("max_new_tokens") or 256)
+    return GenerationConfig(
+        temperature=float(model_cfg.get("temperature", 0.7)),
+        top_p=float(model_cfg.get("top_p", 0.9)),
+        max_tokens=max_tokens,
+        stop=model_cfg.get("stop"),
+    )
+
+
 def build_pipeline(
     models_config_path: Path = MODELS_CONFIG_PATH,
     prompt_config_path: Path = PROMPT_CONFIG_PATH,
@@ -59,7 +75,7 @@ def build_pipeline(
     evaluator = evaluator_registry.create()
 
     prompt_builder = PromptBuilder(str(prompt_config_path))
-    generation_config = GenerationConfig(max_tokens=512)
+    generation_config = _generation_config_from_model(model_registry.get_active_model_config())
     token_budget_service = TokenBudgetService(config_path=str(retrieval_config_path))
 
     # Governance services wired into the composition root so every request is cost- and
