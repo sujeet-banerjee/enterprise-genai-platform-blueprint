@@ -281,6 +281,10 @@ class RAGPipeline:
             with tracker.measure_stage("llm_generation"):
                 gen_config = deepcopy(self.generation_config)
                 gen_config.max_tokens = budget["allowed_output_tokens"]
+                # Providers that support chat roles get the system prompt as a
+                # distinct system message instead of it only being inlined in
+                # the prompt text (issue #13).
+                gen_config.system_prompt = getattr(self.prompt_builder, "system_prompt", "")
                 response = self.llm.generate(prompt, gen_config)
         except Exception as exc:
             return self._record_and_handle_stage_error(

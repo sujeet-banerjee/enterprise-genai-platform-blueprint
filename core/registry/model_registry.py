@@ -85,7 +85,11 @@ class ModelRegistry:
         )
         self.register_llm_provider(
             "openai",
-            lambda name, cfg: OpenAILLM(api_key=_resolve_openai_api_key(cfg)),
+            lambda name, cfg: OpenAILLM(
+                api_key=_resolve_openai_api_key(cfg),
+                model_name=cfg.get("model_name", name),
+                context_window=cfg.get("context_window", 128000),
+            ),
         )
         self.register_llm_provider(
             "local_hf",

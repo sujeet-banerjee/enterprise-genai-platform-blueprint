@@ -8,3 +8,6 @@ class GenerationConfig:
     top_p: float = 0.9
     max_tokens: int = 256
     stop: Optional[list[str]] = None
+    # Optional chat-system role; set per-request by the pipeline from
+    # PromptBuilder so providers can emit a distinct system message.
+    system_prompt: Optional[str] = None
