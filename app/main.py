@@ -66,15 +66,21 @@ def build_pipeline(
 
     # Governance services wired into the composition root so every request is cost- and
     # token-governed. Both are optional in RAGPipeline, so the pipeline stays vendor-neutral.
-    cost_governor = CostGovernor(
-        max_cost_per_request=float(governance_config.get("max_cost_per_request_usd", 1.0))
-    )
-    retrieval_policy_service = RetrievalPolicyService(
-        context_window=active_llm.context_window,
-        system_prompt_tokens=token_budget_service.estimate_tokens(prompt_builder.system_prompt),
-        reserved_output_tokens=generation_config.max_tokens,
-        safety_margin=int(governance_config.get("safety_margin_tokens", 200)),
-    )
+    # ``governance.enabled`` gates whether they are attached at all (default: enabled).
+    governance_enabled = bool(governance_config.get("enabled", True))
+    if governance_enabled:
+        cost_governor = CostGovernor(
+            max_cost_per_request=float(governance_config.get("max_cost_per_request_usd", 1.0))
+        )
+        retrieval_policy_service = RetrievalPolicyService(
+            context_window=active_llm.context_window,
+            system_prompt_tokens=token_budget_service.estimate_tokens(prompt_builder.system_prompt),
+            reserved_output_tokens=generation_config.max_tokens,
+            safety_margin=int(governance_config.get("safety_margin_tokens", 200)),
+        )
+    else:
+        cost_governor = None
+        retrieval_policy_service = None
 
     return RAGPipeline(
         embedder=embedder,
