@@ -61,8 +61,6 @@ def build_pipeline(
     prompt_builder = PromptBuilder(str(prompt_config_path))
     generation_config = GenerationConfig(max_tokens=512)
     token_budget_service = TokenBudgetService(config_path=str(retrieval_config_path))
-        policy_mode="strict", config_path=str(retrieval_config_path)
-    )
 
     # Governance services wired into the composition root so every request is cost- and
     # token-governed. Both are optional in RAGPipeline, so the pipeline stays vendor-neutral.
