@@ -7,7 +7,6 @@ retrieval:
   retrievers:
     faiss:
       provider: faiss
-      similarity_metric: cosine
       documents_path: data/docs.json
     simple:
       provider: simple

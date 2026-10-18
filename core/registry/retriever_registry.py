@@ -119,6 +119,12 @@ class RetrieverRegistry:
             entry = {}
             provider = str(key).lower()
 
+        # Global ``retrieval.similarity_metric`` (issue #15) fills in unless a
+        # retriever entry overrides it. Providers that don't take a metric
+        # swallow the kwarg via their ``**_ignored`` factories.
+        if "similarity_metric" not in entry and ret_cfg.get("similarity_metric"):
+            entry["similarity_metric"] = str(ret_cfg["similarity_metric"])
+
         if provider not in self._providers:
             raise ValueError(
                 f"Unknown retriever provider: '{provider}'. "
