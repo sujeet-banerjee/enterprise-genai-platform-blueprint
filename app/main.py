@@ -75,8 +75,28 @@ def build_pipeline(
     evaluator = evaluator_registry.create()
 
     prompt_builder = PromptBuilder(str(prompt_config_path))
-    generation_config = _generation_config_from_model(model_registry.get_active_model_config())
+    active_model_config = model_registry.get_active_model_config()
+    generation_config = _generation_config_from_model(active_model_config)
     token_budget_service = TokenBudgetService(config_path=str(retrieval_config_path))
+
+    # Per-model pricing from models.yaml: the active model's rates are passed
+    # explicitly and a keyed map covers models whose model_name differs from
+    # their config key (issue #14).
+    model_pricing: dict = {}
+    for _name, _cfg in (model_registry.config.get("models") or {}).items():
+        _cfg = _cfg or {}
+        if "input_cost_per_1k" in _cfg or "output_cost_per_1k" in _cfg:
+            _entry = {
+                "input_cost_per_1k": _cfg.get("input_cost_per_1k"),
+                "output_cost_per_1k": _cfg.get("output_cost_per_1k"),
+            }
+            model_pricing[_name] = _entry
+            model_pricing.setdefault(str(_cfg.get("model_name", _name)), _entry)
+    cost_tracker = CostTracker(
+        input_cost_per_1k=active_model_config.get("input_cost_per_1k"),
+        output_cost_per_1k=active_model_config.get("output_cost_per_1k"),
+        model_pricing=model_pricing,
+    )
 
     # Governance services wired into the composition root so every request is cost- and
     # token-governed. Both are optional in RAGPipeline, so the pipeline stays vendor-neutral.
@@ -104,7 +124,7 @@ def build_pipeline(
         evaluator=evaluator,
         token_budget_service=token_budget_service,
         generation_config=generation_config,
-        cost_tracker=CostTracker(),
+        cost_tracker=cost_tracker,
         reranker=reranker,
         config_path=str(retrieval_config_path),
         cost_governor=cost_governor,

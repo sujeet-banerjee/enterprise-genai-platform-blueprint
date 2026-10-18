@@ -114,6 +114,7 @@ class RAGPipeline:
         query: str,
         effective_top_k: int,
         should_raise: bool,
+        cost: Optional[dict] = None,
     ) -> Dict[str, Any]:
         failure_tag = FailureClassifier.classify_exception(exc, stage=stage)
         setattr(exc, "failure_type", failure_tag)
@@ -150,7 +151,7 @@ class RAGPipeline:
             "retrieved_docs": [],
             "retrieval_scores": [],
             "metrics": {},
-            "cost": {},
+            "cost": cost or {},
             "token_budget": getattr(exc, "budget_details", {}),
             "latency": latency_report,
             "observability": self.last_observability,
@@ -303,7 +304,14 @@ class RAGPipeline:
                 "evaluation", exc, tracker, query, effective_top_k, should_raise
             )
 
-        cost = self.cost_tracker.compute(self.llm.model_name, start_time)
+        input_tokens = self.token_budget_service.estimate_tokens(prompt)
+        output_tokens = self.token_budget_service.estimate_tokens(response)
+        cost = self.cost_tracker.compute(
+            self.llm.model_name,
+            start_time,
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+        )
 
         # 8. Cost governance stage
         if self.cost_governor is not None:
@@ -311,7 +319,7 @@ class RAGPipeline:
                 self.cost_governor.check_cost(cost.get("estimated_cost_usd", 0.0))
             except Exception as exc:
                 return self._record_and_handle_stage_error(
-                    "cost_governance", exc, tracker, query, effective_top_k, should_raise
+                    "cost_governance", exc, tracker, query, effective_top_k, should_raise, cost=cost
                 )
 
         latency_report = tracker.get_latency_report()
