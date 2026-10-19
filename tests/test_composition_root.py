@@ -345,9 +345,14 @@ def test_pipeline_runs_query_end_to_end(tmp_path):
 
 
 def test_default_composition_root_serves_query():
-    import app.main as main_module
+    from app.main import GOVERNANCE_CONFIG_PATH, OBSERVABILITY_CONFIG_PATH
 
-    result = main_module.pipeline.run("What is machine learning?")
+    pipeline = build_pipeline(
+        governance_config_path=GOVERNANCE_CONFIG_PATH,
+        observability_config_path=OBSERVABILITY_CONFIG_PATH,
+    )
+
+    result = pipeline.run("What is machine learning?")
 
     assert result["response"]
     assert result["failure_tags"] == []

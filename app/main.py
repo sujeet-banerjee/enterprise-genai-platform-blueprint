@@ -1,8 +1,11 @@
+import uuid
+from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Optional
+from typing import Callable, Optional
 
 import yaml
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 from app.pipeline import RAGPipeline
@@ -17,14 +20,16 @@ from core.services.prompt_builder import PromptBuilder
 from core.services.retrieval_policy_service import RetrievalPolicyService
 from core.services.token_budget_service import TokenBudgetService
 
-app = FastAPI()
-
 BASE_DIR = Path(__file__).resolve().parent.parent
 PROMPT_CONFIG_PATH = BASE_DIR / "config" / "prompt_config.yaml"
 MODELS_CONFIG_PATH = BASE_DIR / "config" / "models.yaml"
 RETRIEVAL_CONFIG_PATH = BASE_DIR / "config" / "retrieval.yaml"
 GOVERNANCE_CONFIG_PATH = BASE_DIR / "config" / "governance.yaml"
 OBSERVABILITY_CONFIG_PATH = BASE_DIR / "config" / "observability.yaml"
+API_CONFIG_PATH = BASE_DIR / "config" / "api.yaml"
+
+# Endpoints that never require an API key (liveness/readiness + OpenAPI docs).
+_PUBLIC_PATHS = {"/health", "/ready", "/docs", "/redoc", "/openapi.json"}
 
 
 def _load_config(config_path: Path) -> dict:
@@ -145,16 +150,157 @@ def build_pipeline(
     )
 
 
-pipeline = build_pipeline(
-    governance_config_path=GOVERNANCE_CONFIG_PATH,
-    observability_config_path=OBSERVABILITY_CONFIG_PATH,
-)
-
-
 class QueryRequest(BaseModel):
     query: str = Field(..., min_length=1, description="The user query to run through the RAG pipeline.")
+    top_k: Optional[int] = Field(None, ge=1, description="Override the number of retrieved documents.")
+    include_trace: bool = Field(
+        True, description="Include the redacted observability trace in the response."
+    )
 
 
-@app.post("/query")
-def query_endpoint(request: QueryRequest):
-    return pipeline.run(request.query)
+def _error_envelope(
+    error: str,
+    failure_type: Optional[str],
+    failure_tags: list,
+    request_id: str,
+) -> dict:
+    return {
+        "error": error,
+        "failure_type": failure_type or "unknown_failure",
+        "failure_tags": list(failure_tags or []),
+        "request_id": request_id,
+    }
+
+
+def create_app(
+    models_config_path: Path = MODELS_CONFIG_PATH,
+    prompt_config_path: Path = PROMPT_CONFIG_PATH,
+    retrieval_config_path: Path = RETRIEVAL_CONFIG_PATH,
+    governance_config_path: Path = GOVERNANCE_CONFIG_PATH,
+    observability_config_path: Path = OBSERVABILITY_CONFIG_PATH,
+    api_config_path: Path = API_CONFIG_PATH,
+    pipeline_builder: Callable[..., RAGPipeline] = build_pipeline,
+) -> FastAPI:
+    """
+    FastAPI application factory (issue #30).
+
+    The pipeline is built in the lifespan startup hook rather than at import
+    time, so a failed model load fails the container loudly and importing this
+    module stays side-effect free. ``pipeline_builder`` is injectable so tests
+    can supply a lightweight pipeline.
+    """
+    api_config = _load_config(api_config_path)
+    require_api_key = bool(api_config.get("require_api_key", False))
+    expected_api_key = str(api_config.get("api_key") or "")
+
+    @asynccontextmanager
+    async def lifespan(application: FastAPI):
+        application.state.pipeline = pipeline_builder(
+            models_config_path=models_config_path,
+            prompt_config_path=prompt_config_path,
+            retrieval_config_path=retrieval_config_path,
+            governance_config_path=governance_config_path,
+            observability_config_path=observability_config_path,
+        )
+        application.state.ready = True
+        try:
+            yield
+        finally:
+            application.state.ready = False
+
+    application = FastAPI(
+        title="Enterprise GenAI RAG Platform",
+        version="1.0.0",
+        lifespan=lifespan,
+    )
+
+    @application.middleware("http")
+    async def request_context(request: Request, call_next):
+        request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
+        request.state.request_id = request_id
+
+        if (
+            require_api_key
+            and expected_api_key
+            and request.url.path not in _PUBLIC_PATHS
+            and request.headers.get("X-API-Key") != expected_api_key
+        ):
+            return JSONResponse(
+                status_code=401,
+                content=_error_envelope(
+                    "Missing or invalid API key.",
+                    "unauthorized",
+                    [],
+                    request_id,
+                ),
+                headers={"X-Request-ID": request_id},
+            )
+
+        response = await call_next(request)
+        response.headers["X-Request-ID"] = request_id
+        return response
+
+    def _run_query(request: Request, payload: QueryRequest) -> JSONResponse:
+        request_id = getattr(request.state, "request_id", None) or str(uuid.uuid4())
+        pipeline = getattr(request.app.state, "pipeline", None)
+        if pipeline is None:
+            return JSONResponse(
+                status_code=503,
+                content=_error_envelope(
+                    "Pipeline is not ready.", "not_ready", [], request_id
+                ),
+            )
+        try:
+            result = pipeline.run(
+                payload.query,
+                top_k=payload.top_k,
+                raise_on_failure=False,
+                request_id=request_id,
+            )
+        except Exception as exc:  # pragma: no cover - defensive
+            return JSONResponse(
+                status_code=500,
+                content=_error_envelope(str(exc), "unknown_failure", [], request_id),
+            )
+
+        payload_dict = dict(result)
+        payload_dict.setdefault("error", None)
+        payload_dict.setdefault("failure_type", None)
+        payload_dict["request_id"] = request_id
+        if not payload.include_trace:
+            payload_dict.pop("observability", None)
+
+        if payload_dict.get("error"):
+            status_code = 500
+            if payload_dict.get("failure_type") == "cost_limit_exceeded":
+                status_code = 402
+            return JSONResponse(status_code=status_code, content=payload_dict)
+        return JSONResponse(status_code=200, content=payload_dict)
+
+    @application.get("/health")
+    def health():
+        return {"status": "ok"}
+
+    @application.get("/ready")
+    def ready(request: Request):
+        if getattr(request.app.state, "ready", False) and getattr(
+            request.app.state, "pipeline", None
+        ) is not None:
+            return {"status": "ready"}
+        return JSONResponse(
+            status_code=503,
+            content={"status": "not_ready", "reason": "pipeline not initialised"},
+        )
+
+    @application.post("/v1/query")
+    def query_v1(request: Request, payload: QueryRequest):
+        return _run_query(request, payload)
+
+    @application.post("/query")
+    def query_legacy(request: Request, payload: QueryRequest):
+        return _run_query(request, payload)
+
+    return application
+
+
+app = create_app()

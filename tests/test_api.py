@@ -1,11 +1,17 @@
+import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app
 
-client = TestClient(app)
+
+@pytest.fixture(scope="module")
+def client():
+    # Context manager runs the lifespan startup so the pipeline is built (#30).
+    with TestClient(app) as test_client:
+        yield test_client
 
 
-def test_query_endpoint_happy_path():
+def test_query_endpoint_happy_path(client):
     response = client.post("/query", json={"query": "What is machine learning?"})
     assert response.status_code == 200
 
@@ -27,7 +33,7 @@ def test_query_endpoint_happy_path():
     assert data["failure_tags"] == []
 
 
-def test_query_endpoint_reports_governance_fields():
+def test_query_endpoint_reports_governance_fields(client):
     response = client.post("/query", json={"query": "What is retrieval augmented generation?"})
     assert response.status_code == 200
 
@@ -39,17 +45,17 @@ def test_query_endpoint_reports_governance_fields():
     assert data["observability"]["top_k"] >= 1
 
 
-def test_query_endpoint_rejects_missing_field():
+def test_query_endpoint_rejects_missing_field(client):
     response = client.post("/query", json={})
     assert response.status_code == 422
 
 
-def test_query_endpoint_rejects_empty_query():
+def test_query_endpoint_rejects_empty_query(client):
     response = client.post("/query", json={"query": ""})
     assert response.status_code == 422
 
 
-def test_query_endpoint_rejects_malformed_json():
+def test_query_endpoint_rejects_malformed_json(client):
     response = client.post(
         "/query",
         content="not-json",
@@ -58,6 +64,6 @@ def test_query_endpoint_rejects_malformed_json():
     assert response.status_code == 422
 
 
-def test_query_endpoint_rejects_wrong_method():
+def test_query_endpoint_rejects_wrong_method(client):
     response = client.get("/query")
     assert response.status_code == 405

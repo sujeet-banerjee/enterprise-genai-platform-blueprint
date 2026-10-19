@@ -182,6 +182,7 @@ class RAGPipeline:
         query: str,
         top_k: Optional[int] = None,
         raise_on_failure: Optional[bool] = None,
+        request_id: Optional[str] = None,
     ) -> dict:
         start_time = time.time()
         effective_top_k = int(top_k if top_k is not None else self.top_k)
@@ -190,6 +191,8 @@ class RAGPipeline:
             config_path=self.config_path,
             observability_config_path=self.observability_config_path,
         )
+        if request_id:
+            tracker.request_id = request_id
 
         # 0. Retrieval depth governance (token economics tuned by RetrievalPolicyService)
         if self.retrieval_policy_service is not None and top_k is None:

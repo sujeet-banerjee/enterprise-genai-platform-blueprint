@@ -1,0 +1,8 @@
+# API surface settings (issue #30).
+#
+# The API-key check is a config-driven stub, disabled by default, as a
+# placeholder for the RBAC/persona system tracked in issue #29. When
+# ``require_api_key`` is true, requests must send the key in the ``X-API-Key``
+# header; ``/health``, ``/ready`` and the OpenAPI docs stay public.
+require_api_key: false
+api_key: ""

@@ -41,6 +41,21 @@ Example request:
 curl -X POST http://localhost:8000/query -H "Content-Type: application/json" -d '{"query":"What is AI?"}'
 `
 
+## API
+
+The FastAPI app is created by `app/main.py::create_app()`; the pipeline is built in
+the lifespan startup hook (not at import). Endpoints:
+
+- `GET /health` - liveness (always 200)
+- `GET /ready` - readiness (503 until the pipeline is built)
+- `POST /v1/query` - run a query; body `{query, top_k?, include_trace?}`
+- `POST /query` - legacy alias of `/v1/query`
+- Interactive docs at `/docs`
+
+Every response carries `request_id`, `error`, `failure_type` and `failure_tags`, and the
+`X-Request-ID` header is echoed (or generated) per request. An optional API-key check
+(config/api.yaml: `require_api_key`, `api_key`) is a config-driven stub, disabled by default.
+
 ## Configuration
 
 All behaviour is driven by YAML in config/:
@@ -49,6 +64,7 @@ All behaviour is driven by YAML in config/:
 - config/governance.yaml - cost/retrieval-policy governance (enabled, cost cap, safety margin)
 - config/observability.yaml - logging, redaction toggle and sensitive patterns
 - config/prompt_config.yaml - prompt profiles
+- config/api.yaml - API key stub (disabled by default)
 
 The composition root (pp/main.py::build_pipeline()) reads these configs and wires components via registries. governance.enabled gates CostGovernor/RetrievalPolicyService (default true). eranking.enabled controls reranking. evaluation.enabled controls evaluation. chunking.active_strategy drives ChunkerFactory.
 
