@@ -2,14 +2,12 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Union
 
 from core.config.generation_config import GenerationConfig
-from core.evaluation.evaluation_engine import EvaluationEngine
-from core.evaluation.metrics import Metrics
 from core.implementations.chunker import ChunkerFactory
-from core.implementations.faiss_retriever import FAISSRetriever
-from core.implementations.simple_reranker import SimpleReranker
-from core.implementations.simple_retriever import SimpleRetriever
 from core.interfaces.retriever import BaseRetriever, Document
+from core.registry.evaluator_registry import EvaluatorRegistry
 from core.registry.model_registry import ModelRegistry
+from core.registry.reranker_registry import RerankerRegistry
+from core.registry.retriever_registry import RetrieverRegistry
 from core.services.cost_tracker import CostTracker
 from core.services.prompt_builder import PromptBuilder
 from core.services.token_budget_service import TokenBudgetService
@@ -37,6 +35,9 @@ class ExperimentRunner:
         self.prompt_config_path = prompt_config_path or str(base_dir / "config" / "prompt_config.yaml")
         self.retrieval_config_path = retrieval_config_path or str(base_dir / "config" / "retrieval.yaml")
         self.registry = ModelRegistry(self.models_config_path)
+        self.retriever_registry = RetrieverRegistry(self.retrieval_config_path)
+        self.reranker_registry = RerankerRegistry(self.retrieval_config_path)
+        self.evaluator_registry = EvaluatorRegistry(self.retrieval_config_path)
 
     def run_single_experiment(
         self,
@@ -44,8 +45,8 @@ class ExperimentRunner:
         query: str,
         embedding_model: Optional[str] = None,
         chunk_strategy: Optional[str] = None,
-        retriever_backend: str = "faiss",
-        use_reranker: bool = True,
+        retriever_backend: Optional[str] = None,
+        use_reranker: Optional[bool] = None,
         top_k: int = 3,
     ) -> Dict[str, Any]:
         from app.pipeline import RAGPipeline
@@ -59,14 +60,17 @@ class ExperimentRunner:
         else:
             indexed_docs = docs
 
-        if retriever_backend.lower() == "faiss":
-            retriever: BaseRetriever = FAISSRetriever(docs=indexed_docs, embedder=embedder)
-        else:
-            retriever = SimpleRetriever(docs=indexed_docs, embedder=embedder)
+        # Resolve the retriever via the same config-driven registry used by the
+        # composition root (issue #17). ``name=None`` follows
+        # ``retrieval.default_retriever``; chunking is already applied above so
+        # the registry's own chunking is disabled.
+        retriever: BaseRetriever = self.retriever_registry.create(
+            name=retriever_backend, docs=indexed_docs, embedder=embedder, chunk=False
+        )
 
-        reranker = SimpleReranker(config_path=self.retrieval_config_path) if use_reranker else None
+        reranker = self.reranker_registry.create(enabled=use_reranker)
         prompt_builder = PromptBuilder(self.prompt_config_path)
-        evaluator = EvaluationEngine(Metrics())
+        evaluator = self.evaluator_registry.create()
         token_budget_service = TokenBudgetService(config_path=self.retrieval_config_path)
         cost_tracker = CostTracker()
 
@@ -81,6 +85,7 @@ class ExperimentRunner:
             cost_tracker=cost_tracker,
             reranker=reranker,
             top_k=top_k,
+            config_path=self.retrieval_config_path,
         )
 
         pipeline_result = pipeline.run(query)
@@ -90,6 +95,9 @@ class ExperimentRunner:
             "embedding_model": embedder.model_name,
             "embedding_dimension": embedder.dimension,
             "index_dimension": retriever.index_dimension,
+            "retriever": retriever.__class__.__name__,
+            "reranker": reranker.__class__.__name__ if reranker is not None else None,
+            "evaluator": evaluator.__class__.__name__,
             "chunk_strategy": chunk_strategy or "none",
             "num_indexed_chunks": len(indexed_docs),
             "retrieved_documents": pipeline_result.get("retrieved_docs", []),
@@ -105,7 +113,7 @@ class ExperimentRunner:
         query: str,
         model_names: Optional[Sequence[str]] = None,
         chunk_strategy: Optional[str] = None,
-        retriever_backend: str = "faiss",
+        retriever_backend: Optional[str] = None,
         top_k: int = 3,
     ) -> Dict[str, Any]:
         target_models = list(model_names) if model_names else list(self.DEFAULT_COMPARISON_MODELS)
@@ -134,7 +142,7 @@ class ExperimentRunner:
         query: str,
         strategies: Sequence[str] = ("small", "large"),
         embedding_model: Optional[str] = None,
-        retriever_backend: str = "faiss",
+        retriever_backend: Optional[str] = None,
         top_k: int = 3,
     ) -> Dict[str, Any]:
         runs: Dict[str, Dict[str, Any]] = {}
