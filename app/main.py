@@ -8,7 +8,16 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
+from app.introspection import IntrospectionService
 from app.pipeline import RAGPipeline
+from app.schemas import (
+    EffectiveConfigResponse,
+    EmbeddingModelsResponse,
+    EvaluatorsResponse,
+    ModelsResponse,
+    RerankersResponse,
+    RetrieversResponse,
+)
 from core.config.generation_config import GenerationConfig
 from core.registry.evaluator_registry import EvaluatorRegistry
 from core.registry.model_registry import ModelRegistry
@@ -202,6 +211,14 @@ def create_app(
             governance_config_path=governance_config_path,
             observability_config_path=observability_config_path,
         )
+        application.state.introspect = IntrospectionService(
+            models_config_path=models_config_path,
+            retrieval_config_path=retrieval_config_path,
+            prompt_config_path=prompt_config_path,
+            governance_config_path=governance_config_path,
+            observability_config_path=observability_config_path,
+            api_config_path=api_config_path,
+        )
         application.state.ready = True
         try:
             yield
@@ -299,6 +316,60 @@ def create_app(
     @application.post("/query")
     def query_legacy(request: Request, payload: QueryRequest):
         return _run_query(request, payload)
+
+    def _introspection(request: Request):
+        service = getattr(request.app.state, "introspect", None)
+        if service is None:
+            request_id = getattr(request.state, "request_id", None) or str(uuid.uuid4())
+            return None, JSONResponse(
+                status_code=503,
+                content=_error_envelope(
+                    "Introspection is not ready.", "not_ready", [], request_id
+                ),
+            )
+        return service, None
+
+    @application.get("/v1/config", response_model=EffectiveConfigResponse)
+    def config_endpoint(request: Request):
+        service, error = _introspection(request)
+        if error is not None:
+            return error
+        return EffectiveConfigResponse(config=service.effective_config())
+
+    @application.get("/v1/models", response_model=ModelsResponse)
+    def models_endpoint(request: Request):
+        service, error = _introspection(request)
+        if error is not None:
+            return error
+        return ModelsResponse(**service.list_models())
+
+    @application.get("/v1/embedding-models", response_model=EmbeddingModelsResponse)
+    def embedding_models_endpoint(request: Request):
+        service, error = _introspection(request)
+        if error is not None:
+            return error
+        return EmbeddingModelsResponse(**service.list_embedding_models())
+
+    @application.get("/v1/retrievers", response_model=RetrieversResponse)
+    def retrievers_endpoint(request: Request):
+        service, error = _introspection(request)
+        if error is not None:
+            return error
+        return RetrieversResponse(**service.list_retrievers())
+
+    @application.get("/v1/rerankers", response_model=RerankersResponse)
+    def rerankers_endpoint(request: Request):
+        service, error = _introspection(request)
+        if error is not None:
+            return error
+        return RerankersResponse(**service.list_rerankers())
+
+    @application.get("/v1/evaluators", response_model=EvaluatorsResponse)
+    def evaluators_endpoint(request: Request):
+        service, error = _introspection(request)
+        if error is not None:
+            return error
+        return EvaluatorsResponse(**service.list_evaluators())
 
     return application
 
