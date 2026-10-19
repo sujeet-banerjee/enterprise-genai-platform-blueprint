@@ -45,7 +45,9 @@ curl -X POST http://localhost:8000/query -H "Content-Type: application/json" -d 
 
 All behaviour is driven by YAML in config/:
 - config/models.yaml - active LLM/embedding models, per-model params, provider mappings
-- config/retrieval.yaml - retriever, similarity metric, reranking, chunking strategies, token budget, observability, governance
+- config/retrieval.yaml - retriever, similarity metric, reranking, chunking strategies, token budget
+- config/governance.yaml - cost/retrieval-policy governance (enabled, cost cap, safety margin)
+- config/observability.yaml - logging, redaction toggle and sensitive patterns
 - config/prompt_config.yaml - prompt profiles
 
 The composition root (pp/main.py::build_pipeline()) reads these configs and wires components via registries. governance.enabled gates CostGovernor/RetrievalPolicyService (default true). eranking.enabled controls reranking. evaluation.enabled controls evaluation. chunking.active_strategy drives ChunkerFactory.

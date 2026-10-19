@@ -29,6 +29,8 @@ class RAGPipeline:
         raise_on_failure: bool = True,
         cost_governor: Optional[Any] = None,
         retrieval_policy_service: Optional[Any] = None,
+        governance_config_path: Optional[str] = None,
+        observability_config_path: Optional[str] = None,
     ):
         self.embedder = embedder
         self.prompt_builder = prompt_builder
@@ -47,9 +49,19 @@ class RAGPipeline:
         )
         self._retrieval_config = self._load_config(self.config_path)
 
+        # Governance and observability may live in their own files (issue #34).
+        # When no dedicated path is supplied we fall back to the legacy inline
+        # sections inside retrieval.yaml so existing deployments keep working.
+        self.governance_config_path = governance_config_path
+        self.observability_config_path = observability_config_path
+
         ret_cfg = self._retrieval_config.get("retrieval") or {}
-        obs_cfg = self._retrieval_config.get("observability") or {}
-        gov_cfg = self._retrieval_config.get("governance") or {}
+        obs_cfg = self._load_section(observability_config_path) or (
+            self._retrieval_config.get("observability") or {}
+        )
+        gov_cfg = self._load_section(governance_config_path) or (
+            self._retrieval_config.get("governance") or {}
+        )
 
         self.top_k = int(top_k if top_k is not None else ret_cfg.get("top_k", 3))
         self.avg_chunk_tokens = int(gov_cfg.get("avg_chunk_tokens", ret_cfg.get("avg_chunk_tokens", 128)))
@@ -69,6 +81,14 @@ class RAGPipeline:
                 return yaml.safe_load(f) or {}
         except Exception:
             return {}
+
+    @classmethod
+    def _load_section(cls, config_path: Optional[str]) -> dict:
+        """Load a single-concern config file whose top level *is* the section."""
+        if not config_path:
+            return {}
+        loaded = cls._load_config(config_path)
+        return loaded if isinstance(loaded, dict) else {}
 
     def _validate_contracts(self):
         if self.embedder.dimension != self.retriever.index_dimension:
@@ -166,7 +186,10 @@ class RAGPipeline:
         start_time = time.time()
         effective_top_k = int(top_k if top_k is not None else self.top_k)
         should_raise = self.raise_on_failure if raise_on_failure is None else bool(raise_on_failure)
-        tracker = PipelineObservabilityTracker(config_path=self.config_path)
+        tracker = PipelineObservabilityTracker(
+            config_path=self.config_path,
+            observability_config_path=self.observability_config_path,
+        )
 
         # 0. Retrieval depth governance (token economics tuned by RetrievalPolicyService)
         if self.retrieval_policy_service is not None and top_k is None:

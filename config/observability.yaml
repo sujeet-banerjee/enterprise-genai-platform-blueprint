@@ -1,0 +1,10 @@
+log_level: INFO
+redact_sensitive_data: true
+low_retrieval_score_threshold: 0.25
+sensitive_patterns:
+  - "api[_-]?key"
+  - "password"
+  - "secret"
+  - "token"
+  - "authorization"
+  - "bearer"

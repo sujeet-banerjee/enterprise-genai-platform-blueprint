@@ -426,10 +426,6 @@ This is what makes the "add a component, change config, done" workflow possible.
 | `retrieval.similarity_metric` | `RetrieverRegistry` → `FAISSRetriever` | `cosine` / `l2` index selection (roadmap #15) |
 | `retrieval.low_score_threshold` | `FailureClassifier` | Flags low-quality retrieval |
 | `retrieval.retrievers.<key>` | `RetrieverRegistry` | Provider + options (`documents_path`, ...) |
-| `governance.enabled` | composition root | Gates cost/retrieval-policy enforcement (roadmap #10) |
-| `governance.max_cost_per_request_usd` | `CostGovernor` | Cost cap per request |
-| `governance.safety_margin_tokens` | `RetrievalPolicyService` | Token safety margin |
-| `governance.avg_chunk_tokens` | `RetrievalPolicyService`, pipeline | Chunk size estimate for depth |
 | `evaluation.enabled` | `EvaluatorRegistry` | Toggles evaluation (NullEvaluator when off) |
 | `evaluation.active_evaluator` | `EvaluatorRegistry` | Selects evaluator |
 | `evaluation.evaluators.<key>` | `EvaluatorRegistry` | Provider mapping |
@@ -441,10 +437,29 @@ This is what makes the "add a component, change config, done" workflow possible.
 | `token_budget.max_output_cap` | `TokenBudgetService` | Hard output cap (roadmap #11) |
 | `token_budget.min_output_tokens` | `TokenBudgetService` | Minimum reserved output |
 | `token_budget.chars_per_token` | `TokenBudgetService` | Token estimation ratio |
-| `observability.log_level` | `PipelineObservabilityTracker` | Log verbosity |
-| `observability.redact_sensitive_data` | `PipelineObservabilityTracker` | Toggle redaction (roadmap #16) |
-| `observability.low_retrieval_score_threshold` | pipeline | Low-score flagging |
-| `observability.sensitive_patterns` | `PipelineObservabilityTracker` | Redaction patterns (roadmap #16) |
+
+Each concern has its own file (like `models.yaml` / `prompt_config.yaml`); the
+composition root loads them by explicit path. Legacy deployments that still
+carry inline `governance` / `observability` sections inside `retrieval.yaml`
+keep working via a fallback (roadmap #34).
+
+### `config/governance.yaml`
+
+| Key | Consumed by | Effect |
+|-----|-------------|--------|
+| `enabled` | composition root | Gates cost/retrieval-policy enforcement (roadmap #10) |
+| `max_cost_per_request_usd` | `CostGovernor` | Cost cap per request |
+| `safety_margin_tokens` | `RetrievalPolicyService` | Token safety margin |
+| `avg_chunk_tokens` | `RetrievalPolicyService`, pipeline | Chunk size estimate for depth |
+
+### `config/observability.yaml`
+
+| Key | Consumed by | Effect |
+|-----|-------------|--------|
+| `log_level` | `PipelineObservabilityTracker` | Log verbosity |
+| `redact_sensitive_data` | `PipelineObservabilityTracker` | Toggle redaction (roadmap #16) |
+| `low_retrieval_score_threshold` | pipeline | Low-score flagging |
+| `sensitive_patterns` | `PipelineObservabilityTracker` | Redaction patterns (roadmap #16) |
 
 ---
 
@@ -704,7 +719,8 @@ The same recipe applies to every capability:
 
 ```
 app/                 API + orchestration (main.py, pipeline.py)
-config/              models.yaml, prompt_config.yaml, retrieval.yaml
+config/              models.yaml, prompt_config.yaml, retrieval.yaml,
+                     governance.yaml, observability.yaml
 core/
   interfaces/        contracts (embedder, retriever, llm, evaluator, reranker, chunker)
   implementations/   vendor/backend implementations

@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Optional
 
 import yaml
 from fastapi import FastAPI
@@ -22,6 +23,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 PROMPT_CONFIG_PATH = BASE_DIR / "config" / "prompt_config.yaml"
 MODELS_CONFIG_PATH = BASE_DIR / "config" / "models.yaml"
 RETRIEVAL_CONFIG_PATH = BASE_DIR / "config" / "retrieval.yaml"
+GOVERNANCE_CONFIG_PATH = BASE_DIR / "config" / "governance.yaml"
+OBSERVABILITY_CONFIG_PATH = BASE_DIR / "config" / "observability.yaml"
 
 
 def _load_config(config_path: Path) -> dict:
@@ -52,6 +55,8 @@ def build_pipeline(
     models_config_path: Path = MODELS_CONFIG_PATH,
     prompt_config_path: Path = PROMPT_CONFIG_PATH,
     retrieval_config_path: Path = RETRIEVAL_CONFIG_PATH,
+    governance_config_path: Optional[Path] = None,
+    observability_config_path: Optional[Path] = None,
 ) -> RAGPipeline:
     """
     Composition root: assemble the RAG pipeline by resolving every pluggable
@@ -66,7 +71,11 @@ def build_pipeline(
     evaluator_registry = EvaluatorRegistry(str(retrieval_config_path))
 
     retrieval_config = _load_config(retrieval_config_path)
-    governance_config = retrieval_config.get("governance") or {}
+    # Governance lives in its own file (issue #34); fall back to the legacy
+    # inline section in retrieval.yaml when no dedicated file is configured.
+    governance_config = _load_config(governance_config_path) if governance_config_path else {}
+    if not governance_config:
+        governance_config = retrieval_config.get("governance") or {}
 
     active_llm = model_registry.get_active_model()
     embedder = model_registry.get_active_embedder()
@@ -129,10 +138,17 @@ def build_pipeline(
         config_path=str(retrieval_config_path),
         cost_governor=cost_governor,
         retrieval_policy_service=retrieval_policy_service,
+        governance_config_path=str(governance_config_path) if governance_config_path else None,
+        observability_config_path=(
+            str(observability_config_path) if observability_config_path else None
+        ),
     )
 
 
-pipeline = build_pipeline()
+pipeline = build_pipeline(
+    governance_config_path=GOVERNANCE_CONFIG_PATH,
+    observability_config_path=OBSERVABILITY_CONFIG_PATH,
+)
 
 
 class QueryRequest(BaseModel):

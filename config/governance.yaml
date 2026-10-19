@@ -1,0 +1,4 @@
+enabled: true
+max_cost_per_request_usd: 0.05
+safety_margin_tokens: 200
+avg_chunk_tokens: 128

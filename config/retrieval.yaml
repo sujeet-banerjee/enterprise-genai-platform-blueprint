@@ -14,12 +14,6 @@ retrieval:
     dummy:
       provider: dummy
 
-governance:
-  enabled: true
-  max_cost_per_request_usd: 0.05
-  safety_margin_tokens: 200
-  avg_chunk_tokens: 128
-
 evaluation:
   enabled: true
   active_evaluator: semantic
@@ -77,15 +71,3 @@ token_budget:
   max_output_cap: 512
   min_output_tokens: 16
   chars_per_token: 4
-
-observability:
-  log_level: INFO
-  redact_sensitive_data: true
-  low_retrieval_score_threshold: 0.25
-  sensitive_patterns:
-    - "api[_-]?key"
-    - "password"
-    - "secret"
-    - "token"
-    - "authorization"
-    - "bearer"
