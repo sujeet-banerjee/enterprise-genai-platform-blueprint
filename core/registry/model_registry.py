@@ -255,7 +255,12 @@ class ModelRegistry:
         return self.get_model_config(self.config.get("active_model"))
 
     def get_embedder(self, model_name: Optional[str] = None) -> BaseEmbedder:
-        target_name = model_name or self.config.get("active_embedding_model", "all-MiniLM-L6-v2")
+        target_name = model_name or self.config.get("active_embedding_model")
+        if not target_name:
+            raise ValueError(
+                "No embedding model specified: pass model_name or set "
+                f"'active_embedding_model' in config file: {self.config_path}"
+            )
         emb_map = self.config.get("embedding_models") or {}
 
         if target_name in emb_map and isinstance(emb_map[target_name], dict):
@@ -264,9 +269,6 @@ class ModelRegistry:
         elif target_name == "dummy":
             emb_config = {"provider": "dummy", "model_name": "dummy-embedder"}
             provider = "dummy"
-        elif target_name in ("all-MiniLM-L6-v2", "all-mpnet-base-v2") or str(target_name).startswith("sentence-transformers/"):
-            emb_config = {"provider": "sentence_transformers", "model_name": target_name}
-            provider = "sentence_transformers"
         else:
             raise ValueError(
                 f"Invalid embedding model: {target_name}; no such embedding model found in config file: {self.config_path}"

@@ -163,11 +163,22 @@ class SimpleEmbedder(BaseEmbedder):
 
     @staticmethod
     def _resolve_model_name(model_name: Optional[str], config_data: dict) -> str:
+        """
+        Resolve the embedding model name from config (issue #1).
+
+        Precedence: the explicit ``model_name`` argument, then
+        ``active_embedding_model`` in models.yaml, mapped through the
+        ``embedding_models`` entries. There is deliberately no hardcoded default
+        model; a missing configuration raises rather than silently picking one.
+        """
         embedding_models = config_data.get("embedding_models") or {}
 
-        target_key = model_name
+        target_key = model_name or config_data.get("active_embedding_model")
         if not target_key:
-            target_key = config_data.get("active_embedding_model", "all-MiniLM-L6-v2")
+            raise ValueError(
+                "No embedding model specified: pass model_name or set "
+                "'active_embedding_model' in models.yaml."
+            )
 
         if isinstance(embedding_models, dict) and target_key in embedding_models:
             entry = embedding_models[target_key]
@@ -175,10 +186,6 @@ class SimpleEmbedder(BaseEmbedder):
                 return str(entry["model_name"])
             if isinstance(entry, str):
                 return entry
-
-        # Normalize short names to canonical sentence-transformers identifiers
-        if target_key in ("all-MiniLM-L6-v2", "all-mpnet-base-v2"):
-            return f"sentence-transformers/{target_key}"
 
         return str(target_key)
 
