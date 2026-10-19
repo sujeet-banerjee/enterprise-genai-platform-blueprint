@@ -119,6 +119,7 @@ class ModelRegistry:
             lambda name, cfg: SimpleEmbedder(
                 model_name=cfg.get("model_name", name),
                 config_path=self.config_path,
+                allow_offline_fallback=cfg.get("allow_offline_fallback"),
             ),
         )
         self.register_embedder_provider(
@@ -126,6 +127,7 @@ class ModelRegistry:
             lambda name, cfg: SimpleEmbedder(
                 model_name=cfg.get("model_name", name),
                 config_path=self.config_path,
+                allow_offline_fallback=cfg.get("allow_offline_fallback"),
             ),
         )
         self.register_embedder_provider(
@@ -133,6 +135,7 @@ class ModelRegistry:
             lambda name, cfg: SimpleEmbedder(
                 model_name=cfg.get("model_name", name),
                 config_path=self.config_path,
+                allow_offline_fallback=cfg.get("allow_offline_fallback"),
             ),
         )
         self.register_embedder_provider(

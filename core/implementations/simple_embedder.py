@@ -10,6 +10,37 @@ from core.implementations._local_models import get_sentence_transformer
 from core.interfaces.embedder import BaseEmbedder
 
 
+class EmbeddingModelLoadError(RuntimeError):
+    """
+    Raised when a configured embedding model cannot be loaded (issue #18).
+
+    The pipeline fails fast with this structured error instead of silently
+    fabricating hash-derived pseudo-embeddings, which would hide provider
+    outages and corrupt evaluation/observability integrity. Callers that
+    explicitly opt in via ``allow_offline_fallback`` get the deterministic
+    offline encoder instead.
+    """
+
+    def __init__(self, model_name: str, local_error=None, download_error=None):
+        self.model_name = model_name
+        self.local_error = local_error
+        self.download_error = download_error
+        parts = [
+            f"Failed to load embedding model '{model_name}':",
+            "not found in the local cache and could not be downloaded.",
+        ]
+        if local_error is not None:
+            parts.append(f"local cache error: {local_error!r}")
+        if download_error is not None:
+            parts.append(f"download error: {download_error!r}")
+        parts.append(
+            "Pass allow_offline_fallback=True (or set "
+            "'allow_offline_fallback: true' in models.yaml) to opt in to the "
+            "offline fallback explicitly."
+        )
+        super().__init__(" ".join(parts))
+
+
 class _LocalSentenceEncoder:
     """
     Offline-capable local sentence encoder mirroring SentenceTransformer's interface
@@ -109,24 +140,29 @@ class SimpleEmbedder(BaseEmbedder):
         self,
         model_name: Optional[str] = None,
         config_path: Optional[str] = None,
-        allow_offline_fallback: bool = False,
+        allow_offline_fallback: Optional[bool] = None,
     ):
         self.config_path = config_path or str(
             Path(__file__).resolve().parent.parent.parent / "config" / "models.yaml"
         )
-        self._model_name = self._resolve_model_name(model_name, self.config_path)
-        self.model = self._load_model(self._model_name, allow_offline_fallback)
+        config_data = self._read_config(self.config_path)
+        self._model_name = self._resolve_model_name(model_name, config_data)
+        self.allow_offline_fallback = self._resolve_offline_fallback(
+            config_data, model_name, allow_offline_fallback
+        )
+        self.model = self._load_model(self._model_name, self.allow_offline_fallback)
         self._dimension = self._obtain_model_dimension()
 
     @staticmethod
-    def _resolve_model_name(model_name: Optional[str], config_path: str) -> str:
-        config_data: dict = {}
+    def _read_config(config_path: str) -> dict:
         try:
             with open(config_path, "r") as f:
-                config_data = yaml.safe_load(f) or {}
+                return yaml.safe_load(f) or {}
         except Exception:
-            config_data = {}
+            return {}
 
+    @staticmethod
+    def _resolve_model_name(model_name: Optional[str], config_data: dict) -> str:
         embedding_models = config_data.get("embedding_models") or {}
 
         target_key = model_name
@@ -147,18 +183,45 @@ class SimpleEmbedder(BaseEmbedder):
         return str(target_key)
 
     @staticmethod
+    def _resolve_offline_fallback(
+        config_data: dict,
+        model_name: Optional[str],
+        explicit: Optional[bool],
+    ) -> bool:
+        """
+        Resolve the offline-fallback opt-in (issue #18). Precedence: explicit
+        constructor argument, then the per-model ``allow_offline_fallback`` entry,
+        then a top-level ``allow_offline_fallback``. Defaults to False so the
+        embedder fails fast rather than fabricating vectors.
+        """
+        if explicit is not None:
+            return bool(explicit)
+
+        embedding_models = config_data.get("embedding_models") or {}
+        target_key = model_name or config_data.get("active_embedding_model")
+        if isinstance(embedding_models, dict) and target_key in embedding_models:
+            entry = embedding_models[target_key]
+            if isinstance(entry, dict) and "allow_offline_fallback" in entry:
+                return bool(entry["allow_offline_fallback"])
+
+        return bool(config_data.get("allow_offline_fallback", False))
+
+    @staticmethod
     def _load_model(model_name: str, allow_offline_fallback: bool = False):
         try:
             return get_sentence_transformer(model_name, local_files_only=True)
-        except Exception:
-            pass
-        try:
-            # Not cached locally: download the real model (requires internet).
-            return get_sentence_transformer(model_name, local_files_only=False)
-        except Exception:
-            if allow_offline_fallback:
-                return _LocalSentenceEncoder(model_name)
-            raise
+        except Exception as local_error:
+            try:
+                # Not cached locally: download the real model (requires internet).
+                return get_sentence_transformer(model_name, local_files_only=False)
+            except Exception as download_error:
+                if allow_offline_fallback:
+                    return _LocalSentenceEncoder(model_name)
+                raise EmbeddingModelLoadError(
+                    model_name,
+                    local_error=local_error,
+                    download_error=download_error,
+                ) from download_error
 
     def _obtain_model_dimension(self) -> int:
         if hasattr(self.model, "get_sentence_embedding_dimension"):
