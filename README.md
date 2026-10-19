@@ -10,36 +10,36 @@ See [docs/architecture.md](docs/architecture.md) for the full architecture, prin
 
 ### 1) Clone and setup
 
-`ash
+```bash
 git clone https://github.com/sujeet-banerjee/enterprise-genai-platform-blueprint
 cd enterprise-genai-platform-blueprint
 pip install -e .
-`
+```
 
 ### 2) Run tests
 
-`ash
+```bash
 python -m pytest -v
-`
+```
 
 ### 3) Lint, typecheck, coverage
 
-`ash
+```bash
 python -m ruff check .
 python -m mypy app core
 python -m pytest --cov=app --cov=core --cov-fail-under=78
-`
+```
 
 ### 4) Run the API
 
-`ash
+```bash
 uvicorn app.main:app --reload
-`
+```
 
 Example request:
-`ash
+```bash
 curl -X POST http://localhost:8000/query -H "Content-Type: application/json" -d '{"query":"What is AI?"}'
-`
+```
 
 ## API
 
@@ -66,7 +66,8 @@ All behaviour is driven by YAML in config/:
 - config/prompt_config.yaml - prompt profiles
 - config/api.yaml - API key stub (disabled by default)
 
-The composition root (pp/main.py::build_pipeline()) reads these configs and wires components via registries. governance.enabled gates CostGovernor/RetrievalPolicyService (default true). eranking.enabled controls reranking. evaluation.enabled controls evaluation. chunking.active_strategy drives ChunkerFactory.
+The composition root (pp/main.py::build_pipeline()) reads these configs and wires components via registries. governance.enabled gates CostGovernor/RetrievalPolicyService (default true). 
+eranking.enabled controls reranking. evaluation.enabled controls evaluation. chunking.active_strategy drives ChunkerFactory.
 
 ## Key Concepts
 
