@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 
 from app.evaluation_api import EvaluationService, register_evaluation_routes
 from app.introspection import IntrospectionService
+from app.ops_api import RunHistory, register_ops_routes
 from app.pipeline import RAGPipeline
 from app.schemas import (
     EffectiveConfigResponse,
@@ -227,6 +228,11 @@ def create_app(
             prompt_config_path=prompt_config_path,
             retrieval_config_path=retrieval_config_path,
         )
+        application.state.history = RunHistory(
+            max_runs=int(api_config.get("history_max_runs", 1000)),
+            max_traces=int(api_config.get("trace_store_max", 500)),
+            observability_config_path=observability_config_path,
+        )
         application.state.config_revision = 0
         application.state.rebuild = PipelineRebuildService(
             pipeline_builder=pipeline_builder,
@@ -306,6 +312,10 @@ def create_app(
                 status_code=500,
                 content=_error_envelope(str(exc), "unknown_failure", [], request_id),
             )
+
+        history = getattr(request.app.state, "history", None)
+        if history is not None:
+            history.record(request_id, result)
 
         payload_dict = dict(result)
         payload_dict.setdefault("error", None)
@@ -403,6 +413,7 @@ def create_app(
 
     register_evaluation_routes(application, _error_envelope)
     register_whatif_routes(application, _error_envelope)
+    register_ops_routes(application, _error_envelope)
 
     return application
 

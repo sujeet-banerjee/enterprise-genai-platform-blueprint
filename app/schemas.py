@@ -182,3 +182,32 @@ class RebuildResponse(BaseModel):
     governance_overrides_applied: bool = False
     effective_config: Dict[str, Any] = {}
     request_id: Optional[str] = None
+
+
+class LatencyStat(BaseModel):
+    count: int = 0
+    mean: Optional[float] = None
+    p50: Optional[float] = None
+    p95: Optional[float] = None
+
+
+class GovernanceStatusResponse(BaseModel):
+    enabled: bool = True
+    max_cost_per_request_usd: Optional[float] = None
+    safety_margin_tokens: Optional[int] = None
+    avg_chunk_tokens: Optional[int] = None
+    window: Dict[str, Any] = {}
+    request_id: Optional[str] = None
+
+
+class MetricsResponse(BaseModel):
+    total_runs: int = 0
+    success_count: int = 0
+    failure_count: int = 0
+    failure_rate: float = 0.0
+    latency_ms: Dict[str, LatencyStat] = {}
+    total_latency_ms: LatencyStat = LatencyStat()
+    failures_by_type: Dict[str, int] = {}
+    failures_by_tag: Dict[str, int] = {}
+    cost: Dict[str, Any] = {}
+    request_id: Optional[str] = None

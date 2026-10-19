@@ -10,3 +10,9 @@ api_key: ""
 # Runtime component swap (issue #37). Disabled by default: the rebuild endpoint
 # returns 403 until an operator explicitly opts in here.
 allow_rebuild: false
+
+# Bounded in-memory stores backing /v1/metrics, /v1/governance/status and
+# /v1/traces/{request_id} (issue #38). Oldest entries are evicted first.
+# Set these to 0 to disable recording; persistence is out of scope (issue #28).
+history_max_runs: 1000
+trace_store_max: 500
