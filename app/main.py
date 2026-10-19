@@ -8,6 +8,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
+from app.evaluation_api import EvaluationService, register_evaluation_routes
 from app.introspection import IntrospectionService
 from app.pipeline import RAGPipeline
 from app.schemas import (
@@ -219,11 +220,19 @@ def create_app(
             observability_config_path=observability_config_path,
             api_config_path=api_config_path,
         )
+        application.state.evaluate = EvaluationService(
+            models_config_path=models_config_path,
+            prompt_config_path=prompt_config_path,
+            retrieval_config_path=retrieval_config_path,
+        )
         application.state.ready = True
         try:
             yield
         finally:
             application.state.ready = False
+            evaluation_service = getattr(application.state, "evaluate", None)
+            if evaluation_service is not None:
+                evaluation_service.shutdown()
 
     application = FastAPI(
         title="Enterprise GenAI RAG Platform",
@@ -370,6 +379,8 @@ def create_app(
         if error is not None:
             return error
         return EvaluatorsResponse(**service.list_evaluators())
+
+    register_evaluation_routes(application, _error_envelope)
 
     return application
 
