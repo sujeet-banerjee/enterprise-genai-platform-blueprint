@@ -6,7 +6,7 @@ the OpenAPI schema in `/docs` is self-describing.
 
 from typing import Any, Dict, List, Literal, Optional, Union
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ModelInfo(BaseModel):
@@ -144,4 +144,41 @@ class ExperimentStatusResponse(BaseModel):
     result: Optional[Dict[str, Any]] = None
     error: Optional[str] = None
     failure_type: Optional[str] = None
+    request_id: Optional[str] = None
+
+
+class RebuildOverrides(BaseModel):
+    """Candidate configuration deltas for a runtime pipeline rebuild."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    active_model: Optional[str] = None
+    active_embedding_model: Optional[str] = None
+    default_retriever: Optional[str] = None
+    similarity_metric: Optional[str] = None
+    top_k: Optional[int] = Field(default=None, ge=1, le=50)
+
+
+class RebuildRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    overrides: RebuildOverrides = RebuildOverrides()
+    governance: Optional[Dict[str, Any]] = None
+    allow_governance_override: bool = False
+
+
+class RebuildComponents(BaseModel):
+    llm: Optional[str] = None
+    retriever: Optional[str] = None
+    reranker: Optional[str] = None
+    evaluator: Optional[str] = None
+
+
+class RebuildResponse(BaseModel):
+    status: str = "rebuilt"
+    config_revision: int
+    components: RebuildComponents
+    applied_overrides: Dict[str, Any] = {}
+    governance_overrides_applied: bool = False
+    effective_config: Dict[str, Any] = {}
     request_id: Optional[str] = None

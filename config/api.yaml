@@ -6,3 +6,7 @@
 # header; ``/health``, ``/ready`` and the OpenAPI docs stay public.
 require_api_key: false
 api_key: ""
+
+# Runtime component swap (issue #37). Disabled by default: the rebuild endpoint
+# returns 403 until an operator explicitly opts in here.
+allow_rebuild: false

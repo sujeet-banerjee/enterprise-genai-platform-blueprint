@@ -19,6 +19,7 @@ from app.schemas import (
     RerankersResponse,
     RetrieversResponse,
 )
+from app.whatif_api import PipelineRebuildService, describe_pipeline, register_whatif_routes
 from core.config.generation_config import GenerationConfig
 from core.registry.evaluator_registry import EvaluatorRegistry
 from core.registry.model_registry import ModelRegistry
@@ -202,6 +203,7 @@ def create_app(
     api_config = _load_config(api_config_path)
     require_api_key = bool(api_config.get("require_api_key", False))
     expected_api_key = str(api_config.get("api_key") or "")
+    allow_rebuild = bool(api_config.get("allow_rebuild", False))
 
     @asynccontextmanager
     async def lifespan(application: FastAPI):
@@ -225,6 +227,19 @@ def create_app(
             prompt_config_path=prompt_config_path,
             retrieval_config_path=retrieval_config_path,
         )
+        application.state.config_revision = 0
+        application.state.rebuild = PipelineRebuildService(
+            pipeline_builder=pipeline_builder,
+            base_paths={
+                "models_config_path": models_config_path,
+                "prompt_config_path": prompt_config_path,
+                "retrieval_config_path": retrieval_config_path,
+                "governance_config_path": governance_config_path,
+                "observability_config_path": observability_config_path,
+                "api_config_path": api_config_path,
+            },
+            allow_rebuild=allow_rebuild,
+        )
         application.state.ready = True
         try:
             yield
@@ -233,6 +248,9 @@ def create_app(
             evaluation_service = getattr(application.state, "evaluate", None)
             if evaluation_service is not None:
                 evaluation_service.shutdown()
+            rebuild_service = getattr(application.state, "rebuild", None)
+            if rebuild_service is not None:
+                rebuild_service.cleanup()
 
     application = FastAPI(
         title="Enterprise GenAI RAG Platform",
@@ -309,10 +327,13 @@ def create_app(
 
     @application.get("/ready")
     def ready(request: Request):
-        if getattr(request.app.state, "ready", False) and getattr(
-            request.app.state, "pipeline", None
-        ) is not None:
-            return {"status": "ready"}
+        pipeline = getattr(request.app.state, "pipeline", None)
+        if getattr(request.app.state, "ready", False) and pipeline is not None:
+            return {
+                "status": "ready",
+                "config_revision": int(getattr(request.app.state, "config_revision", 0)),
+                "components": describe_pipeline(pipeline),
+            }
         return JSONResponse(
             status_code=503,
             content={"status": "not_ready", "reason": "pipeline not initialised"},
@@ -381,6 +402,7 @@ def create_app(
         return EvaluatorsResponse(**service.list_evaluators())
 
     register_evaluation_routes(application, _error_envelope)
+    register_whatif_routes(application, _error_envelope)
 
     return application
 
