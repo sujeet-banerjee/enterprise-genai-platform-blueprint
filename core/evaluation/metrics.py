@@ -1,7 +1,15 @@
 import logging
-from typing import Optional, Sequence
+from typing import Any, Optional, Sequence
 
 from core.interfaces.retriever import Document
+
+
+def _doc_id(doc: Any) -> Optional[Any]:
+    """Best-effort stable identifier for a document (metadata ``doc_id``)."""
+    metadata = getattr(doc, "metadata", None)
+    if isinstance(metadata, dict) and "doc_id" in metadata:
+        return metadata["doc_id"]
+    return None
 
 
 class Metrics:
@@ -55,3 +63,38 @@ class Metrics:
             return len(query_words & retrieved_words) / len(query_words)
 
         raise ValueError("Either relevant_docs or query must be provided")
+
+    @staticmethod
+    def context_precision_at_ids(
+        relevant_doc_ids: Sequence[Any],
+        retrieved_doc_ids: Sequence[Any],
+    ) -> float:
+        """True precision over document ids: |relevant ∩ retrieved| / |retrieved|."""
+        retrieved = set(retrieved_doc_ids)
+        if not retrieved:
+            return 0.0
+        relevant = set(relevant_doc_ids)
+        return len(relevant & retrieved) / len(retrieved)
+
+    @staticmethod
+    def context_recall_at_ids(
+        relevant_doc_ids: Sequence[Any],
+        retrieved_doc_ids: Sequence[Any],
+    ) -> float:
+        """True recall over document ids: |relevant ∩ retrieved| / |relevant|."""
+        relevant = set(relevant_doc_ids)
+        if not relevant:
+            return 0.0
+        retrieved = set(retrieved_doc_ids)
+        return len(relevant & retrieved) / len(relevant)
+
+    @staticmethod
+    def retrieved_doc_ids(retrieved_docs: Optional[Sequence[Document]]) -> list:
+        """Extract ``doc_id`` metadata from retrieved documents (order preserved)."""
+        ids = []
+        for doc in retrieved_docs or []:
+            doc_id = _doc_id(doc)
+            if doc_id is not None:
+                ids.append(doc_id)
+        return ids
+

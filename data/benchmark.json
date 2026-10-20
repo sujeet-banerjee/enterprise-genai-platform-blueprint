@@ -1,0 +1,36 @@
+{
+  "docs": [
+    {"content": "Artificial Intelligence is the simulation of human intelligence."},
+    {"content": "Machine Learning is a subset of AI focused on learning from data."},
+    {"content": "Neural networks are models inspired by the human brain."},
+    {"content": "Deep learning uses multi-layer neural networks."},
+    {"content": "Retrieval augmented generation grounds a language model on retrieved documents."},
+    {"content": "Vector databases store embeddings for similarity search."}
+  ],
+  "cases": [
+    {
+      "query": "What is artificial intelligence?",
+      "relevant_doc_ids": [0]
+    },
+    {
+      "query": "How does machine learning relate to AI?",
+      "relevant_doc_ids": [0, 1]
+    },
+    {
+      "query": "What are neural networks inspired by?",
+      "relevant_doc_ids": [2]
+    },
+    {
+      "query": "Which technique uses multiple layers?",
+      "relevant_doc_ids": [3]
+    },
+    {
+      "query": "What is RAG?",
+      "relevant_doc_ids": [4]
+    },
+    {
+      "query": "How are embeddings searched?",
+      "relevant_doc_ids": [5]
+    }
+  ]
+}
