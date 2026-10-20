@@ -15,7 +15,8 @@ from typing import Any, Dict
 import streamlit as st
 
 from ui.client import ApiClient
-from ui.common import api_base_url, latency_rows, require_ok
+from ui.common import api_base_url, latency_rows, metric_rows, require_ok
+from ui.tour import render_help_expander, render_tour, start_tour
 
 st.set_page_config(page_title="Enterprise GenAI RAG Console", layout="wide")
 
@@ -42,6 +43,10 @@ def _bootstrap() -> None:
         st.session_state.api_key = ""
     if "last_request_id" not in st.session_state:
         st.session_state.last_request_id = ""
+    if "tour_state" not in st.session_state:
+        st.session_state.tour_state = "idle"
+    if "tour_step" not in st.session_state:
+        st.session_state.tour_step = 0
 
 
 def _failure_taxonomy(result) -> None:
@@ -192,19 +197,56 @@ def screen_compare() -> None:
             _render_query_result(after.data)
 
 
+def _evaluator_options(api: ApiClient) -> list:
+    """Return the configured evaluator keys (blank = active) for the dropdown."""
+    options = ["(active)"]
+    result = api.evaluators()
+    if result.ok:
+        options.extend(evaluator.get("key") for evaluator in result.data.get("evaluators", []))
+    return options
+
+
 def screen_evaluation() -> None:
     st.header("Evaluation")
     api = client()
 
+    st.caption(
+        "Score a query/response pair with an evaluator. `retrieved_docs` is auto-retrieved "
+        "from the live pipeline, so the evaluator judges your response against real context."
+    )
     query = st.text_input("Query", value="What is retrieval augmented generation?")
     response = st.text_area("Response", value="RAG grounds an LLM on retrieved documents.")
-    evaluator = st.text_input("Evaluator (blank = active)", value="")
+    options = _evaluator_options(api)
+    button_col, gt_col = st.columns([1, 1])
+    with button_col:
+        evaluator = st.selectbox("Evaluator", options)
+    with gt_col:
+        ground_truth = st.text_input("Ground truth (optional)", value="")
 
     if st.button("Evaluate"):
-        result = api.evaluate(query, response, evaluator=evaluator or None)
+        result = api.evaluate(
+            query,
+            response,
+            evaluator=None if evaluator == "(active)" else evaluator,
+            ground_truth=ground_truth or None,
+        )
         if require_ok(result):
             st.write(f"Evaluator: `{result.data.get('evaluator')}`")
-            st.json(result.data.get("metrics", {}))
+            st.caption(
+                f"docs_source: {result.data.get('docs_source')} | "
+                f"num_retrieved_docs: {result.data.get('num_retrieved_docs')} | "
+                f"ground_truth_used: {result.data.get('ground_truth_used')}"
+            )
+            metrics = result.data.get("metrics", {})
+            if metrics:
+                st.dataframe(metric_rows(metrics), use_container_width=True)
+            else:
+                st.info("The selected evaluator returned no metrics.")
+            if ground_truth and not result.data.get("ground_truth_used"):
+                st.info(
+                    "Ground truth was echoed but not used: the selected evaluator has no "
+                    "`evaluate_with_ground_truth` method."
+                )
 
     st.divider()
     st.subheader("Launch experiment")
@@ -310,6 +352,10 @@ def main() -> None:
     st.session_state.api_key = st.sidebar.text_input(
         "API key (optional)", value=st.session_state.api_key, type="password"
     )
+    if st.sidebar.button("Take the tour"):
+        start_tour()
+    render_help_expander()
+    render_tour()
     choice = st.sidebar.radio("Screen", list(SCREENS.keys()))
     SCREENS[choice]()
 
