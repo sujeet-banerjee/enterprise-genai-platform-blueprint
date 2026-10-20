@@ -14,6 +14,7 @@ from app.introspection import IntrospectionService
 from app.ops_api import RunHistory, register_ops_routes
 from app.pipeline import RAGPipeline
 from app.schemas import (
+    AccessResponse,
     EffectiveConfigResponse,
     EmbeddingModelsResponse,
     EvaluatorsResponse,
@@ -28,6 +29,7 @@ from core.registry.model_registry import ModelRegistry
 from core.registry.query_expander_registry import QueryExpanderRegistry
 from core.registry.reranker_registry import RerankerRegistry
 from core.registry.retriever_registry import RetrieverRegistry
+from core.services.access_control import AccessController
 from core.services.audit_log import AuditLogger
 from core.services.cost_governor import CostGovernor
 from core.services.cost_tracker import CostTracker
@@ -44,6 +46,7 @@ GOVERNANCE_CONFIG_PATH = BASE_DIR / "config" / "governance.yaml"
 OBSERVABILITY_CONFIG_PATH = BASE_DIR / "config" / "observability.yaml"
 API_CONFIG_PATH = BASE_DIR / "config" / "api.yaml"
 AUDIT_CONFIG_PATH = BASE_DIR / "config" / "audit.yaml"
+ACCESS_CONTROL_CONFIG_PATH = BASE_DIR / "config" / "access_control.yaml"
 
 # Endpoints that never require an API key (liveness/readiness + OpenAPI docs).
 _PUBLIC_PATHS = {"/health", "/ready", "/docs", "/redoc", "/openapi.json"}
@@ -242,6 +245,7 @@ def create_app(
     observability_config_path: Path = OBSERVABILITY_CONFIG_PATH,
     api_config_path: Path = API_CONFIG_PATH,
     audit_config_path: Path = AUDIT_CONFIG_PATH,
+    access_control_config_path: Path = ACCESS_CONTROL_CONFIG_PATH,
     pipeline_builder: Callable[..., RAGPipeline] = build_pipeline,
 ) -> FastAPI:
     """
@@ -258,6 +262,9 @@ def create_app(
     allow_rebuild = bool(api_config.get("allow_rebuild", False))
     max_batch_size = int(api_config.get("max_batch_size", 25))
     batch_max_workers = int(api_config.get("batch_max_workers", 4))
+
+    access_config = _load_config(access_control_config_path) or {}
+    access_controller = AccessController.from_config(access_config)
 
     @asynccontextmanager
     async def lifespan(application: FastAPI):
@@ -330,16 +337,54 @@ def create_app(
         lifespan=lifespan,
     )
 
+    def _path_capability(path: str) -> Optional[str]:
+        """Map a request path to the capability required to access it (issue #29).
+
+        Returns ``None`` for public/unmapped paths (no capability required).
+        """
+        if path in _PUBLIC_PATHS:
+            return None
+        if path in ("/query", "/v1/query"):
+            return "query"
+        if path == "/v1/query:batch":
+            return "batch"
+        if path == "/v1/evaluate":
+            return "evaluate"
+        if path == "/v1/experiments" or path.startswith("/v1/experiments/"):
+            return "experiment"
+        if path == "/v1/pipeline:rebuild":
+            return "rebuild"
+        if path == "/v1/audit":
+            return "audit"
+        if path in (
+            "/v1/governance/status",
+            "/v1/metrics",
+        ) or path.startswith("/v1/traces/"):
+            return "governance"
+        if path in (
+            "/v1/access",
+            "/v1/config",
+            "/v1/models",
+            "/v1/embedding-models",
+            "/v1/retrievers",
+            "/v1/rerankers",
+            "/v1/evaluators",
+        ):
+            return "introspect"
+        return None
+
     @application.middleware("http")
     async def request_context(request: Request, call_next):
         request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
         request.state.request_id = request_id
 
+        provided_key = request.headers.get("X-API-Key")
+
         if (
             require_api_key
             and expected_api_key
             and request.url.path not in _PUBLIC_PATHS
-            and request.headers.get("X-API-Key") != expected_api_key
+            and provided_key != expected_api_key
         ):
             return JSONResponse(
                 status_code=401,
@@ -347,6 +392,26 @@ def create_app(
                     "Missing or invalid API key.",
                     FailureType.UNAUTHORIZED.value,
                     [],
+                    request_id,
+                ),
+                headers={"X-Request-ID": request_id},
+            )
+
+        # RBAC / persona resolution (issue #29).
+        role = access_controller.resolve_role(provided_key)
+        request.state.role = role
+        request.state.capabilities = access_controller.capabilities(role)
+        request.state.top_k_max = access_controller.top_k_max(role)
+        request.state.allowed_models = access_controller.allowed_models(role)
+
+        required = _path_capability(request.url.path)
+        if required is not None and not access_controller.has_capability(role, required):
+            return JSONResponse(
+                status_code=403,
+                content=_error_envelope(
+                    f"Role '{role}' is not permitted to perform '{required}'.",
+                    FailureType.FORBIDDEN.value,
+                    [f"forbidden_{required}"],
                     request_id,
                 ),
                 headers={"X-Request-ID": request_id},
@@ -402,10 +467,19 @@ def create_app(
                 ),
                 503,
             )
+        # RBAC persona cap: clamp retrieval depth to the role's top_k_max (#29).
+        effective_top_k = payload.top_k
+        role_top_k_max = getattr(request.state, "top_k_max", None)
+        if role_top_k_max is not None:
+            effective_top_k = (
+                role_top_k_max
+                if effective_top_k is None
+                else min(effective_top_k, role_top_k_max)
+            )
         try:
             result = pipeline.run(
                 payload.query,
-                top_k=payload.top_k,
+                top_k=effective_top_k,
                 raise_on_failure=False,
                 request_id=request_id,
             )
@@ -441,6 +515,20 @@ def create_app(
     @application.get("/health")
     def health():
         return {"status": "ok"}
+
+    @application.get("/v1/access", response_model=AccessResponse)
+    def access_endpoint(request: Request):
+        """Report the calling persona's role and effective permissions (#29)."""
+        role = getattr(request.state, "role", access_controller.default_role)
+        info = access_controller.describe(role)
+        return AccessResponse(
+            enabled=access_controller.enabled,
+            role=info["role"],
+            capabilities=info["capabilities"],
+            top_k_max=info["top_k_max"],
+            allowed_models=info["allowed_models"],
+            request_id=getattr(request.state, "request_id", None),
+        )
 
     @application.get("/ready")
     def ready(request: Request):

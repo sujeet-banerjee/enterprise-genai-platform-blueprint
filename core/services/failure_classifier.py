@@ -30,6 +30,7 @@ class FailureType(str, Enum):
     NOT_READY = "not_ready"
     UNAUTHORIZED = "unauthorized"
     BATCH_TOO_LARGE = "batch_too_large"
+    FORBIDDEN = "forbidden"
 
 
 class FailureClassifier:

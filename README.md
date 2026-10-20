@@ -122,6 +122,7 @@ the lifespan startup hook (not at import). Endpoints:
 - `POST /v1/pipeline:rebuild` - runtime component swap via config overrides (gated by `api.allow_rebuild`)
 - `GET /v1/governance/status`, `GET /v1/traces/{request_id}`, `GET /v1/metrics` - governance & observability
 - `GET /v1/audit` - read the redacted append-only audit trail (`event_type`/`limit` filters)
+- `GET /v1/access` - report the calling persona's role and effective permissions
 - Interactive docs at `/docs`
 
 Every response carries `request_id`, `error`, `failure_type` and `failure_tags`, and the
@@ -253,6 +254,7 @@ All behaviour is driven by YAML in config/:
 - config/prompt_config.yaml - prompt profiles
 - config/api.yaml - API key stub, rebuild gate, batch/store limits (all disabled/lean by default)
 - config/audit.yaml - append-only audit trail (disabled by default; optional JSONL `path`)
+- config/access_control.yaml - RBAC roles/personas, capabilities and request caps (disabled by default)
 
 The composition root (`app/main.py::build_pipeline()`) reads these configs and wires
 components via registries:
@@ -398,6 +400,23 @@ max_entries: 1000
 When enabled, governance denials, retrieval-policy degradation and pipeline
 rebuilds are appended to a structured, append-only trail (redacted via the
 observability redactor) and exposed at `GET /v1/audit`. Off by default.
+
+**Enable RBAC / personas** - edit `config/access_control.yaml`:
+
+```yaml
+enabled: true
+default_role: admin
+roles:
+  viewer:
+    capabilities: ["query", "introspect"]
+    top_k_max: 3
+api_keys:
+  "viewer-key": viewer
+```
+Each request resolves its API key to a role; capabilities gate endpoints
+(e.g. `rebuild`, `audit`, `governance`), `top_k_max` caps retrieval depth for a
+persona, and `GET /v1/access` reports the caller's effective permissions. Off by
+default (all callers get every capability).
 
 **Toggle governed retrieval / cost caps** - edit `config/governance.yaml`:
 

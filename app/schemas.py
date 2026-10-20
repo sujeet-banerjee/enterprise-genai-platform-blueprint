@@ -220,3 +220,12 @@ class AuditEventsResponse(BaseModel):
     total: int = 0
     events: List[Dict[str, Any]] = []
     request_id: Optional[str] = None
+
+
+class AccessResponse(BaseModel):
+    enabled: bool = False
+    role: str = "admin"
+    capabilities: List[str] = []
+    top_k_max: Optional[int] = None
+    allowed_models: Optional[List[str]] = None
+    request_id: Optional[str] = None

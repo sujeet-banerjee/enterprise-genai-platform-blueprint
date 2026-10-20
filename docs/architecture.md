@@ -463,6 +463,9 @@ This is what makes the "add a component, change config, done" workflow possible.
 | `audit.enabled` | composition root → `AuditLogger` | Enables append-only audit trail (roadmap #28; default off) |
 | `audit.path` | `AuditLogger` | JSONL destination for durable audit records |
 | `audit.max_entries` | `AuditLogger` | Bounded in-memory ring size (backing `GET /v1/audit`) |
+| `access_control.enabled` | composition root → `AccessController` | Enables RBAC/persona enforcement (roadmap #29; default off) |
+| `access_control.roles.<role>` | `AccessController` | Per-role capabilities + `top_k_max` / `allowed_models` caps |
+| `access_control.api_keys` | `AccessController` | API-key → role mapping |
 
 Each concern has its own file (like `models.yaml` / `prompt_config.yaml`); the
 composition root loads them by explicit path. Legacy deployments that still

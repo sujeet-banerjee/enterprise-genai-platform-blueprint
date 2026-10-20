@@ -1,0 +1,43 @@
+# Role-based access control / personas (issue #29).
+#
+# Off by default: when ``enabled: false`` every caller resolves to
+# ``default_role`` and all capabilities are granted, so existing deployments are
+# unaffected. Enable it to enforce per-role capabilities, request caps and model
+# allow-lists. API keys map to roles via the ``api_keys`` section.
+enabled: false
+
+# Role assumed for an unknown or absent API key when enabled.
+default_role: admin
+
+roles:
+  admin:
+    capabilities:
+      - query
+      - batch
+      - evaluate
+      - experiment
+      - rebuild
+      - introspect
+      - governance
+      - audit
+  analyst:
+    # Can query and run evaluations/experiments, but cannot rebuild, read the
+    # audit trail, or change governance.
+    capabilities:
+      - query
+      - batch
+      - evaluate
+      - experiment
+      - introspect
+    # Cap requested retrieval depth for this persona.
+    top_k_max: 5
+  viewer:
+    # Read-only persona: query + introspection only, shallow retrieval.
+    capabilities:
+      - query
+      - introspect
+    top_k_max: 3
+
+# Optional API-key -> role mapping. Keys are never stored in the repo; this
+# section is a placeholder that operators fill in locally.
+api_keys: {}
