@@ -522,6 +522,11 @@ With `redact_sensitive_data: true`, API responses and traces replace secret valu
 - Add tests for new behaviour
 - Ensure lint, mypy, and tests pass locally before pushing
 
+See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the trunk-based workflow (protected `main`,
+`feature/<issue>-<slug>` branches, PR checklist, release tags) and
+[`docs/enterprise-roadmap.md`](docs/enterprise-roadmap.md) for the post-blueprint roadmap
+tracked by milestones `H0`-`H3` (umbrella issue #43).
+
 ## License
 
 MIT
