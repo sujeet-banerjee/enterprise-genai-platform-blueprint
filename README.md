@@ -148,6 +148,92 @@ shown. Open **Traces** with the returned `request_id` to see the same trace the 
 pipeline with overrides when `api.allow_rebuild=true`. API failures render as the failure
 taxonomy (`failure_type` + `failure_tags`), not stack traces.
 
+First-time users: click **Take the tour** in the sidebar for a guided, step-by-step
+walkthrough of every screen (Back / Next / Skip), or open the always-available
+**Help & tour guide** expander for the same reference at any time.
+
+## End-to-end scenario: real retrieval + all metrics via the console
+
+This walkthrough uses the **Streamlit console** entirely through clicks - no `curl` - to run
+one real retrieval-augmented query and then score it with every available metric, including
+the genuine LLM-as-judge. It assumes the backend and console are already running (see
+[Streamlit console](#streamlit-console-ux) above).
+
+Optional prep: to let the judge model actually run, make sure the local judge model is
+available (it downloads on first use, no API key needed). The active evaluator is configured
+in `config/retrieval.yaml` under `evaluation.active_evaluator`.
+
+1. **Open the console** at `http://localhost:8501` (the URL Streamlit prints on start).
+   In the sidebar, set **API base URL** to where the backend runs (default
+   `http://localhost:8000`). Leave **API key (optional)** blank unless auth is enabled.
+   Click **Take the tour** if this is your first time.
+
+2. **Overview / Health** (sidebar `Screen` = *Overview / Health*).
+   Confirm the tiles read `Health: ok`, `Ready: ready`, and that the four metrics show
+   **Active model**, **Retriever**, **Reranker**, **Evaluator**. Note the evaluator tile
+   value - that is your *active* evaluator for step 4.
+
+3. **Run a real retrieval** (sidebar `Screen` = *Query Studio*).
+   - **Query**: `What is retrieval augmented generation?`
+   - **top_k**: `3`
+   - Keep **Include redacted trace** checked.
+   - Click **Run query**.
+   You should see an **Answer**, the **Retrieved documents** table (3 rows with `score` +
+   `content`), a **Per-stage latency** table, cost/latency/failure tiles, the **raw redacted
+   trace**, and a `request_id` caption. Copy that `request_id` - you will use it in step 6.
+
+4. **Score it with the LLM-as-judge** (sidebar `Screen` = *Evaluation*).
+   - **Query**: `What is retrieval augmented generation?`
+   - **Response**: paste the answer from step 3 (or type
+     `RAG grounds an LLM on retrieved documents that are fetched for the question.`).
+   - **Evaluator**: choose `llm_judge` from the dropdown (blank/`(active)` reuses the active
+     evaluator). This is the genuine LLM-as-judge: it calls the local Qwen model, so it takes
+     noticeably longer than the embedding-based `semantic` evaluator - that is expected.
+   - **Ground truth (optional)**: `Retrieval augmented generation combines a retriever with a
+     language model so answers are grounded in retrieved documents.`
+   - Click **Evaluate**.
+   The screen shows the **evaluator** used, a caption with `docs_source` (should be
+   `retrieval`, since docs are auto-fetched from the live pipeline), `num_retrieved_docs`,
+   and `ground_truth_used`. The **metrics** table then shows the judge scores
+   (`llm_judge_score` and `answer_relevance`, each 0-1).
+
+   Note on ground truth: only evaluators that expose `evaluate_with_ground_truth` consume it;
+   `llm_judge` and the default `semantic` evaluator score without it. When `ground_truth_used`
+   is `false`, the value is echoed for traceability but not folded into the score - the console
+   tells you this explicitly.
+
+5. **Compare embedding models / chunking** (same *Evaluation* screen, **Launch experiment**).
+   - **kind**: `compare_embedding_models` (or `compare_chunking_strategies`).
+   - Click **Launch**. An experiment id appears (runs asynchronously).
+   - Paste the id into **Experiment id** and click **Poll experiment** until its status is
+     `completed`, then inspect the per-variant metrics.
+
+6. **Inspect the trace & governance** (sidebar `Screen` = *Traces*, then *Governance & Cost*).
+   - *Traces*: paste the `request_id` from step 3 and click **Look up trace** to see the exact
+     redacted trace the server logged plus a per-stage latency table.
+   - *Governance & Cost*: confirm **Governance** = `enabled`, the **Max cost / request** cap,
+     and the rolling **spend window**; the **Metrics** block shows the running totals
+     (`Total runs`, `Successes`, `Failures`, `Failure rate`) and `Failures by type`.
+
+7. **Read back the effective config** (sidebar `Screen` = *Settings (read-only)*).
+   Expand **Evaluators** to confirm `llm_judge` is configured and that secrets render as
+   `[REDACTED]`. YAML files in `config/` remain the source of truth.
+
+### Every metric you just saw (and where it comes from)
+
+- **`llm_judge_score` / `answer_relevance`** - genuine LLM-as-judge grading (`llm_judge`
+  evaluator, 0-1 normalized from a 0-10 judge score).
+- **`context_precision`, `faithfulness`, `answer_relevance`** - embedding-based metrics
+  (`semantic` evaluator).
+- **Retrieval** - `retrieved_docs_with_scores` (per-doc `score`), `top_k`, `similarity_metric`.
+- **Cost** - `estimated_cost_usd` per request (per-model pricing) and aggregated spend window.
+- **Latency** - per-stage and total (`total_ms`) plus p50/p95 in the metrics endpoint.
+- **Failure taxonomy** - `failure_type` + `failure_tags` on any error envelope.
+
+To run the same evaluation without the console, `POST /v1/evaluate` accepts
+`{query, response, retrieved_docs?, ground_truth?, evaluator?, top_k?}` - see the
+[API](#api) section for a `curl` example.
+
 ## Configuration
 
 All behaviour is driven by YAML in config/:
@@ -216,6 +302,11 @@ streamlit run ui/app.py -- --api-base http://localhost:8000
 If the backend has API-key auth enabled, paste the key into the console sidebar
 ("API key (optional)"). The console is a pure HTTP client; if a screen needs data that
 is not exposed, add an endpoint rather than importing backend code.
+
+First-time users can click **Take the tour** in the sidebar (a guided Back/Next/Skip
+walkthrough) or open the **Help & tour guide** expander at any time. See
+[End-to-end scenario](#end-to-end-scenario-real-retrieval--all-metrics-via-the-console)
+for a click-by-click example that runs a real retrieval and scores it with every metric.
 
 ### How to run a test suite subset
 
