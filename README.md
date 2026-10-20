@@ -47,14 +47,42 @@ The FastAPI app is created by `app/main.py::create_app()`; the pipeline is built
 the lifespan startup hook (not at import). Endpoints:
 
 - `GET /health` - liveness (always 200)
-- `GET /ready` - readiness (503 until the pipeline is built)
+- `GET /ready` - readiness + active pipeline summary (503 until ready)
 - `POST /v1/query` - run a query; body `{query, top_k?, include_trace?}`
 - `POST /query` - legacy alias of `/v1/query`
+- `POST /v1/query:batch` - run several queries sequentially; per-query envelopes + summary
+- `GET /v1/config` - redacted effective configuration
+- `GET /v1/models`, `/v1/embedding-models`, `/v1/retrievers`, `/v1/rerankers`, `/v1/evaluators` - introspection
+- `POST /v1/evaluate` - run an evaluator on a query/response
+- `POST /v1/experiments` / `GET /v1/experiments/{id}` - launch and poll experiments
+- `POST /v1/pipeline:rebuild` - runtime component swap via config overrides (gated by `api.allow_rebuild`)
+- `GET /v1/governance/status`, `GET /v1/traces/{request_id}`, `GET /v1/metrics` - governance & observability
 - Interactive docs at `/docs`
 
 Every response carries `request_id`, `error`, `failure_type` and `failure_tags`, and the
 `X-Request-ID` header is echoed (or generated) per request. An optional API-key check
 (config/api.yaml: `require_api_key`, `api_key`) is a config-driven stub, disabled by default.
+
+## Streamlit console (UX)
+
+A v1 console lives in `ui/` and consumes **only** the public HTTP API - it never imports
+`app.*` or `core.*` (enforced by a test). Start the backend first, then the console:
+
+```bash
+# terminal 1 - backend
+uvicorn app.main:app --reload
+
+# terminal 2 - console (UI-only deps)
+pip install -r requirements-ui.txt
+streamlit run ui/app.py -- --api-base http://localhost:8000
+```
+
+Walkthrough: open **Query Studio**, enter a question with `top_k=3`, and the answer,
+retrieved docs + scores, per-stage latency, cost, failure tags and the redacted trace are
+shown. Open **Traces** with the returned `request_id` to see the same trace the server logs;
+**Governance & Cost** shows the spend window and metrics; **Compare (what-if)** rebuilds the
+pipeline with overrides when `api.allow_rebuild=true`. API failures render as the failure
+taxonomy (`failure_type` + `failure_tags`), not stack traces.
 
 ## Configuration
 

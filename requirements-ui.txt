@@ -1,0 +1,4 @@
+# UI-only dependencies for the Streamlit console (issue #40).
+# Kept separate from requirements.txt so the backend stays lean.
+streamlit>=1.30
+requests>=2.31
