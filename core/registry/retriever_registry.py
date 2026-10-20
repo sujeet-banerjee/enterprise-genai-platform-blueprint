@@ -38,6 +38,7 @@ class RetrieverRegistry:
         self.register("simple", self._build_simple)
         self.register("dummy", self._build_dummy)
         self.register("kg", self._build_kg)
+        self.register("hybrid", self._build_hybrid)
 
     @staticmethod
     def _build_faiss(
@@ -109,6 +110,30 @@ class RetrieverRegistry:
             graph_path=graph_path,
             expansion_hops=expansion_hops,
             max_expansion=max_expansion,
+        )
+
+    @staticmethod
+    def _build_hybrid(
+        docs: DocsInput = None,
+        embedder: Any = None,
+        dimension: Optional[int] = None,
+        keyword_weight: float = 0.5,
+        vector_weight: float = 0.5,
+        k1: float = 1.5,
+        b: float = 0.75,
+        **_ignored: Any,
+    ) -> BaseRetriever:
+        from core.implementations.hybrid_retriever import HybridRetriever
+
+        if embedder is None:
+            raise ValueError("The 'hybrid' retriever requires an embedder.")
+        return HybridRetriever(
+            docs=docs,
+            embedder=embedder,
+            keyword_weight=keyword_weight,
+            vector_weight=vector_weight,
+            k1=k1,
+            b=b,
         )
 
     def register(self, provider_name: str, factory: Callable[..., BaseRetriever]) -> None:

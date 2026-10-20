@@ -128,8 +128,18 @@ class RAGPipeline:
             scores.append(score_val)
         return docs, scores
 
-    def _retrieve_for_embedding(self, embedding, top_k: int) -> list:
-        """Run a single retrieval pass, tolerating retrievers without 'top_k'."""
+    def _retrieve_for_embedding(self, embedding, top_k: int, query: Optional[str] = None) -> list:
+        """Run a single retrieval pass, tolerating retrievers without 'top_k'.
+
+        Retrievers that need the raw query text (e.g. the hybrid keyword+vector
+        retriever, issue #25) expose ``retrieve_with_query``; others only see the
+        embedding. Pure-vector retrievers are unaffected.
+        """
+        if query is not None and hasattr(self.retriever, "retrieve_with_query"):
+            try:
+                return self.retriever.retrieve_with_query(query, embedding, top_k=top_k)
+            except TypeError:
+                return self.retriever.retrieve_with_query(query, embedding)
         if hasattr(self.retriever, "retrieve_with_scores"):
             try:
                 return self.retriever.retrieve_with_scores(embedding, top_k=top_k)
@@ -177,7 +187,7 @@ class RAGPipeline:
         """
         if self.query_expander is None:
             embedding = self.embedder.embed(query)
-            raw = self._retrieve_for_embedding(embedding, top_k)
+            raw = self._retrieve_for_embedding(embedding, top_k, query)
             docs, scores = self._extract_docs_and_scores(raw)
             return docs, scores, [query], False
 
@@ -192,7 +202,7 @@ class RAGPipeline:
         all_scores: List[float] = []
         for variant in variants:
             embedding = self.embedder.embed(variant)
-            raw = self._retrieve_for_embedding(embedding, top_k)
+            raw = self._retrieve_for_embedding(embedding, top_k, variant)
             docs, scores = self._extract_docs_and_scores(raw)
             all_docs.extend(docs)
             all_scores.extend(scores)
@@ -297,7 +307,7 @@ class RAGPipeline:
         try:
             with tracker.measure_stage("retrieval"):
                 if self.query_expander is None:
-                    raw_retrieved = self._retrieve_for_embedding(embedding, effective_top_k)
+                    raw_retrieved = self._retrieve_for_embedding(embedding, effective_top_k, query)
                     docs, initial_scores = self._extract_docs_and_scores(raw_retrieved)
                     queries_used = [query]
                     expanded = False

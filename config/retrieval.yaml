@@ -17,6 +17,11 @@ retrieval:
       provider: kg
       graph_path: data/knowledge_graph.json
       expansion_hops: 1
+    hybrid:
+      provider: hybrid
+      documents_path: data/docs.json
+      keyword_weight: 0.5
+      vector_weight: 0.5
 
 evaluation:
   enabled: true
