@@ -90,6 +90,21 @@ curl -X 'POST' \
 }'
 ```
 
+Example evaluation request (runs the active evaluator on a query/response; `retrieved_docs`
+is optional and auto-retrieved from the live pipeline when omitted):
+```bash
+curl -X 'POST' \
+  'http://localhost:8010/v1/evaluate' \
+  -H 'accept: */*' \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "query": "What is AI?",
+  "response": "AI is the simulation of human intelligence by machines.",
+  "ground_truth": "Artificial intelligence is intelligence demonstrated by machines.",
+  "top_k": 3
+}'
+```
+
 ## API
 
 The FastAPI app is created by `app/main.py::create_app()`; the pipeline is built in
