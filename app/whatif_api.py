@@ -201,6 +201,12 @@ def register_whatif_routes(
     @application.post("/v1/pipeline:rebuild", response_model=RebuildResponse)
     def rebuild_endpoint(request: Request, payload: RebuildRequest):
         request_id = getattr(request.state, "request_id", None) or str(uuid.uuid4())
+        audit = getattr(request.app.state, "audit", None)
+
+        def _emit(outcome: str, action: str, details: dict) -> None:
+            if audit is not None and getattr(audit, "enabled", False):
+                audit.record("config", action, outcome, details=details, request_id=request_id)
+
         service = getattr(request.app.state, "rebuild", None)
         if service is None:
             return JSONResponse(
@@ -223,6 +229,7 @@ def register_whatif_routes(
         try:
             result = service.rebuild(payload, _swap)
         except RebuildNotAllowedError as exc:
+            _emit("denied", "pipeline_rebuild", {"reason": "rebuild_disabled"})
             return JSONResponse(
                 status_code=403,
                 content=error_envelope(
@@ -230,6 +237,11 @@ def register_whatif_routes(
                 ),
             )
         except GovernanceOverrideError as exc:
+            _emit(
+                "denied",
+                "pipeline_rebuild",
+                {"reason": "governance_override_requires_opt_in"},
+            )
             return JSONResponse(
                 status_code=400,
                 content=error_envelope(
@@ -240,6 +252,7 @@ def register_whatif_routes(
                 ),
             )
         except RebuildValidationError as exc:
+            _emit("failure", "pipeline_rebuild", {"reason": "invalid_rebuild_config"})
             return JSONResponse(
                 status_code=400,
                 content=error_envelope(
@@ -252,4 +265,12 @@ def register_whatif_routes(
 
         result["config_revision"] = getattr(request.app.state, "config_revision", 0)
         result["request_id"] = request_id
+        _emit(
+            "success",
+            "pipeline_rebuild",
+            {
+                "config_revision": result["config_revision"],
+                "applied_overrides": result.get("applied_overrides"),
+            },
+        )
         return RebuildResponse(**result)

@@ -1,0 +1,17 @@
+# Audit logging (issue #28).
+#
+# A structured, append-only trail of governance / policy / security decisions
+# (cost rejections, retrieval-policy actions, pipeline rebuilds, redaction
+# events). Disabled by default. When enabled, events are held in a bounded
+# in-memory ring and, if ``path`` is set, appended as JSONL for durability.
+#
+# Every payload is redacted through the observability redactor before storage,
+# so the audit trail never contains secrets.
+enabled: false
+
+# JSONL destination. Relative paths resolve against the process working
+# directory. Leave unset for an in-memory-only trail.
+path: ""
+
+# Bounded in-memory ring size (backs GET /v1/audit).
+max_entries: 1000

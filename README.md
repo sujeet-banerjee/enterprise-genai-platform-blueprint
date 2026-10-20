@@ -121,6 +121,7 @@ the lifespan startup hook (not at import). Endpoints:
 - `POST /v1/experiments` / `GET /v1/experiments/{id}` - launch and poll experiments
 - `POST /v1/pipeline:rebuild` - runtime component swap via config overrides (gated by `api.allow_rebuild`)
 - `GET /v1/governance/status`, `GET /v1/traces/{request_id}`, `GET /v1/metrics` - governance & observability
+- `GET /v1/audit` - read the redacted append-only audit trail (`event_type`/`limit` filters)
 - Interactive docs at `/docs`
 
 Every response carries `request_id`, `error`, `failure_type` and `failure_tags`, and the
@@ -251,6 +252,7 @@ All behaviour is driven by YAML in config/:
 - config/observability.yaml - logging, redaction toggle and sensitive patterns
 - config/prompt_config.yaml - prompt profiles
 - config/api.yaml - API key stub, rebuild gate, batch/store limits (all disabled/lean by default)
+- config/audit.yaml - append-only audit trail (disabled by default; optional JSONL `path`)
 
 The composition root (`app/main.py::build_pipeline()`) reads these configs and wires
 components via registries:
@@ -384,6 +386,18 @@ Identical `(query, top_k)` pairs are then served from an in-process LRU cache
 (scoped to the active model/retriever/embedder so a rebuild never returns stale
 answers). Cache hits skip embedding, retrieval and generation, and surface
 `cache_hit: true` in the result and its `observability` block.
+
+**Enable the audit trail** - edit `config/audit.yaml`:
+
+```yaml
+enabled: true
+path: "audit.jsonl"   # optional JSONL output; empty = in-memory only
+max_entries: 1000
+```
+
+When enabled, governance denials, retrieval-policy degradation and pipeline
+rebuilds are appended to a structured, append-only trail (redacted via the
+observability redactor) and exposed at `GET /v1/audit`. Off by default.
 
 **Toggle governed retrieval / cost caps** - edit `config/governance.yaml`:
 

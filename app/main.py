@@ -8,6 +8,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
+from app.audit_api import register_audit_routes
 from app.evaluation_api import EvaluationService, register_evaluation_routes
 from app.introspection import IntrospectionService
 from app.ops_api import RunHistory, register_ops_routes
@@ -27,6 +28,7 @@ from core.registry.model_registry import ModelRegistry
 from core.registry.query_expander_registry import QueryExpanderRegistry
 from core.registry.reranker_registry import RerankerRegistry
 from core.registry.retriever_registry import RetrieverRegistry
+from core.services.audit_log import AuditLogger
 from core.services.cost_governor import CostGovernor
 from core.services.cost_tracker import CostTracker
 from core.services.failure_classifier import FailureType
@@ -41,6 +43,7 @@ RETRIEVAL_CONFIG_PATH = BASE_DIR / "config" / "retrieval.yaml"
 GOVERNANCE_CONFIG_PATH = BASE_DIR / "config" / "governance.yaml"
 OBSERVABILITY_CONFIG_PATH = BASE_DIR / "config" / "observability.yaml"
 API_CONFIG_PATH = BASE_DIR / "config" / "api.yaml"
+AUDIT_CONFIG_PATH = BASE_DIR / "config" / "audit.yaml"
 
 # Endpoints that never require an API key (liveness/readiness + OpenAPI docs).
 _PUBLIC_PATHS = {"/health", "/ready", "/docs", "/redoc", "/openapi.json"}
@@ -238,6 +241,7 @@ def create_app(
     governance_config_path: Path = GOVERNANCE_CONFIG_PATH,
     observability_config_path: Path = OBSERVABILITY_CONFIG_PATH,
     api_config_path: Path = API_CONFIG_PATH,
+    audit_config_path: Path = AUDIT_CONFIG_PATH,
     pipeline_builder: Callable[..., RAGPipeline] = build_pipeline,
 ) -> FastAPI:
     """
@@ -282,6 +286,16 @@ def create_app(
             max_traces=int(api_config.get("trace_store_max", 500)),
             observability_config_path=observability_config_path,
         )
+        # Audit log (issue #28): structured, append-only, off by default. It
+        # reuses the history redactor so the trail never stores secrets.
+        audit_config = _load_config(audit_config_path) or {}
+        application.state.audit = AuditLogger.from_config(
+            audit_config, redactor=application.state.history.redactor
+        )
+        audit_logger = application.state.audit
+        audit_logger.record(
+            "config", "startup", "success", details={"config_revision": 0}
+        )
         application.state.config_revision = 0
         application.state.rebuild = PipelineRebuildService(
             pipeline_builder=pipeline_builder,
@@ -306,6 +320,9 @@ def create_app(
             rebuild_service = getattr(application.state, "rebuild", None)
             if rebuild_service is not None:
                 rebuild_service.cleanup()
+            audit_logger = getattr(application.state, "audit", None)
+            if audit_logger is not None:
+                audit_logger.close()
 
     application = FastAPI(
         title="Enterprise GenAI RAG Platform",
@@ -338,6 +355,33 @@ def create_app(
         response = await call_next(request)
         response.headers["X-Request-ID"] = request_id
         return response
+
+    def _record_query_audit(request: Request, request_id: str, result: dict) -> None:
+        """Emit governance/policy audit events for a completed query (issue #28).
+
+        Cost-governance rejections and retrieval-policy degradation are recorded
+        with their failure taxonomy; successful governance-neutral queries are
+        not, to keep the trail focused on decisions rather than every request.
+        """
+        audit = getattr(request.app.state, "audit", None)
+        if audit is None or not getattr(audit, "enabled", False):
+            return
+        failure_type = result.get("failure_type")
+        failure_tags = list(result.get("failure_tags") or [])
+        if not failure_type and not failure_tags:
+            return
+        cost = result.get("cost") or {}
+        audit.record(
+            "governance",
+            "cost_check",
+            "denied" if failure_type else "degraded",
+            details={
+                "failure_type": failure_type,
+                "failure_tags": failure_tags,
+                "cost_usd": float(cost.get("estimated_cost_usd") or 0.0),
+            },
+            request_id=request_id,
+        )
 
     def _execute_query(
         request: Request,
@@ -374,6 +418,8 @@ def create_app(
         history = getattr(request.app.state, "history", None)
         if history is not None:
             history.record(request_id, result)
+
+        _record_query_audit(request, request_id, result)
 
         payload_dict = dict(result)
         payload_dict.setdefault("error", None)
@@ -570,6 +616,7 @@ def create_app(
     register_evaluation_routes(application, _error_envelope)
     register_whatif_routes(application, _error_envelope)
     register_ops_routes(application, _error_envelope)
+    register_audit_routes(application, _error_envelope)
 
     return application
 

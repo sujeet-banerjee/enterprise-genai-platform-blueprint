@@ -212,3 +212,11 @@ class MetricsResponse(BaseModel):
     failures_by_tag: Dict[str, int] = {}
     cost: Dict[str, Any] = {}
     request_id: Optional[str] = None
+
+
+class AuditEventsResponse(BaseModel):
+    enabled: bool = False
+    count: int = 0
+    total: int = 0
+    events: List[Dict[str, Any]] = []
+    request_id: Optional[str] = None

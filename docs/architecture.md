@@ -460,6 +460,9 @@ This is what makes the "add a component, change config, done" workflow possible.
 | `cache.enabled` | composition root → `ResponseCache` | Enables exact-match response cache (roadmap #26; default off) |
 | `cache.max_entries` | `ResponseCache` | LRU bound on cached responses |
 | `cache.ttl_seconds` | `ResponseCache` | Per-entry time-to-live |
+| `audit.enabled` | composition root → `AuditLogger` | Enables append-only audit trail (roadmap #28; default off) |
+| `audit.path` | `AuditLogger` | JSONL destination for durable audit records |
+| `audit.max_entries` | `AuditLogger` | Bounded in-memory ring size (backing `GET /v1/audit`) |
 
 Each concern has its own file (like `models.yaml` / `prompt_config.yaml`); the
 composition root loads them by explicit path. Legacy deployments that still
