@@ -16,3 +16,7 @@ allow_rebuild: false
 # Set these to 0 to disable recording; persistence is out of scope (issue #28).
 history_max_runs: 1000
 trace_store_max: 500
+
+# Maximum number of queries accepted by POST /v1/query:batch (issue #39).
+# Batches beyond this cap are rejected with a 400 standard envelope.
+max_batch_size: 25

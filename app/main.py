@@ -170,6 +170,18 @@ class QueryRequest(BaseModel):
     )
 
 
+class BatchQueryRequest(BaseModel):
+    queries: list[str] = Field(
+        ...,
+        min_length=1,
+        description="Queries to run sequentially through the RAG pipeline.",
+    )
+    top_k: Optional[int] = Field(None, ge=1, description="Override the number of retrieved documents.")
+    include_trace: bool = Field(
+        True, description="Include the redacted observability trace in each result."
+    )
+
+
 def _error_envelope(
     error: str,
     failure_type: Optional[str],
@@ -205,6 +217,7 @@ def create_app(
     require_api_key = bool(api_config.get("require_api_key", False))
     expected_api_key = str(api_config.get("api_key") or "")
     allow_rebuild = bool(api_config.get("allow_rebuild", False))
+    max_batch_size = int(api_config.get("max_batch_size", 25))
 
     @asynccontextmanager
     async def lifespan(application: FastAPI):
@@ -290,15 +303,22 @@ def create_app(
         response.headers["X-Request-ID"] = request_id
         return response
 
-    def _run_query(request: Request, payload: QueryRequest) -> JSONResponse:
-        request_id = getattr(request.state, "request_id", None) or str(uuid.uuid4())
+    def _execute_query(
+        request: Request,
+        payload: QueryRequest,
+        request_id: Optional[str] = None,
+    ) -> tuple[dict, int]:
+        """Run one query and return (result envelope, http status).
+
+        Failures never raise: the caller decides how to present the envelope so
+        a batch can keep going after an individual query fails (issue #39).
+        """
+        request_id = request_id or getattr(request.state, "request_id", None) or str(uuid.uuid4())
         pipeline = getattr(request.app.state, "pipeline", None)
         if pipeline is None:
-            return JSONResponse(
-                status_code=503,
-                content=_error_envelope(
-                    "Pipeline is not ready.", "not_ready", [], request_id
-                ),
+            return (
+                _error_envelope("Pipeline is not ready.", "not_ready", [], request_id),
+                503,
             )
         try:
             result = pipeline.run(
@@ -308,9 +328,9 @@ def create_app(
                 request_id=request_id,
             )
         except Exception as exc:  # pragma: no cover - defensive
-            return JSONResponse(
-                status_code=500,
-                content=_error_envelope(str(exc), "unknown_failure", [], request_id),
+            return (
+                _error_envelope(str(exc), "unknown_failure", [], request_id),
+                500,
             )
 
         history = getattr(request.app.state, "history", None)
@@ -325,11 +345,14 @@ def create_app(
             payload_dict.pop("observability", None)
 
         if payload_dict.get("error"):
-            status_code = 500
-            if payload_dict.get("failure_type") == "cost_limit_exceeded":
-                status_code = 402
-            return JSONResponse(status_code=status_code, content=payload_dict)
-        return JSONResponse(status_code=200, content=payload_dict)
+            status_code = 402 if payload_dict.get("failure_type") == "cost_limit_exceeded" else 500
+            return payload_dict, status_code
+        return payload_dict, 200
+
+    def _run_query(request: Request, payload: QueryRequest) -> JSONResponse:
+        request_id = getattr(request.state, "request_id", None) or str(uuid.uuid4())
+        body, status_code = _execute_query(request, payload, request_id)
+        return JSONResponse(status_code=status_code, content=body)
 
     @application.get("/health")
     def health():
@@ -356,6 +379,72 @@ def create_app(
     @application.post("/query")
     def query_legacy(request: Request, payload: QueryRequest):
         return _run_query(request, payload)
+
+    @application.post("/v1/query:batch")
+    def query_batch(request: Request, payload: BatchQueryRequest):
+        base_request_id = getattr(request.state, "request_id", None) or str(uuid.uuid4())
+
+        if len(payload.queries) > max_batch_size:
+            return JSONResponse(
+                status_code=400,
+                content=_error_envelope(
+                    f"Batch size {len(payload.queries)} exceeds max_batch_size {max_batch_size}.",
+                    "batch_too_large",
+                    ["batch_too_large"],
+                    base_request_id,
+                ),
+            )
+
+        pipeline = getattr(request.app.state, "pipeline", None)
+        if pipeline is None:
+            return JSONResponse(
+                status_code=503,
+                content=_error_envelope(
+                    "Pipeline is not ready.", "not_ready", [], base_request_id
+                ),
+            )
+
+        results = []
+        for index, query in enumerate(payload.queries):
+            item_request = QueryRequest(
+                query=query, top_k=payload.top_k, include_trace=payload.include_trace
+            )
+            body, _status = _execute_query(
+                request, item_request, f"{base_request_id}-{index}"
+            )
+            results.append(body)
+
+        succeeded = sum(1 for item in results if not item.get("error"))
+        by_failure_type: dict = {}
+        for item in results:
+            failure_type = item.get("failure_type")
+            if failure_type:
+                by_failure_type[failure_type] = by_failure_type.get(failure_type, 0) + 1
+
+        total_cost = sum(
+            float((item.get("cost") or {}).get("estimated_cost_usd") or 0.0)
+            for item in results
+        )
+        total_latency = sum(
+            float((item.get("latency") or {}).get("total_ms") or 0.0)
+            for item in results
+        )
+
+        return JSONResponse(
+            status_code=200,
+            content={
+                "results": results,
+                "summary": {
+                    "batch_size": len(results),
+                    "succeeded": succeeded,
+                    "failed": len(results) - succeeded,
+                    "by_failure_type": by_failure_type,
+                    "total_cost_usd": round(total_cost, 6),
+                    "total_latency_ms": round(total_latency, 4),
+                },
+                "request_id": base_request_id,
+            },
+        )
 
     def _introspection(request: Request):
         service = getattr(request.app.state, "introspect", None)
