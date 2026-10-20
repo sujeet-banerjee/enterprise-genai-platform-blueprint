@@ -4,7 +4,7 @@ import numpy as np
 
 from core.implementations.simple_embedder import SimpleEmbedder
 from core.interfaces.embedder import BaseEmbedder
-from core.interfaces.evaluator import BaseEvaluator
+from core.interfaces.evaluator import BaseEvaluator, normalize_references
 from core.interfaces.retriever import Document
 
 
@@ -17,16 +17,6 @@ def _cosine(a: List[float], b: List[float]) -> float:
         return 0.0
     return float(np.dot(vec_a, vec_b) / (norm_a * norm_b))
 
-
-def _normalize_references(ground_truth: Optional[Union[str, List[str]]]) -> List[str]:
-    """Coerce the ground-truth argument into a list of non-empty references."""
-    if ground_truth is None:
-        return []
-    if isinstance(ground_truth, str):
-        candidates = [ground_truth]
-    else:
-        candidates = list(ground_truth)
-    return [reference for reference in candidates if isinstance(reference, str) and reference.strip()]
 
 
 
@@ -110,7 +100,7 @@ class SemanticEvaluator(BaseEvaluator):
     ) -> Dict[str, float]:
         metrics = self.evaluate(query=query, retrieved_docs=retrieved_docs, response=response)
 
-        references = _normalize_references(ground_truth)
+        references = normalize_references(ground_truth)
         if not references:
             return metrics
 

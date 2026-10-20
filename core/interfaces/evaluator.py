@@ -4,6 +4,23 @@ from typing import Dict, List, Optional, Union
 from core.interfaces.retriever import Document
 
 
+def normalize_references(
+    ground_truth: Optional[Union[str, List[str]]],
+) -> List[str]:
+    """Coerce the ground-truth argument into a list of non-empty references."""
+    if ground_truth is None:
+        return []
+    if isinstance(ground_truth, str):
+        candidates: List[str] = [ground_truth]
+    else:
+        candidates = list(ground_truth)
+    return [
+        reference
+        for reference in candidates
+        if isinstance(reference, str) and reference.strip()
+    ]
+
+
 class BaseEvaluator(ABC):
     """
     Contract for response evaluation.

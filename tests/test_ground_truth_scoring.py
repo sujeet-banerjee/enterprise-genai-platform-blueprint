@@ -17,8 +17,10 @@ from fastapi.testclient import TestClient
 
 from app.main import create_app
 from core.implementations.dummy_evaluator import DummyEvaluator
+from core.implementations.llm_judge_evaluator import LLMJudgeEvaluator
 from core.implementations.semantic_evaluator import SemanticEvaluator
 from core.interfaces.evaluator import BaseEvaluator
+from core.interfaces.llm import BaseLLM
 from core.interfaces.retriever import Document
 
 REPO_BASE = Path(__file__).resolve().parents[1]
@@ -199,3 +201,75 @@ def test_api_reports_ground_truth_unused_for_dummy(tmp_path):
     assert body["ground_truth_used"] is False
     assert body["ground_truth"] == GT_MATCH
     assert "answer_correctness" not in body["metrics"]
+
+
+# -- llm_judge ground truth (deterministic stub LLM) -----------------------
+
+
+class _PromptAwareLLM(BaseLLM):
+    """Stub judge returning a different score for the reference-grading prompt."""
+
+    def __init__(self, relevance: int, correctness: int):
+        self._relevance = relevance
+        self._correctness = correctness
+        self.last_prompt = ""
+
+    def generate(self, prompt, config=None):
+        self.last_prompt = prompt
+        if "REFERENCE:" in prompt:
+            return f"SCORE: {self._correctness}"
+        return f"SCORE: {self._relevance}"
+
+    @property
+    def context_window(self) -> int:
+        return 4096
+
+    @property
+    def model_name(self) -> str:
+        return "prompt-aware-llm"
+
+
+def test_llm_judge_declares_ground_truth_support():
+    assert LLMJudgeEvaluator(llm=_PromptAwareLLM(5, 8)).supports_ground_truth is True
+
+
+def test_llm_judge_ground_truth_adds_judged_correctness():
+    evaluator = LLMJudgeEvaluator(llm=_PromptAwareLLM(relevance=5, correctness=8))
+    metrics = evaluator.evaluate_with_ground_truth(
+        query=QUERY,
+        retrieved_docs=[Document(content=DOCS[0])],
+        response=ANSWER,
+        ground_truth=GT_MATCH,
+    )
+    assert metrics["llm_judge_score"] == 0.5
+    assert metrics["answer_relevance"] == 0.5
+    assert metrics["answer_correctness"] == 0.8
+
+
+def test_llm_judge_multiple_references_use_best_match(monkeypatch):
+    evaluator = LLMJudgeEvaluator(llm=_PromptAwareLLM(relevance=5, correctness=3))
+    scores = iter([0.2, 0.9])
+
+    def fake_reference_judge(query, reference, answer):
+        return next(scores)
+
+    monkeypatch.setattr(evaluator, "_judge_against_reference", fake_reference_judge)
+    metrics = evaluator.evaluate_with_ground_truth(
+        query=QUERY,
+        retrieved_docs=[Document(content=DOCS[0])],
+        response=ANSWER,
+        ground_truth=[GT_OTHER, GT_MATCH],
+    )
+    assert metrics["answer_correctness"] == 0.9
+
+
+def test_llm_judge_missing_ground_truth_returns_base_metrics():
+    evaluator = LLMJudgeEvaluator(llm=_PromptAwareLLM(relevance=5, correctness=8))
+    docs = [Document(content=DOCS[0])]
+    base = evaluator.evaluate(query=QUERY, retrieved_docs=docs, response=ANSWER)
+    for reference in (None, "", []):
+        metrics = evaluator.evaluate_with_ground_truth(
+            query=QUERY, retrieved_docs=docs, response=ANSWER, ground_truth=reference
+        )
+        assert metrics == base
+        assert "answer_correctness" not in metrics
