@@ -7,6 +7,9 @@ from core.services.token_budget_service import TokenBudgetExceededError
 class FailureType(str, Enum):
     """
     Taxonomy of failure classifications across the RAG pipeline.
+
+    Also the single source of truth for API error envelopes (issue #41): every
+    ``failure_type`` string in an API response must be a member of this enum.
     """
     EMBEDDING_FAILURE = "embedding_failure"
     DIMENSION_MISMATCH = "dimension_mismatch"
@@ -21,6 +24,12 @@ class FailureType(str, Enum):
     LLM_FAILURE = "llm_failure"
     EVALUATION_FAILURE = "evaluation_failure"
     UNKNOWN_FAILURE = "unknown_failure"
+    # API-level failure categories (group A): readiness/auth/batch-cap. These
+    # are API responses rather than pipeline stage failures, but they live in
+    # the same taxonomy so envelopes never invent ad-hoc strings.
+    NOT_READY = "not_ready"
+    UNAUTHORIZED = "unauthorized"
+    BATCH_TOO_LARGE = "batch_too_large"
 
 
 class FailureClassifier:

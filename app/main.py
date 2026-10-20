@@ -28,6 +28,7 @@ from core.registry.reranker_registry import RerankerRegistry
 from core.registry.retriever_registry import RetrieverRegistry
 from core.services.cost_governor import CostGovernor
 from core.services.cost_tracker import CostTracker
+from core.services.failure_classifier import FailureType
 from core.services.prompt_builder import PromptBuilder
 from core.services.retrieval_policy_service import RetrievalPolicyService
 from core.services.token_budget_service import TokenBudgetService
@@ -292,7 +293,7 @@ def create_app(
                 status_code=401,
                 content=_error_envelope(
                     "Missing or invalid API key.",
-                    "unauthorized",
+                    FailureType.UNAUTHORIZED.value,
                     [],
                     request_id,
                 ),
@@ -317,7 +318,9 @@ def create_app(
         pipeline = getattr(request.app.state, "pipeline", None)
         if pipeline is None:
             return (
-                _error_envelope("Pipeline is not ready.", "not_ready", [], request_id),
+                _error_envelope(
+                    "Pipeline is not ready.", FailureType.NOT_READY.value, [], request_id
+                ),
                 503,
             )
         try:
@@ -389,8 +392,8 @@ def create_app(
                 status_code=400,
                 content=_error_envelope(
                     f"Batch size {len(payload.queries)} exceeds max_batch_size {max_batch_size}.",
-                    "batch_too_large",
-                    ["batch_too_large"],
+                    FailureType.BATCH_TOO_LARGE.value,
+                    [FailureType.BATCH_TOO_LARGE.value],
                     base_request_id,
                 ),
             )
@@ -400,7 +403,10 @@ def create_app(
             return JSONResponse(
                 status_code=503,
                 content=_error_envelope(
-                    "Pipeline is not ready.", "not_ready", [], base_request_id
+                    "Pipeline is not ready.",
+                    FailureType.NOT_READY.value,
+                    [],
+                    base_request_id,
                 ),
             )
 
@@ -453,7 +459,10 @@ def create_app(
             return None, JSONResponse(
                 status_code=503,
                 content=_error_envelope(
-                    "Introspection is not ready.", "not_ready", [], request_id
+                    "Introspection is not ready.",
+                    FailureType.NOT_READY.value,
+                    [],
+                    request_id,
                 ),
             )
         return service, None

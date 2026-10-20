@@ -199,7 +199,10 @@ def register_whatif_routes(
             return JSONResponse(
                 status_code=503,
                 content=error_envelope(
-                    "Rebuild service is not ready.", "not_ready", [], request_id
+                    "Rebuild service is not ready.",
+                    FailureType.NOT_READY.value,
+                    [],
+                    request_id,
                 ),
             )
 

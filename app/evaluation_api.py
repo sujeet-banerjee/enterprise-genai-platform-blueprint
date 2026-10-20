@@ -322,7 +322,10 @@ def register_evaluation_routes(
             return None, JSONResponse(
                 status_code=503,
                 content=error_envelope(
-                    "Evaluation service is not ready.", "not_ready", [], request_id
+                    "Evaluation service is not ready.",
+                    FailureType.NOT_READY.value,
+                    [],
+                    request_id,
                 ),
             )
         return service, None

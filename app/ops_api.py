@@ -198,7 +198,10 @@ def register_ops_routes(
             return None, JSONResponse(
                 status_code=503,
                 content=error_envelope(
-                    "Run history is not ready.", "not_ready", [], request_id
+                    "Run history is not ready.",
+                    FailureType.NOT_READY.value,
+                    [],
+                    request_id,
                 ),
             )
         return history, None
