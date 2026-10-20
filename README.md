@@ -10,15 +10,42 @@ See [docs/architecture.md](docs/architecture.md) for the full architecture, prin
 
 ### 1) Clone and setup
 
+Create and activate a virtual environment first (recommended). On Windows (PowerShell):
+
+```bash
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+```
+
+On macOS/Linux:
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+```
+
+Then install the project. `pip install -e .` installs the runtime dependencies (including
+`uvicorn`):
+
 ```bash
 git clone https://github.com/sujeet-banerjee/enterprise-genai-platform-blueprint
 cd enterprise-genai-platform-blueprint
 pip install -e .
 ```
 
+If you use the classic requirements flow instead, install the runtime requirements plus the
+dev tooling:
+
+```bash
+pip install -r requirements-dev.txt
+```
+
 The default config uses local HuggingFace models (Qwen2.5-0.5B + MiniLM), so no API
 keys are required. Models are downloaded to the HuggingFace cache on first run. Set a
 `HF_TOKEN` environment variable only if you need gated models.
+
+Optional extras are available via `pip install -e ".[dev]"` (pytest/ruff/mypy) and
+`pip install -e ".[ui]"` (Streamlit console).
 
 ### 2) Run tests
 
