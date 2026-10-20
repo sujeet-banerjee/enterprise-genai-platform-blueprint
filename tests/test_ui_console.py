@@ -150,6 +150,7 @@ def _tmp_configs(tmp_path: Path) -> Dict[str, Any]:
 @pytest.fixture()
 def api_client(tmp_path, monkeypatch):
     """ApiClient whose ``requests.request`` is routed into a TestClient."""
+    pytest.importorskip("requests")
     from fastapi.testclient import TestClient
 
     import ui.client as client_module
