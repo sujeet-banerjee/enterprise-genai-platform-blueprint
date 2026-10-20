@@ -51,6 +51,26 @@ reranking:
     none:
       provider: none
 
+query_expansion:
+  enabled: false
+  active_expander: synonym
+  max_variants: 3
+  expanders:
+    noop:
+      provider: noop
+    synonym:
+      provider: synonym
+      max_variants: 3
+      synonyms:
+        ai:
+          - artificial intelligence
+        ml:
+          - machine learning
+    llm:
+      provider: llm
+      max_variants: 3
+      max_new_tokens: 64
+
 chunking:
   active_strategy: small
   strategies:

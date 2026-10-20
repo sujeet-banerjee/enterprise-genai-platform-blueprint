@@ -24,6 +24,7 @@ from app.whatif_api import PipelineRebuildService, describe_pipeline, register_w
 from core.config.generation_config import GenerationConfig
 from core.registry.evaluator_registry import EvaluatorRegistry
 from core.registry.model_registry import ModelRegistry
+from core.registry.query_expander_registry import QueryExpanderRegistry
 from core.registry.reranker_registry import RerankerRegistry
 from core.registry.retriever_registry import RetrieverRegistry
 from core.services.cost_governor import CostGovernor
@@ -87,6 +88,7 @@ def build_pipeline(
     retriever_registry = RetrieverRegistry(str(retrieval_config_path))
     reranker_registry = RerankerRegistry(str(retrieval_config_path))
     evaluator_registry = EvaluatorRegistry(str(retrieval_config_path))
+    query_expander_registry = QueryExpanderRegistry(str(retrieval_config_path))
 
     retrieval_config = _load_config(retrieval_config_path)
     # Governance lives in its own file (issue #34); fall back to the legacy
@@ -100,6 +102,9 @@ def build_pipeline(
     retriever = retriever_registry.create(embedder=embedder)
     reranker = reranker_registry.create()
     evaluator = evaluator_registry.create()
+    # Query expansion is opt-in (query_expansion.enabled). The LLM provider gets
+    # the active model injected so it never loads a second copy (issue #23).
+    query_expander = query_expander_registry.create(llm=active_llm)
 
     prompt_builder = PromptBuilder(str(prompt_config_path))
     active_model_config = model_registry.get_active_model_config()
@@ -160,6 +165,7 @@ def build_pipeline(
         observability_config_path=(
             str(observability_config_path) if observability_config_path else None
         ),
+        query_expander=query_expander,
     )
 
 

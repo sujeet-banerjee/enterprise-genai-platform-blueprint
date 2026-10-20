@@ -1,6 +1,6 @@
 # Enterprise-Grade GenAI Platform Blueprint
 
-A modular, vendor-neutral, evaluation-aware GenAI platform reference implementation. Behaviour is configuration-driven - models, retrievers, rerankers, evaluators, chunking, token budgets, governance, and observability can be toggled or swapped without modifying orchestration or API code.
+A modular, vendor-neutral, evaluation-aware GenAI platform reference implementation. Behaviour is configuration-driven - models, retrievers, rerankers, evaluators, query expanders, chunking, token budgets, governance, and observability can be toggled or swapped without modifying orchestration or API code.
 
 ## Architecture
 
@@ -246,7 +246,7 @@ To run the same evaluation without the console, `POST /v1/evaluate` accepts
 All behaviour is driven by YAML in config/:
 
 - config/models.yaml - active LLM/embedding models, per-model params, provider mappings
-- config/retrieval.yaml - retriever, similarity metric, reranking, chunking strategies, token budget
+- config/retrieval.yaml - retriever, similarity metric, reranking, query expansion, chunking strategies, token budget
 - config/governance.yaml - cost/retrieval-policy governance (enabled, cost cap, safety margin)
 - config/observability.yaml - logging, redaction toggle and sensitive patterns
 - config/prompt_config.yaml - prompt profiles
@@ -259,6 +259,9 @@ components via registries:
 - `reranking.enabled` controls whether the reranking stage runs.
 - `evaluation.enabled` controls whether an evaluator is attached.
 - `chunking.active_strategy` drives `ChunkerFactory`.
+- `query_expansion.enabled` (default `false`) turns on multi-query retrieval: the
+  active expander (`synonym` or `llm`) produces query variants, each is retrieved and
+  the results are merged/de-duplicated before reranking.
 
 ## Development notes
 
@@ -353,6 +356,19 @@ retrieval:
 reranking:
   enabled: true
   active_reranker: cross_encoder
+```
+
+**Enable query expansion (multi-query retrieval)** - edit `config/retrieval.yaml`:
+
+```yaml
+query_expansion:
+  enabled: true
+  active_expander: synonym   # synonym | llm | noop
+  max_variants: 3
+  expanders:
+    synonym:
+      synonyms:
+        ai: [artificial intelligence]
 ```
 
 **Toggle governed retrieval / cost caps** - edit `config/governance.yaml`:

@@ -172,6 +172,7 @@ class RebuildComponents(BaseModel):
     retriever: Optional[str] = None
     reranker: Optional[str] = None
     evaluator: Optional[str] = None
+    query_expander: Optional[str] = None
 
 
 class RebuildResponse(BaseModel):

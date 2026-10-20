@@ -53,12 +53,19 @@ def _name(obj: Any) -> Optional[str]:
 def describe_pipeline(pipeline: Any) -> Dict[str, Optional[str]]:
     """Component summary used by ``/ready`` and the rebuild response."""
     if pipeline is None:
-        return {"llm": None, "retriever": None, "reranker": None, "evaluator": None}
+        return {
+            "llm": None,
+            "retriever": None,
+            "reranker": None,
+            "evaluator": None,
+            "query_expander": None,
+        }
     return {
         "llm": _name(getattr(pipeline, "llm", None)),
         "retriever": _name(getattr(pipeline, "retriever", None)),
         "reranker": _name(getattr(pipeline, "reranker", None)),
         "evaluator": _name(getattr(pipeline, "evaluator", None)),
+        "query_expander": _name(getattr(pipeline, "query_expander", None)),
     }
 
 

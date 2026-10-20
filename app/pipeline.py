@@ -31,6 +31,7 @@ class RAGPipeline:
         retrieval_policy_service: Optional[Any] = None,
         governance_config_path: Optional[str] = None,
         observability_config_path: Optional[str] = None,
+        query_expander: Optional[Any] = None,
     ):
         self.embedder = embedder
         self.prompt_builder = prompt_builder
@@ -44,6 +45,7 @@ class RAGPipeline:
         self.raise_on_failure = raise_on_failure
         self.cost_governor = cost_governor
         self.retrieval_policy_service = retrieval_policy_service
+        self.query_expander = query_expander
         self.config_path = config_path or str(
             Path(__file__).resolve().parent.parent / "config" / "retrieval.yaml"
         )
@@ -125,6 +127,78 @@ class RAGPipeline:
             docs.append(doc_obj)
             scores.append(score_val)
         return docs, scores
+
+    def _retrieve_for_embedding(self, embedding, top_k: int) -> list:
+        """Run a single retrieval pass, tolerating retrievers without 'top_k'."""
+        if hasattr(self.retriever, "retrieve_with_scores"):
+            try:
+                return self.retriever.retrieve_with_scores(embedding, top_k=top_k)
+            except TypeError:
+                return self.retriever.retrieve_with_scores(embedding)
+        try:
+            return self.retriever.retrieve(embedding, top_k=top_k)
+        except TypeError:
+            return self.retriever.retrieve(embedding)
+
+    @staticmethod
+    def _merge_documents(docs: List[Document], scores: List[float]) -> tuple[List[Document], List[float]]:
+        """Merge documents across query variants, de-duplicating by id/content.
+
+        The highest-scoring occurrence wins and results stay ordered by descending
+        score so downstream stages (reranking, token budget) see a sensible order.
+        """
+        best: Dict[Any, tuple] = {}
+        order: List[Any] = []
+        for idx, doc in enumerate(docs):
+            score = scores[idx] if idx < len(scores) else 0.0
+            metadata = getattr(doc, "metadata", None) or {}
+            key = metadata.get("doc_id") if isinstance(metadata, dict) else None
+            if key is None:
+                key = ("content", doc.content)
+            if key not in best:
+                best[key] = (doc, score)
+                order.append(key)
+            elif float(score) > float(best[key][1]):
+                best[key] = (doc, score)
+
+        merged = [best[key] for key in order]
+        merged.sort(key=lambda pair: float(pair[1]), reverse=True)
+        merged_docs = [pair[0] for pair in merged]
+        merged_scores = [float(pair[1]) for pair in merged]
+        for doc, score in zip(merged_docs, merged_scores):
+            doc.score = score
+        return merged_docs, merged_scores
+
+    def _retrieve_expanded(self, query: str, top_k: int) -> tuple[List[Document], List[float], List[str], bool]:
+        """Retrieve over the raw query, expanding into variants when configured.
+
+        Returns (docs, scores, queries_used, expanded). Each variant is embedded
+        and retrieved independently; results are merged and de-duplicated.
+        """
+        if self.query_expander is None:
+            embedding = self.embedder.embed(query)
+            raw = self._retrieve_for_embedding(embedding, top_k)
+            docs, scores = self._extract_docs_and_scores(raw)
+            return docs, scores, [query], False
+
+        try:
+            variants = list(self.query_expander.expand(query) or [query])
+        except Exception:
+            variants = [query]
+        if not variants:
+            variants = [query]
+
+        all_docs: List[Document] = []
+        all_scores: List[float] = []
+        for variant in variants:
+            embedding = self.embedder.embed(variant)
+            raw = self._retrieve_for_embedding(embedding, top_k)
+            docs, scores = self._extract_docs_and_scores(raw)
+            all_docs.extend(docs)
+            all_scores.extend(scores)
+
+        merged_docs, merged_scores = self._merge_documents(all_docs, all_scores)
+        return merged_docs, merged_scores, variants, len(variants) > 1
 
     def _record_and_handle_stage_error(
         self,
@@ -219,21 +293,19 @@ class RAGPipeline:
                 "embedding", exc, tracker, query, effective_top_k, should_raise
             )
 
-        # 2. Retrieval stage
+        # 2. Retrieval stage (multi-query expansion when configured, else verbatim)
         try:
             with tracker.measure_stage("retrieval"):
-                if hasattr(self.retriever, "retrieve_with_scores"):
-                    try:
-                        raw_retrieved = self.retriever.retrieve_with_scores(embedding, top_k=effective_top_k)
-                    except TypeError:
-                        raw_retrieved = self.retriever.retrieve_with_scores(embedding)
+                if self.query_expander is None:
+                    raw_retrieved = self._retrieve_for_embedding(embedding, effective_top_k)
+                    docs, initial_scores = self._extract_docs_and_scores(raw_retrieved)
+                    queries_used = [query]
+                    expanded = False
                 else:
-                    try:
-                        raw_retrieved = self.retriever.retrieve(embedding, top_k=effective_top_k)
-                    except TypeError:
-                        raw_retrieved = self.retriever.retrieve(embedding)
+                    docs, initial_scores, queries_used, expanded = self._retrieve_expanded(
+                        query, effective_top_k
+                    )
 
-                docs, initial_scores = self._extract_docs_and_scores(raw_retrieved)
                 initial_docs_summary = tracker.summarize_documents(docs)
 
                 quality_tags = FailureClassifier.classify_retrieval_quality(
@@ -360,6 +432,8 @@ class RAGPipeline:
             "embedding_dimension": self.embedder.dimension,
             "retriever": self.retriever.__class__.__name__,
             "top_k": effective_top_k,
+            "query_expansion_enabled": expanded,
+            "expanded_queries": queries_used,
             "initial_retrieved_documents": initial_docs_summary,
             "initial_retrieval_scores": initial_scores,
             "reranker": getattr(self.reranker, "reranker_name", self.reranker.__class__.__name__)

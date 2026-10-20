@@ -85,6 +85,7 @@ def _retrieval_config(
     active_evaluator: str = "dummy",
     active_reranker: str | None = None,
     rerankers: dict | None = None,
+    query_expansion: dict | None = None,
 ) -> str:
     retrieval: dict = {
         "default_retriever": default_retriever,
@@ -105,25 +106,26 @@ def _retrieval_config(
             "model_name": "sentence-transformers/all-MiniLM-L6-v2",
         }
 
-    return _write_yaml(
-        tmp_path / "retrieval.yaml",
-        {
-            "retrieval": retrieval,
-            "governance": {
-                "enabled": True,
-                "max_cost_per_request_usd": 0.05,
-                "safety_margin_tokens": 200,
-            },
-            "evaluation": {
-                "enabled": evaluation_enabled,
-                "active_evaluator": active_evaluator,
-                "evaluators": evaluators,
-            },
-            "reranking": reranking,
-            "token_budget": {"default_mode": "strict", "max_output_cap": 512},
-            "observability": {"low_retrieval_score_threshold": 0.25},
+    config: dict = {
+        "retrieval": retrieval,
+        "governance": {
+            "enabled": True,
+            "max_cost_per_request_usd": 0.05,
+            "safety_margin_tokens": 200,
         },
-    )
+        "evaluation": {
+            "enabled": evaluation_enabled,
+            "active_evaluator": active_evaluator,
+            "evaluators": evaluators,
+        },
+        "reranking": reranking,
+        "token_budget": {"default_mode": "strict", "max_output_cap": 512},
+        "observability": {"low_retrieval_score_threshold": 0.25},
+    }
+    if query_expansion is not None:
+        config["query_expansion"] = query_expansion
+
+    return _write_yaml(tmp_path / "retrieval.yaml", config)
 
 
 def _genuine_retrieval_config(tmp_path: Path, docs_path: str) -> str:
@@ -281,6 +283,39 @@ def test_evaluation_disabled_yields_null_evaluator(tmp_path):
     )
 
     assert type(pipeline.evaluator).__name__ == "NullEvaluator"
+
+
+def test_query_expansion_off_by_default(tmp_path):
+    pipeline = build_pipeline(
+        models_config_path=Path(_models_config(tmp_path)),
+        retrieval_config_path=Path(_retrieval_config(tmp_path)),
+    )
+    assert pipeline.query_expander is None
+
+
+def test_query_expansion_selected_from_config(tmp_path):
+    pipeline = build_pipeline(
+        models_config_path=Path(_models_config(tmp_path)),
+        retrieval_config_path=Path(
+            _retrieval_config(
+                tmp_path,
+                query_expansion={
+                    "enabled": True,
+                    "active_expander": "synonym",
+                    "max_variants": 2,
+                    "expanders": {
+                        "synonym": {
+                            "provider": "synonym",
+                            "synonyms": {"ai": ["artificial intelligence"]},
+                        }
+                    },
+                },
+            )
+        ),
+    )
+    assert type(pipeline.query_expander).__name__ == "SynonymQueryExpander"
+    result = pipeline.run("What is ai?")
+    assert result["observability"]["query_expansion_enabled"] is True
 
 
 def test_genuine_components_resolve_from_config(tmp_path):

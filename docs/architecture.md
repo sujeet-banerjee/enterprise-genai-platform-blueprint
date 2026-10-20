@@ -260,7 +260,9 @@ sequenceDiagram
 Prompt Construction → LLM Generation → Evaluation → Cost computation → Cost governance.
 
 Note: Reranking is skipped when no reranker is supplied; Evaluation is skipped (empty metrics)
-when the evaluator is a no-op/`NullEvaluator`.
+when the evaluator is a no-op/`NullEvaluator`. When a query expander is configured
+(`query_expansion.enabled`), the Retrieval stage embeds and retrieves over each query variant and
+merges the results (de-duplicated, highest score wins) before Reranking (roadmap #23).
 
 ---
 
@@ -363,6 +365,8 @@ implementation classes:
 * Retriever: `RetrieverRegistry.create()` reads `retrieval.default_retriever` + options.
 * Evaluator: `EvaluatorRegistry.create()` reads `evaluation.enabled` + `evaluation.active_evaluator`.
 * Reranker/Chunker: resolved from `reranking.*` and `chunking.*` respectively.
+* Query expander: `QueryExpanderRegistry.create()` reads `query_expansion.enabled` +
+  `query_expansion.active_expander` (roadmap #23).
 
 > **Roadmap note (tracked):** Historically `app/main.py` constructed concrete classes directly
 > (e.g. `DummyEmbedder()`, `DummyRetriever()`, `SimpleReranker(...)`). This is being migrated to
@@ -377,11 +381,13 @@ flowchart TD
     CR --> RR[RetrieverRegistry]
     CR --> ER[EvaluatorRegistry]
     CR --> CF[ChunkerFactory]
+    CR --> QX[QueryExpanderRegistry]
     MR --> |active_embedding_model| Emb[BaseEmbedder]
     MR --> |active_model| LLMp[BaseLLM]
     RR --> |default_retriever + similarity_metric| Ret[BaseRetriever]
     ER --> |evaluation.enabled/active_evaluator| Eval[BaseEvaluator]
     CF --> |chunking.active_strategy| Chk[BaseChunker]
+    QX --> |query_expansion.enabled/active_expander| QE[BaseQueryExpander]
 ```
 
 Each registry follows the same shape:
@@ -433,6 +439,10 @@ This is what makes the "add a component, change config, done" workflow possible.
 | `reranking.strategy` / weights / `top_k` | `SimpleReranker` | Reranking behaviour |
 | `chunking.active_strategy` | `ChunkerFactory` | `small` / `large` / custom (roadmap #9) |
 | `chunking.strategies.<name>` | `ChunkerFactory` | `chunk_size`, `chunk_overlap`, `separator` |
+| `query_expansion.enabled` | `QueryExpanderRegistry` | Enables multi-query retrieval (roadmap #23; default off) |
+| `query_expansion.active_expander` | `QueryExpanderRegistry` | Selects expander (`synonym` / `llm` / `noop`) |
+| `query_expansion.max_variants` | expanders | Cap on query variants (original always included) |
+| `query_expansion.expanders.<key>` | `QueryExpanderRegistry` | Provider mapping (+ `synonyms` for `synonym`) |
 | `token_budget.default_mode` | `TokenBudgetService` | `strict` / `truncate` (roadmap #11) |
 | `token_budget.max_output_cap` | `TokenBudgetService` | Hard output cap (roadmap #11) |
 | `token_budget.min_output_tokens` | `TokenBudgetService` | Minimum reserved output |
