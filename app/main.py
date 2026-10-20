@@ -106,6 +106,23 @@ def build_pipeline(
     # the active model injected so it never loads a second copy (issue #23).
     query_expander = query_expander_registry.create(llm=active_llm)
 
+    # Optional response cache (issue #26); off by default. The namespace ties
+    # entries to the active component identities so a rebuild can't serve stale
+    # answers from a different model/retriever.
+    cache = None
+    cache_cfg = retrieval_config.get("cache") or {}
+    if bool(cache_cfg.get("enabled", False)):
+        from core.services.response_cache import ResponseCache
+
+        cache = ResponseCache(
+            enabled=True,
+            max_entries=int(cache_cfg.get("max_entries", 128)),
+            ttl_seconds=cache_cfg.get("ttl_seconds", 300.0),
+            namespace=f"{getattr(active_llm, 'model_name', 'llm')}|"
+            f"{type(retriever).__name__}|"
+            f"{getattr(embedder, 'model_name', 'embedder')}",
+        )
+
     prompt_builder = PromptBuilder(str(prompt_config_path))
     active_model_config = model_registry.get_active_model_config()
     generation_config = _generation_config_from_model(active_model_config)
@@ -166,6 +183,7 @@ def build_pipeline(
             str(observability_config_path) if observability_config_path else None
         ),
         query_expander=query_expander,
+        cache=cache,
     )
 
 

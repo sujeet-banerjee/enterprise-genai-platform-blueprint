@@ -32,6 +32,7 @@ class RAGPipeline:
         governance_config_path: Optional[str] = None,
         observability_config_path: Optional[str] = None,
         query_expander: Optional[Any] = None,
+        cache: Optional[Any] = None,
     ):
         self.embedder = embedder
         self.prompt_builder = prompt_builder
@@ -46,6 +47,7 @@ class RAGPipeline:
         self.cost_governor = cost_governor
         self.retrieval_policy_service = retrieval_policy_service
         self.query_expander = query_expander
+        self.cache = cache
         self.config_path = config_path or str(
             Path(__file__).resolve().parent.parent / "config" / "retrieval.yaml"
         )
@@ -278,6 +280,24 @@ class RAGPipeline:
         if request_id:
             tracker.request_id = request_id
 
+        # -1. Response cache lookup (optional; off by default). A hit returns the
+        # stored result immediately, skipping embedding/retrieval/generation and
+        # surfacing a cache_hit flag in observability (issue #26).
+        cache = getattr(self, "cache", None)
+        cache_key = None
+        if cache is not None and getattr(cache, "enabled", False):
+            cache_key = cache.make_key(query, effective_top_k)
+            cached = cache.get(cache_key)
+            if cached is not None:
+                hit = deepcopy(cached)
+                hit["observability"] = dict(hit.get("observability") or {})
+                hit["observability"]["cache_hit"] = True
+                hit["cache_hit"] = True
+                if request_id:
+                    hit["observability"]["request_id"] = request_id
+                self.last_observability = hit["observability"]
+                return hit
+
         # 0. Retrieval depth governance (token economics tuned by RetrievalPolicyService)
         if self.retrieval_policy_service is not None and top_k is None:
             try:
@@ -457,11 +477,12 @@ class RAGPipeline:
             "latency": latency_report,
             "llm_model": self.llm.model_name,
             "failure_tags": list(tracker.failure_tags),
+            "cache_hit": False,
         }
         self.last_observability = tracker.log_trace(trace, is_error=False)
         self.last_failure = tracker.failure_tags[0] if tracker.failure_tags else None
 
-        return {
+        result = {
             "response": response,
             "retrieved_docs": [doc.content for doc in docs],
             "retrieved_docs_with_scores": [
@@ -479,4 +500,13 @@ class RAGPipeline:
             "latency": latency_report,
             "failure_tags": list(tracker.failure_tags),
             "observability": self.last_observability,
+            "cache_hit": False,
         }
+
+        # Store a deep copy for future identical queries. Only successful runs
+        # reach this point (hard failures return early via the stage handlers);
+        # degraded-but-successful runs are still cacheable.
+        if cache is not None and cache_key is not None:
+            cache.set(cache_key, deepcopy(result))
+
+        return result

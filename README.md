@@ -371,6 +371,20 @@ query_expansion:
         ai: [artificial intelligence]
 ```
 
+**Enable response caching** - edit `config/retrieval.yaml`:
+
+```yaml
+cache:
+  enabled: true        # off by default
+  max_entries: 128     # LRU bound
+  ttl_seconds: 300     # per-entry TTL
+```
+
+Identical `(query, top_k)` pairs are then served from an in-process LRU cache
+(scoped to the active model/retriever/embedder so a rebuild never returns stale
+answers). Cache hits skip embedding, retrieval and generation, and surface
+`cache_hit: true` in the result and its `observability` block.
+
 **Toggle governed retrieval / cost caps** - edit `config/governance.yaml`:
 
 ```yaml

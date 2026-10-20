@@ -100,3 +100,8 @@ token_budget:
   max_output_cap: 512
   min_output_tokens: 16
   chars_per_token: 4
+
+cache:
+  enabled: false
+  max_entries: 128
+  ttl_seconds: 300

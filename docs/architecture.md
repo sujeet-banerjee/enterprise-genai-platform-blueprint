@@ -451,6 +451,9 @@ This is what makes the "add a component, change config, done" workflow possible.
 | `token_budget.max_output_cap` | `TokenBudgetService` | Hard output cap (roadmap #11) |
 | `token_budget.min_output_tokens` | `TokenBudgetService` | Minimum reserved output |
 | `token_budget.chars_per_token` | `TokenBudgetService` | Token estimation ratio |
+| `cache.enabled` | composition root → `ResponseCache` | Enables exact-match response cache (roadmap #26; default off) |
+| `cache.max_entries` | `ResponseCache` | LRU bound on cached responses |
+| `cache.ttl_seconds` | `ResponseCache` | Per-entry time-to-live |
 
 Each concern has its own file (like `models.yaml` / `prompt_config.yaml`); the
 composition root loads them by explicit path. Legacy deployments that still
