@@ -195,12 +195,15 @@ in `config/retrieval.yaml` under `evaluation.active_evaluator`.
    The screen shows the **evaluator** used, a caption with `docs_source` (should be
    `retrieval`, since docs are auto-fetched from the live pipeline), `num_retrieved_docs`,
    and `ground_truth_used`. The **metrics** table then shows the judge scores
-   (`llm_judge_score` and `answer_relevance`, each 0-1).
+   (`llm_judge_score`, `answer_relevance`, and - because a ground truth was supplied -
+   `answer_correctness`, each 0-1).
 
-   Note on ground truth: only evaluators that expose `evaluate_with_ground_truth` consume it;
-   `llm_judge` and the default `semantic` evaluator score without it. When `ground_truth_used`
-   is `false`, the value is echoed for traceability but not folded into the score - the console
-   tells you this explicitly.
+   Note on ground truth: the `semantic` and `llm_judge` evaluators consume the reference
+   answer and report a `ground_truth_used` of `true` (semantic adds an embedding-based
+   `ground_truth_similarity` + `answer_correctness`; llm_judge adds a judged
+   `answer_correctness`). Other evaluators (e.g. `dummy`) cannot use a reference, so the
+   value is echoed for traceability with `ground_truth_used=false` - the console tells you
+   this explicitly.
 
 5. **Compare embedding models / chunking** (same *Evaluation* screen, **Launch experiment**).
    - **kind**: `compare_embedding_models` (or `compare_chunking_strategies`).
@@ -225,6 +228,10 @@ in `config/retrieval.yaml` under `evaluation.active_evaluator`.
   evaluator, 0-1 normalized from a 0-10 judge score).
 - **`context_precision`, `faithfulness`, `answer_relevance`** - embedding-based metrics
   (`semantic` evaluator).
+- **`answer_correctness` / `ground_truth_similarity`** - ground-truth-aware scores, only
+  when a `ground_truth` reference is supplied: `llm_judge` returns a judged
+  `answer_correctness`; `semantic` returns an embedding-based `ground_truth_similarity`
+  plus a derived `answer_correctness`.
 - **Retrieval** - `retrieved_docs_with_scores` (per-doc `score`), `top_k`, `similarity_metric`.
 - **Cost** - `estimated_cost_usd` per request (per-model pricing) and aggregated spend window.
 - **Latency** - per-stage and total (`total_ms`) plus p50/p95 in the metrics endpoint.

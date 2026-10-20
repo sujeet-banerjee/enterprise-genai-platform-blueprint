@@ -244,8 +244,9 @@ def screen_evaluation() -> None:
                 st.info("The selected evaluator returned no metrics.")
             if ground_truth and not result.data.get("ground_truth_used"):
                 st.info(
-                    "Ground truth was echoed but not used: the selected evaluator has no "
-                    "`evaluate_with_ground_truth` method."
+                    "Ground truth was echoed but not used: this evaluator does not "
+                    "support ground-truth scoring. Use `semantic` or `llm_judge` to score "
+                    "against a reference answer."
                 )
 
     st.divider()
