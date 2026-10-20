@@ -114,7 +114,7 @@ the lifespan startup hook (not at import). Endpoints:
 - `GET /ready` - readiness + active pipeline summary (503 until ready)
 - `POST /v1/query` - run a query; body `{query, top_k?, include_trace?}`
 - `POST /query` - legacy alias of `/v1/query`
-- `POST /v1/query:batch` - run several queries sequentially; per-query envelopes + summary
+- `POST /v1/query:batch` - run several queries sequentially or in parallel (`parallel: true`); per-query envelopes + summary
 - `GET /v1/config` - redacted effective configuration
 - `GET /v1/models`, `/v1/embedding-models`, `/v1/retrievers`, `/v1/rerankers`, `/v1/evaluators` - introspection
 - `POST /v1/evaluate` - run an evaluator on a query/response

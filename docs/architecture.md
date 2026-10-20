@@ -140,6 +140,9 @@ contract; the orchestration layer depends only on these contracts.
 * Must expose `dimension` metadata.
 * Must expose `model_name` (identifier of the underlying model) so the pipeline can report
   `embedding_model` in traces.
+* Optional `embed_batch(texts) -> List[List[float]]` for single-pass multi-text embedding
+  (roadmap #27). The default loops `embed`, so batch output is always equivalent to
+  `[embed(t) for t in texts]` and providers stay interchangeable.
 
 ### Retriever Contract (`core/interfaces/retriever.py`)
 
@@ -162,6 +165,9 @@ Supporting types:
 * Output: generated string
 * Must expose `context_window` metadata.
 * Must expose `model_name` for cost attribution and observability.
+* Optional `generate_batch(prompts, config) -> List[str]` for single-pass multi-prompt
+  generation (roadmap #27). The default loops `generate`, so output is equivalent to
+  `[generate(p, config) for p in prompts]`, in the same order.
 
 ### Evaluator Contract (`core/interfaces/evaluator.py`)
 

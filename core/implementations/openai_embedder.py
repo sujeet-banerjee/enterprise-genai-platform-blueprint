@@ -33,6 +33,14 @@ class OpenAIEmbedder(BaseEmbedder):
         response = self._client.embeddings.create(model=self._model_name, input=text)
         return [float(value) for value in response.data[0].embedding]
 
+    def embed_batch(self, texts: List[str]) -> List[List[float]]:
+        """Embed multiple texts in a single OpenAI request (issue #27)."""
+        if not texts:
+            return []
+        response = self._client.embeddings.create(model=self._model_name, input=list(texts))
+        rows = sorted(response.data, key=lambda item: item.index)
+        return [[float(value) for value in row.embedding] for row in rows]
+
     @property
     def dimension(self) -> int:
         return self._dimension

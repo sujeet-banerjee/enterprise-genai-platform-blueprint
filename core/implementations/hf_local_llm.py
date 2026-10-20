@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from core.config.generation_config import GenerationConfig
 from core.implementations._local_models import get_text_generation_pipeline
@@ -36,7 +36,30 @@ class LocalHFLLM(BaseLLM):
 
     def generate(self, prompt: str, config: Optional[GenerationConfig] = None) -> str:
         pipe = self._ensure_pipeline()
+        gen_kwargs = self._gen_kwargs(config)
+        outputs = pipe([{"role": "user", "content": prompt}], **gen_kwargs)
+        return self._extract_text(outputs)
 
+    def generate_batch(
+        self, prompts: List[str], config: Optional[GenerationConfig] = None
+    ) -> List[str]:
+        """
+        Run all prompts through one batched HF inference pass (issue #27).
+
+        HF's text-generation pipeline accepts a list of message-lists and returns
+        one output per input, so ordering matches ``prompts``. An empty input
+        short-circuits to avoid a needless model call.
+        """
+        if not prompts:
+            return []
+        pipe = self._ensure_pipeline()
+        gen_kwargs = self._gen_kwargs(config)
+        conversations = [[{"role": "user", "content": prompt}] for prompt in prompts]
+        outputs = pipe(conversations, **gen_kwargs)
+        # Batched pipelines return one inner list per conversation.
+        return [self._extract_text(output) for output in outputs]
+
+    def _gen_kwargs(self, config: Optional[GenerationConfig]) -> Dict[str, Any]:
         requested = int(getattr(config, "max_tokens", 256) or 256)
         max_new_tokens = max(1, min(requested, self._max_new_tokens))
         temperature = float(getattr(config, "temperature", 0.0) or 0.0)
@@ -47,14 +70,18 @@ class LocalHFLLM(BaseLLM):
             gen_kwargs.update(do_sample=True, temperature=temperature, top_p=top_p)
         else:
             gen_kwargs.update(do_sample=False)
-
-        messages = [{"role": "user", "content": prompt}]
-        outputs = pipe(messages, **gen_kwargs)
-        return self._extract_text(outputs)
+        return gen_kwargs
 
     @staticmethod
     def _extract_text(outputs: Any) -> str:
-        first = outputs[0]
+        # Tolerate both shapes returned by the HF pipeline: a list of result
+        # dicts (single call) or a single result mapping.
+        if isinstance(outputs, dict):
+            first: Any = outputs
+        else:
+            if not outputs:
+                return ""
+            first = outputs[0]
         generated = first.get("generated_text", "")
         if isinstance(generated, list):
             if not generated:

@@ -247,6 +247,25 @@ class SimpleEmbedder(BaseEmbedder):
             return [float(x) for x in encoded.tolist()]
         return [float(x) for x in encoded]
 
+    def embed_batch(self, texts: List[str], batch_size: int = 32) -> List[List[float]]:
+        """
+        Encode several texts in one Sentence-Transformers call (issue #27).
+
+        Falls back to per-item embedding when the underlying encoder only
+        supports a single input (offline ``_LocalSentenceEncoder``).
+        """
+        if not texts:
+            return []
+        if any(t is None for t in texts):
+            raise ValueError("Cannot embed None text.")
+        try:
+            encoded = self.model.encode(list(texts), batch_size=batch_size)
+        except TypeError:
+            return [self.embed(text) for text in texts]
+        if hasattr(encoded, "tolist"):
+            encoded = encoded.tolist()
+        return [[float(x) for x in row] for row in encoded]
+
     @property
     def dimension(self) -> int:
         return self._dimension

@@ -510,3 +510,44 @@ class RAGPipeline:
             cache.set(cache_key, deepcopy(result))
 
         return result
+
+    def run_batch(
+        self,
+        queries: List[str],
+        top_k: Optional[int] = None,
+        max_workers: Optional[int] = None,
+        request_ids: Optional[List[str]] = None,
+        raise_on_failure: Optional[bool] = None,
+    ) -> List[dict]:
+        """
+        Run several queries, reusing ``run`` per query (issue #27).
+
+        With ``max_workers`` > 1 the queries run concurrently through a thread
+        pool (parallel inference); otherwise they run sequentially. Results are
+        returned in input order regardless of completion order, so
+        ``run_batch([q])[0]`` is equivalent to ``run(q)``.
+
+        The embedder/LLM batch hooks (:meth:`BaseEmbedder.embed_batch` /
+        :meth:`BaseLLM.generate_batch`) handle single-pass multi-item batching at
+        the provider layer; this helper adds request-level parallelism on top.
+        """
+        if not queries:
+            return []
+
+        def _one(index: int, query: str) -> dict:
+            return self.run(
+                query,
+                top_k=top_k,
+                raise_on_failure=raise_on_failure,
+                request_id=request_ids[index] if request_ids else None,
+            )
+
+        workers = int(max_workers or 1)
+        if workers <= 1 or len(queries) == 1:
+            return [_one(i, q) for i, q in enumerate(queries)]
+
+        from concurrent.futures import ThreadPoolExecutor
+
+        with ThreadPoolExecutor(max_workers=min(workers, len(queries))) as pool:
+            futures = [pool.submit(_one, i, q) for i, q in enumerate(queries)]
+            return [future.result() for future in futures]

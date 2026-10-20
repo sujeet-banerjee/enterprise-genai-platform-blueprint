@@ -199,11 +199,21 @@ class BatchQueryRequest(BaseModel):
     queries: list[str] = Field(
         ...,
         min_length=1,
-        description="Queries to run sequentially through the RAG pipeline.",
+        description="Queries to run through the RAG pipeline (sequential or parallel).",
     )
     top_k: Optional[int] = Field(None, ge=1, description="Override the number of retrieved documents.")
     include_trace: bool = Field(
         True, description="Include the redacted observability trace in each result."
+    )
+    parallel: bool = Field(
+        False,
+        description="Run queries concurrently through a thread pool (issue #27). "
+        "Results always preserve input order.",
+    )
+    max_workers: Optional[int] = Field(
+        None,
+        ge=1,
+        description="Concurrency for parallel batches; capped by api.batch_max_workers.",
     )
 
 
@@ -243,6 +253,7 @@ def create_app(
     expected_api_key = str(api_config.get("api_key") or "")
     allow_rebuild = bool(api_config.get("allow_rebuild", False))
     max_batch_size = int(api_config.get("max_batch_size", 25))
+    batch_max_workers = int(api_config.get("batch_max_workers", 4))
 
     @asynccontextmanager
     async def lifespan(application: FastAPI):
@@ -435,14 +446,37 @@ def create_app(
             )
 
         results = []
-        for index, query in enumerate(payload.queries):
-            item_request = QueryRequest(
-                query=query, top_k=payload.top_k, include_trace=payload.include_trace
-            )
-            body, _status = _execute_query(
-                request, item_request, f"{base_request_id}-{index}"
-            )
-            results.append(body)
+        if payload.parallel and len(payload.queries) > 1:
+            # Parallel inference: run all queries through a bounded thread pool,
+            # preserving input order (issue #27).
+            from concurrent.futures import ThreadPoolExecutor
+
+            workers = min(payload.max_workers or batch_max_workers, len(payload.queries))
+            workers = max(1, min(workers, batch_max_workers))
+
+            def _run_one(index: int, query: str):
+                item_request = QueryRequest(
+                    query=query, top_k=payload.top_k, include_trace=payload.include_trace
+                )
+                return _execute_query(
+                    request, item_request, f"{base_request_id}-{index}"
+                )[0]
+
+            with ThreadPoolExecutor(max_workers=workers) as pool:
+                futures = [
+                    pool.submit(_run_one, index, query)
+                    for index, query in enumerate(payload.queries)
+                ]
+                results = [future.result() for future in futures]
+        else:
+            for index, query in enumerate(payload.queries):
+                item_request = QueryRequest(
+                    query=query, top_k=payload.top_k, include_trace=payload.include_trace
+                )
+                body, _status = _execute_query(
+                    request, item_request, f"{base_request_id}-{index}"
+                )
+                results.append(body)
 
         succeeded = sum(1 for item in results if not item.get("error"))
         by_failure_type: dict = {}

@@ -14,6 +14,18 @@ class BaseEmbedder(ABC):
         """
         pass
 
+    def embed_batch(self, texts: List[str]) -> List[List[float]]:
+        """
+        Returns embedding vectors for multiple texts (issue #27).
+
+        Providers that can encode several inputs in one call (local
+        Sentence-Transformers, OpenAI) override this for real batching. The
+        default keeps the single-item path alive by embedding one at a time, so
+        implementations remain interchangeable: ``embed_batch`` output is always
+        equivalent to ``[self.embed(t) for t in texts]``.
+        """
+        return [self.embed(text) for text in texts]
+
     @property
     @abstractmethod
     def dimension(self) -> int:

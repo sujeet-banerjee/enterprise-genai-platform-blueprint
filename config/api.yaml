@@ -20,3 +20,7 @@ trace_store_max: 500
 # Maximum number of queries accepted by POST /v1/query:batch (issue #39).
 # Batches beyond this cap are rejected with a 400 standard envelope.
 max_batch_size: 25
+
+# Thread-pool concurrency cap for parallel batches (POST /v1/query:batch with
+# ``parallel: true``; issue #27). Request ``max_workers`` is clamped to this.
+batch_max_workers: 4
