@@ -4,7 +4,6 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 import yaml
 
 from core.evaluation.evaluation_engine import EvaluationEngine
-from core.evaluation.metrics import Metrics
 from core.implementations.dummy_evaluator import DummyEvaluator
 from core.implementations.null_evaluator import NullEvaluator
 from core.interfaces.evaluator import BaseEvaluator
@@ -42,11 +41,17 @@ class EvaluatorRegistry:
 
     def _register_default_providers(self) -> None:
         self.register("dummy", lambda **_: DummyEvaluator())
-        self.register("engine", lambda **_: EvaluationEngine(Metrics()))
+        self.register("engine", self._build_engine)
         self.register("semantic", self._build_semantic)
         self.register("llm_judge", self._build_llm_judge)
         self.register("noop", lambda **_: NullEvaluator())
         self.register("null", lambda **_: NullEvaluator())
+
+    @staticmethod
+    def _build_engine(**options: Any) -> BaseEvaluator:
+        return EvaluationEngine(
+            model_name=options.get("model_name", "sentence-transformers/all-MiniLM-L6-v2")
+        )
 
     @staticmethod
     def _build_semantic(**options: Any) -> BaseEvaluator:

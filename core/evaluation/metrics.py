@@ -1,72 +1,57 @@
 import logging
+from typing import Optional, Sequence
 
 from core.interfaces.retriever import Document
 
 
 class Metrics:
+    """Lexical helpers for retrieval metrics.
+
+    These functions operate on raw text (no embeddings) and are provided as a
+    lightweight, dependency-free option. Ground-truth precision is available when
+    a set of relevant documents is supplied; otherwise a query-overlap
+    approximation is used.
+    """
 
     @staticmethod
-    def context_precision(query=None, relevant_docs=None, retrieved_docs=None):
-        '''
-        Calculate context precision
+    def context_precision(
+        query: Optional[str] = None,
+        relevant_docs: Optional[Sequence[str]] = None,
+        retrieved_docs: Optional[Sequence[Document]] = None,
+    ) -> float:
+        """Context precision.
 
-        True precision = (relevant_docs ∩ retrieved_docs) / retrieved_docs
-        However, Due to absence of ground truth, we approximate precision
-        using query-document overlap. In your pipeline, you do NOT have
-        relevant_docs, because:
-        - no labeled dataset
-        - no benchmark set
-        - no human annotations
-        👉 So the “correct formula” becomes impossible to compute.
-
-        :param query: May be used for approximation of precision
-        in absence of ground truth
-        :param relevant_docs:
-        :param retrieved_docs:
-        :return:
-        '''
+        True precision = (relevant ∩ retrieved) / retrieved. When a set of
+        ``relevant_docs`` (ground truth) is supplied, the exact formula is used.
+        Otherwise precision is approximated by query/retrieved-word overlap, since
+        no labelled dataset is available.
+        """
         if not retrieved_docs:
-            return 0
+            return 0.0
 
-        def _extract_text(doc:Document):
-            return doc.content if hasattr(doc, "content") else doc
+        def _extract_text(doc: Document) -> str:
+            return doc.content if hasattr(doc, "content") else str(doc)
 
         logger = logging.getLogger(__name__)
-        logger.setLevel(logging.INFO)
 
-            # --- Mode 1: True IR evaluation (future) ---
         if relevant_docs is not None:
-            intersection = set(relevant_docs) & set(retrieved_docs)
-            return len(intersection) / len(retrieved_docs)
+            relevant = {str(item) for item in relevant_docs}
+            retrieved = {_extract_text(doc) for doc in retrieved_docs}
+            if not retrieved:
+                return 0.0
+            return len(relevant & retrieved) / len(retrieved)
 
-            # --- Mode 2: Query-based approximation (current) ---
         if query is not None:
             query_words = set(query.lower().split())
-
-            retrieved_words = set()
-            normalized_docs = [_extract_text(doc) for doc in retrieved_docs]
-            for doc in normalized_docs:
-                retrieved_words.update(doc.lower().split())
-
-            logger.info("Retrieved words: {}".format(retrieved_words))
-            logger.info("Query words: {}".format(query_words))
-            logger.info("Query & Retrieved words: {}".format(
-                (query_words & retrieved_words)))
-
             if not query_words:
-                return 0
+                return 0.0
 
+            retrieved_words: set = set()
+            for doc in retrieved_docs:
+                retrieved_words.update(_extract_text(doc).lower().split())
+
+            logger.debug("Query words: %s", query_words)
+            logger.debug("Retrieved words: %s", retrieved_words)
             return len(query_words & retrieved_words) / len(query_words)
+
         raise ValueError("Either relevant_docs or query must be provided")
-
-
-    @staticmethod
-    def answer_relevance(similarity_score):
-        return similarity_score
-
-
-    @staticmethod
-    def faithfulness(supported_claims, total_claims):
-        if total_claims == 0:
-            return 0
-        return supported_claims / total_claims
