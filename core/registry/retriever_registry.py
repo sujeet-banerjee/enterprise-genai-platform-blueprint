@@ -37,6 +37,7 @@ class RetrieverRegistry:
         self.register("faiss", self._build_faiss)
         self.register("simple", self._build_simple)
         self.register("dummy", self._build_dummy)
+        self.register("kg", self._build_kg)
 
     @staticmethod
     def _build_faiss(
@@ -85,6 +86,30 @@ class RetrieverRegistry:
 
         resolved_docs: Any = list(docs) if docs else None
         return DummyRetriever(docs=resolved_docs, dimension=resolved_dimension)
+
+    @staticmethod
+    def _build_kg(
+        docs: DocsInput = None,
+        embedder: Any = None,
+        dimension: Optional[int] = None,
+        triples: Optional[Sequence[Dict[str, Any]]] = None,
+        graph_path: Optional[str] = None,
+        expansion_hops: int = 0,
+        max_expansion: int = 3,
+        **_ignored: Any,
+    ) -> BaseRetriever:
+        from core.implementations.kg_retriever import KGRetriever
+
+        if embedder is None:
+            raise ValueError("The 'kg' retriever requires an embedder.")
+        return KGRetriever(
+            docs=docs,
+            embedder=embedder,
+            triples=triples,
+            graph_path=graph_path,
+            expansion_hops=expansion_hops,
+            max_expansion=max_expansion,
+        )
 
     def register(self, provider_name: str, factory: Callable[..., BaseRetriever]) -> None:
         """

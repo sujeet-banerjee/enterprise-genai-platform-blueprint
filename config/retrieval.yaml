@@ -13,6 +13,10 @@ retrieval:
       documents_path: data/docs.json
     dummy:
       provider: dummy
+    kg:
+      provider: kg
+      graph_path: data/knowledge_graph.json
+      expansion_hops: 1
 
 evaluation:
   enabled: true

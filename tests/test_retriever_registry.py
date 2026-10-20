@@ -27,12 +27,12 @@ def test_registry_loads_config_file():
 def test_registry_lists_builtin_providers():
     registry = RetrieverRegistry()
     providers = registry.list_providers()
-    assert set(["faiss", "simple", "dummy"]).issubset(set(providers))
+    assert set(["faiss", "simple", "dummy", "kg"]).issubset(set(providers))
 
 
 def test_registry_lists_configured_retrievers():
     registry = RetrieverRegistry()
-    assert set(registry.list_retrievers()) == {"faiss", "simple", "dummy"}
+    assert set(registry.list_retrievers()) == {"faiss", "simple", "dummy", "kg"}
 
 
 def test_resolve_uses_default_retriever_from_config():

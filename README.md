@@ -345,7 +345,7 @@ editing YAML and restarting the server (or calling `/v1/pipeline:rebuild`).
 
 ```yaml
 retrieval:
-  default_retriever: faiss   # faiss | simple | dummy
+  default_retriever: faiss   # faiss | simple | dummy | kg
   similarity_metric: cosine  # cosine | l2
   top_k: 3
 ```

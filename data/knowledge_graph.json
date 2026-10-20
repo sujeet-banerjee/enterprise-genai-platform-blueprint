@@ -1,0 +1,14 @@
+{
+  "triples": [
+    {"subject": "Machine Learning", "predicate": "is_a", "object": "Artificial Intelligence"},
+    {"subject": "Deep Learning", "predicate": "is_a", "object": "Machine Learning"},
+    {"subject": "Neural Networks", "predicate": "is_a", "object": "Machine Learning"},
+    {"subject": "Deep Learning", "predicate": "uses", "object": "Neural Networks"},
+    {"subject": "Neural Networks", "predicate": "inspired_by", "object": "Human Brain"},
+    {"subject": "RAG", "predicate": "uses", "object": "Retriever"},
+    {"subject": "RAG", "predicate": "uses", "object": "Language Model"},
+    {"subject": "Retriever", "predicate": "fetches", "object": "Documents"},
+    {"subject": "Vector Database", "predicate": "stores", "object": "Embeddings"},
+    {"subject": "Embeddings", "predicate": "used_for", "object": "Similarity Search"}
+  ]
+}

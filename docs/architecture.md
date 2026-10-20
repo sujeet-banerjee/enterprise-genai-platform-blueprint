@@ -427,11 +427,13 @@ This is what makes the "add a component, change config, done" workflow possible.
 
 | Key | Consumed by | Effect |
 |-----|-------------|--------|
-| `retrieval.default_retriever` | `RetrieverRegistry` | Selects retrieval backend |
+| `retrieval.default_retriever` | `RetrieverRegistry` | Selects retrieval backend (`faiss`/`simple`/`dummy`/`kg`) |
 | `retrieval.top_k` | `RAGPipeline` | Default number of documents to retrieve |
 | `retrieval.similarity_metric` | `RetrieverRegistry` → `FAISSRetriever` | `cosine` / `l2` index selection (roadmap #15) |
 | `retrieval.low_score_threshold` | `FailureClassifier` | Flags low-quality retrieval |
-| `retrieval.retrievers.<key>` | `RetrieverRegistry` | Provider + options (`documents_path`, ...) |
+| `retrieval.retrievers.<key>` | `RetrieverRegistry` | Provider + options (`documents_path`, `graph_path`, ...) |
+| `retrieval.retrievers.kg.graph_path` | `KGRetriever` | Triple store JSON (roadmap #24) |
+| `retrieval.retrievers.kg.expansion_hops` | `KGRetriever` | One-hop expansion over shared entities |
 | `evaluation.enabled` | `EvaluatorRegistry` | Toggles evaluation (NullEvaluator when off) |
 | `evaluation.active_evaluator` | `EvaluatorRegistry` | Selects evaluator |
 | `evaluation.evaluators.<key>` | `EvaluatorRegistry` | Provider mapping |

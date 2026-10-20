@@ -1,4 +1,5 @@
 import ast
+import json
 from pathlib import Path
 
 import yaml
@@ -316,6 +317,26 @@ def test_query_expansion_selected_from_config(tmp_path):
     assert type(pipeline.query_expander).__name__ == "SynonymQueryExpander"
     result = pipeline.run("What is ai?")
     assert result["observability"]["query_expansion_enabled"] is True
+
+
+def test_kg_retriever_selected_from_config(tmp_path):
+    graph = tmp_path / "graph.json"
+    graph.write_text(
+        json.dumps({"triples": [{"subject": "Deep Learning", "predicate": "is_a", "object": "ML"}]}),
+        encoding="utf-8",
+    )
+    pipeline = build_pipeline(
+        models_config_path=Path(_models_config(tmp_path)),
+        retrieval_config_path=Path(
+            _retrieval_config(
+                tmp_path,
+                default_retriever="kg",
+                retrievers={"kg": {"provider": "kg", "graph_path": str(graph)}},
+            )
+        ),
+    )
+    assert type(pipeline.retriever).__name__ == "KGRetriever"
+    assert pipeline.retriever.index_dimension == pipeline.embedder.dimension
 
 
 def test_genuine_components_resolve_from_config(tmp_path):
