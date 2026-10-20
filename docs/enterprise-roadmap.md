@@ -321,3 +321,14 @@ composer); C1 unblocks the trace-waterfall graph (F2); E4 should precede C5/C6 p
 - `docs/ux-and-api.md` — API-first rule + Streamlit v1 plan (this doc's F-track is its P4/P5).
 - `Daywise-4hourly-execution-plan.csv` — the original 30-day build plan (fully landed).
 - This document — the **post-blueprint** enterprise bridge.
+
+## 11. How this roadmap is tracked
+
+- Umbrella issue: **#43** (`[Roadmap] Enterprise platform bridge`).
+- Horizons are GitHub **milestones**: `H0 - Observability & hardening`,
+  `H1 - Multi-tenant & governed`, `H2 - Product surface`,
+  `H3 - Enterprise scale & compliance`.
+- Horizons are opened **lazily**: H0 (#44–#47) and H1 (#48–#57) are opened now; H2/H3 items stay
+  the checklist in #43 until their horizon activates.
+- Contribution workflow (branching, PR checklist, release tags) is in
+  [`CONTRIBUTING.md`](../CONTRIBUTING.md).
