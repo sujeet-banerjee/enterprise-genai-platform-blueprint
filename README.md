@@ -78,9 +78,16 @@ The pipeline is built in the lifespan startup hook, so the server fails loudly o
 startup (rather than on first request) if a model or config is invalid.
 
 Example request:
-
 ```bash
-curl -X POST http://localhost:8000/query -H "Content-Type: application/json" -d '{"query":"What is AI?"}'
+curl -X 'POST' \
+  'http://localhost:8010/v1/query' \
+  -H 'accept: */*' \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "query": "What is AI?",
+  "top_k": 1,
+  "include_trace": true
+}'
 ```
 
 ## API
