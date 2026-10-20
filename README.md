@@ -105,6 +105,21 @@ curl -X 'POST' \
 }'
 ```
 
+### 5) Run the examples (no API server needed)
+
+The [`examples/`](examples/) directory has standalone, runnable scripts that call the
+same composition root as the API:
+
+```bash
+python examples/run_query.py "What is machine learning?"
+python examples/swap_components.py
+```
+
+`run_query.py` builds the pipeline from config and prints the response, sources and
+scores. `swap_components.py` demonstrates swapping a retriever (and optionally the LLM)
+purely by editing YAML - no code change. See [`examples/README.md`](examples/README.md).
+
+
 ## API
 
 The FastAPI app is created by `app/main.py::create_app()`; the pipeline is built in
