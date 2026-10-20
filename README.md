@@ -16,10 +16,21 @@ cd enterprise-genai-platform-blueprint
 pip install -e .
 ```
 
+The default config uses local HuggingFace models (Qwen2.5-0.5B + MiniLM), so no API
+keys are required. Models are downloaded to the HuggingFace cache on first run. Set a
+`HF_TOKEN` environment variable only if you need gated models.
+
 ### 2) Run tests
 
 ```bash
 python -m pytest -v
+```
+
+The first run downloads the local models and is slow (~30 min cold, ~7-10 min warm).
+To run a fast subset while iterating:
+
+```bash
+python -m pytest tests/test_composition_root.py tests/test_api_foundation.py -q
 ```
 
 ### 3) Lint, typecheck, coverage
@@ -36,7 +47,11 @@ python -m pytest --cov=app --cov=core --cov-fail-under=78
 uvicorn app.main:app --reload
 ```
 
+The pipeline is built in the lifespan startup hook, so the server fails loudly on
+startup (rather than on first request) if a model or config is invalid.
+
 Example request:
+
 ```bash
 curl -X POST http://localhost:8000/query -H "Content-Type: application/json" -d '{"query":"What is AI?"}'
 ```
@@ -87,22 +102,191 @@ taxonomy (`failure_type` + `failure_tags`), not stack traces.
 ## Configuration
 
 All behaviour is driven by YAML in config/:
+
 - config/models.yaml - active LLM/embedding models, per-model params, provider mappings
 - config/retrieval.yaml - retriever, similarity metric, reranking, chunking strategies, token budget
 - config/governance.yaml - cost/retrieval-policy governance (enabled, cost cap, safety margin)
 - config/observability.yaml - logging, redaction toggle and sensitive patterns
 - config/prompt_config.yaml - prompt profiles
-- config/api.yaml - API key stub (disabled by default)
+- config/api.yaml - API key stub, rebuild gate, batch/store limits (all disabled/lean by default)
 
-The composition root (pp/main.py::build_pipeline()) reads these configs and wires components via registries. governance.enabled gates CostGovernor/RetrievalPolicyService (default true). 
-eranking.enabled controls reranking. evaluation.enabled controls evaluation. chunking.active_strategy drives ChunkerFactory.
+The composition root (`app/main.py::build_pipeline()`) reads these configs and wires
+components via registries:
+
+- `governance.enabled` gates `CostGovernor`/`RetrievalPolicyService` (default `true`).
+- `reranking.enabled` controls whether the reranking stage runs.
+- `evaluation.enabled` controls whether an evaluator is attached.
+- `chunking.active_strategy` drives `ChunkerFactory`.
+
+## Development notes
+
+### Project layout
+
+```text
+app/        FastAPI surface: create_app(), pipeline, introspection, evaluation/ops/what-if APIs
+core/       interfaces/ (contracts), implementations/ (backends), registry/ (factories), services/
+config/     YAML configuration - the single source of truth for behaviour
+ui/         Streamlit console (HTTP-only client of the public API)
+tests/      pytest suite (behavioural tests drive real local models)
+data/       sample corpus (data/docs.json)
+docs/       architecture.md, ux-and-api.md, INTERFACE_CHANGES.md
+```
+
+### How to run the backend
+
+Start a dev server with autoreload:
+
+```bash
+uvicorn app.main:app --reload
+```
+
+Run on a different host/port (for example to expose it to the console on another host):
+
+```bash
+uvicorn app.main:app --host 0.0.0.0 --port 8000
+```
+
+Run with the API-key stub enabled by editing `config/api.yaml` first:
+
+```yaml
+require_api_key: true
+api_key: "my-secret"
+```
+
+Then every request must send `X-API-Key: my-secret` (except `/health`, `/ready`, `/docs`).
+
+### How to run the frontend (Streamlit console)
+
+Install the UI-only dependencies and point the console at the backend:
+
+```bash
+pip install -r requirements-ui.txt
+streamlit run ui/app.py -- --api-base http://localhost:8000
+```
+
+If the backend has API-key auth enabled, paste the key into the console sidebar
+("API key (optional)"). The console is a pure HTTP client; if a screen needs data that
+is not exposed, add an endpoint rather than importing backend code.
+
+### How to run a test suite subset
+
+The suite is organised by concern, so you can target one area:
+
+```bash
+# configuration-driven wiring + composition root
+python -m pytest tests/test_composition_root.py tests/test_retriever_registry.py -q
+
+# API surface (fast, uses a fake pipeline)
+python -m pytest tests/test_api_foundation.py tests/test_api_introspection.py tests/test_api_contract.py -q
+
+# governance, traces, metrics, batch
+python -m pytest tests/test_ops_api.py tests/test_batch_query_api.py -q
+
+# genuine model inference (slow)
+python -m pytest tests/test_prompt_chunking_embeddings.py -q
+```
+
+### How to try the configs manually
+
+The repo ships with working defaults. You can exercise behaviour changes purely by
+editing YAML and restarting the server (or calling `/v1/pipeline:rebuild`).
+
+**Swap the retriever / similarity metric** - edit `config/retrieval.yaml`:
+
+```yaml
+retrieval:
+  default_retriever: faiss   # faiss | simple | dummy
+  similarity_metric: cosine  # cosine | l2
+  top_k: 3
+```
+
+**Toggle reranking** - edit `config/retrieval.yaml`:
+
+```yaml
+reranking:
+  enabled: true
+  active_reranker: cross_encoder
+```
+
+**Toggle governed retrieval / cost caps** - edit `config/governance.yaml`:
+
+```yaml
+enabled: true
+max_cost_per_request_usd: 0.05
+safety_margin_tokens: 200
+```
+
+**Switch generation parameters** - edit the active model in `config/models.yaml`:
+
+```yaml
+active_model: local-qwen
+active_embedding_model: all-MiniLM-L6-v2
+models:
+  local-qwen:
+    provider: local_hf
+    model_name: Qwen/Qwen2.5-0.5B-Instruct
+    context_window: 32768
+    max_new_tokens: 128
+```
+
+**Enable the what-if rebuild endpoint** - edit `config/api.yaml`:
+
+```yaml
+allow_rebuild: true
+max_batch_size: 25
+history_max_runs: 1000
+trace_store_max: 500
+```
+
+With rebuild enabled you can swap the live pipeline without restarting:
+
+```bash
+curl -X POST http://localhost:8000/v1/pipeline:rebuild \
+  -H "Content-Type: application/json" \
+  -d '{"overrides":{"default_retriever":"simple","similarity_metric":"l2","top_k":5}}'
+```
+
+**Inspecting the effective configuration** (redacted, secrets never returned):
+
+```bash
+curl http://localhost:8000/v1/config
+curl http://localhost:8000/v1/models
+curl http://localhost:8000/v1/metrics
+curl http://localhost:8000/v1/governance/status
+```
+
+**Batch query and trace lookup**:
+
+```bash
+curl -X POST http://localhost:8000/v1/query:batch \
+  -H "Content-Type: application/json" \
+  -d '{"queries":["What is RAG?","What is an embedding?"],"top_k":3}'
+
+# use the returned request_id from any query/batch item
+curl http://localhost:8000/v1/traces/<request_id>
+```
+
+### How to redact secrets / control logging
+
+Edit `config/observability.yaml`:
+
+```yaml
+log_level: INFO
+redact_sensitive_data: true
+low_retrieval_score_threshold: 0.25
+sensitive_patterns:
+  - "sk-[A-Za-z0-9]{16,}"
+```
+
+With `redact_sensitive_data: true`, API responses and traces replace secret values
+(and known secret-looking keys such as `api_key`, `access_token`) with `[REDACTED]`.
 
 ## Key Concepts
 
 - **Interfaces/contracts**: stable, swappable (core/interfaces/)
 - **Implementations**: concrete backends (core/implementations/)
 - **Registries**: config-driven factories (ModelRegistry, RetrieverRegistry, RerankerRegistry, EvaluatorRegistry, CostTracker)
-- **Composition root**: wiring from config (pp/main.py::build_pipeline())
+- **Composition root**: wiring from config (`app/main.py::build_pipeline()`)
 - **Services**: orthogonal utilities (observability, token budget, failure classification, experiments)
 - **Evaluation-first**: semantic and LLM-as-judge evaluators; toggled via config
 - **Governance & cost**: budgets, policies, redaction
