@@ -207,7 +207,10 @@ class EvaluationService:
         ground_truth_used = False
         if ground_truth is not None:
             with_ground_truth = getattr(active_evaluator, "evaluate_with_ground_truth", None)
-            if callable(with_ground_truth):
+            supports_ground_truth = bool(
+                getattr(active_evaluator, "supports_ground_truth", False)
+            )
+            if callable(with_ground_truth) and supports_ground_truth:
                 metrics = with_ground_truth(
                     query=query,
                     retrieved_docs=docs,

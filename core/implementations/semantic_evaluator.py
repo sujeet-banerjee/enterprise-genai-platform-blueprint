@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Union
 
 import numpy as np
 
@@ -18,6 +18,18 @@ def _cosine(a: List[float], b: List[float]) -> float:
     return float(np.dot(vec_a, vec_b) / (norm_a * norm_b))
 
 
+def _normalize_references(ground_truth: Optional[Union[str, List[str]]]) -> List[str]:
+    """Coerce the ground-truth argument into a list of non-empty references."""
+    if ground_truth is None:
+        return []
+    if isinstance(ground_truth, str):
+        candidates = [ground_truth]
+    else:
+        candidates = list(ground_truth)
+    return [reference for reference in candidates if isinstance(reference, str) and reference.strip()]
+
+
+
 class SemanticEvaluator(BaseEvaluator):
     """
     Genuine evaluator deriving metrics from real embedding-model inference.
@@ -29,7 +41,14 @@ class SemanticEvaluator(BaseEvaluator):
       * answer_relevance  - cosine similarity between the query and the answer.
       * faithfulness      - mean cosine similarity between the answer and the
         retrieved documents (a proxy for context support).
+
+    When a ground-truth reference is supplied via
+    :meth:`evaluate_with_ground_truth`, an additional embedding-based
+    ``ground_truth_similarity`` and a derived ``answer_correctness`` are
+    reported (both 0-1, clamped).
     """
+
+    supports_ground_truth = True
 
     def __init__(
         self,
@@ -81,3 +100,28 @@ class SemanticEvaluator(BaseEvaluator):
             "answer_relevance": round(_cosine(query_vec, answer_vec), 6),
             "faithfulness": round(faithfulness, 6),
         }
+
+    def evaluate_with_ground_truth(
+        self,
+        query: str,
+        retrieved_docs: List[Document],
+        response: str,
+        ground_truth: Optional[Union[str, List[str]]] = None,
+    ) -> Dict[str, float]:
+        metrics = self.evaluate(query=query, retrieved_docs=retrieved_docs, response=response)
+
+        references = _normalize_references(ground_truth)
+        if not references:
+            return metrics
+
+        embedder = self.embedder
+        answer_vec = embedder.embed(response or "")
+        reference_vecs = [embedder.embed(reference) for reference in references]
+        similarities = [_cosine(answer_vec, vec) for vec in reference_vecs]
+        # Multiple references: the best match is the relevant similarity.
+        ground_truth_similarity = max(similarities)
+
+        metrics["ground_truth_similarity"] = round(ground_truth_similarity, 6)
+        metrics["answer_correctness"] = round(max(0.0, ground_truth_similarity), 6)
+        return metrics
+
