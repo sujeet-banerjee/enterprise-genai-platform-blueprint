@@ -1,0 +1,19 @@
+# Provider resilience (issue #45). Disabled by default: with ``enabled: false``
+# every provider is used directly (current behaviour unchanged).
+resilience:
+  enabled: false
+  # Retries for transient upstream errors (timeouts, 429, 5xx) with exponential
+  # backoff + jitter. Set max_attempts to 1 to disable retries while keeping the
+  # breaker.
+  max_attempts: 3
+  backoff_initial_ms: 100
+  backoff_max_ms: 2000
+  jitter: true
+  # Circuit breaker: open after N consecutive failures, then half-open after
+  # breaker_reset_ms. Set breaker_threshold to 0 to disable the breaker.
+  breaker_threshold: 5
+  breaker_reset_ms: 30000
+  # Ordered failover chain for the LLM (primary first). Names must match keys in
+  # models.yaml; the first non-empty entry is the primary. Empty -> no failover.
+  fallback_models: []
+  fallback_embedders: []

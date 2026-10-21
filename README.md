@@ -271,6 +271,7 @@ All behaviour is driven by YAML in config/:
 - config/api.yaml - API key stub, rebuild gate, batch/store limits (all disabled/lean by default)
 - config/audit.yaml - append-only audit trail (disabled by default; optional JSONL `path`)
 - config/access_control.yaml - RBAC roles/personas, capabilities and request caps (disabled by default)
+- config/resilience.yaml - provider retries, circuit breaker and LLM failover (disabled by default)
 
 The composition root (`app/main.py::build_pipeline()`) reads these configs and wires
 components via registries:
@@ -471,6 +472,21 @@ trace_store_max: 500
 pip install -e ".[observability]"   # or: pip install -r requirements-observability.txt
 docker compose -f deployment/docker-compose.yml --profile observability up
 ```
+
+**Harden against provider outages** (retries + circuit breaker + failover) - edit
+`config/resilience.yaml`. Disabled by default; the primary model is `active_model` and
+`fallback_models` names other keys in `models.yaml`:
+
+```yaml
+resilience:
+  enabled: true
+  max_attempts: 3
+  breaker_threshold: 5
+  fallback_models: [openai-gpt-4o-mini]   # used only if the primary keeps failing
+```
+
+The wrapper is transparent (`model_name`/cost still reflect the primary); the request trace
+gains a `resilience` block with `served_by`, `retries` and `failovers`.
 
 With rebuild enabled you can swap the live pipeline without restarting:
 

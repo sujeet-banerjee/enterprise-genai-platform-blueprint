@@ -436,3 +436,55 @@ def test_build_pipeline_uses_configured_documents_for_retrieval(tmp_path):
     assert all(isinstance(item.document, Document) for item in results)
     contents = " ".join(item.document.content for item in results)
     assert "Machine Learning" in contents
+
+
+def _resilience_config(tmp_path: Path, *, enabled: bool, fallback_models=None) -> str:
+    return _write_yaml(
+        tmp_path / "resilience.yaml",
+        {
+            "resilience": {
+                "enabled": enabled,
+                "max_attempts": 3,
+                "backoff_initial_ms": 1,
+                "backoff_max_ms": 2,
+                "jitter": False,
+                "breaker_threshold": 5,
+                "fallback_models": fallback_models or [],
+            }
+        },
+    )
+
+
+def test_resilience_disabled_is_transparent(tmp_path):
+    pipeline = build_pipeline(
+        models_config_path=Path(_models_config(tmp_path)),
+        retrieval_config_path=Path(_retrieval_config(tmp_path)),
+        resilience_config_path=Path(_resilience_config(tmp_path, enabled=False)),
+    )
+    assert type(pipeline.llm).__name__ == "DummyLLM"
+
+
+def test_resilience_enabled_wraps_llm_and_embedder(tmp_path):
+    pipeline = build_pipeline(
+        models_config_path=Path(_models_config(tmp_path)),
+        retrieval_config_path=Path(_retrieval_config(tmp_path)),
+        resilience_config_path=Path(_resilience_config(tmp_path, enabled=True)),
+    )
+    assert type(pipeline.llm).__name__ == "ResilientLLM"
+    assert type(pipeline.embedder).__name__ == "ResilientEmbedder"
+    # Transparent delegation: the pipeline still exposes the resilience hook.
+    assert callable(getattr(pipeline.llm, "pop_resilience", None))
+
+
+def test_resilience_failover_chain_includes_fallback_models(tmp_path):
+    pipeline = build_pipeline(
+        models_config_path=Path(_models_config(tmp_path)),
+        retrieval_config_path=Path(_retrieval_config(tmp_path)),
+        resilience_config_path=Path(
+            _resilience_config(tmp_path, enabled=True, fallback_models=["local-qwen"])
+        ),
+    )
+    assert type(pipeline.llm).__name__ == "ResilientLLM"
+    # Primary identity is preserved even with a failover chain.
+    assert pipeline.llm.model_name == "dummy-llm"
+

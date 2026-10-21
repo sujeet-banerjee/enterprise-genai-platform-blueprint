@@ -479,6 +479,17 @@ class RAGPipeline:
             "failure_tags": list(tracker.failure_tags),
             "cache_hit": False,
         }
+        # Resilience metadata (issue #45): populated only when the llm/embedder
+        # are wrapped; empty otherwise.
+        resilience = {}
+        for component in (self.llm, self.embedder):
+            pop = getattr(component, "pop_resilience", None)
+            if callable(pop):
+                data = pop()
+                if data:
+                    resilience.update(data)
+        if resilience:
+            trace["resilience"] = resilience
         self.last_observability = tracker.log_trace(trace, is_error=False)
         self.last_failure = tracker.failure_tags[0] if tracker.failure_tags else None
 

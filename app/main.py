@@ -35,6 +35,7 @@ from core.services.cost_governor import CostGovernor
 from core.services.cost_tracker import CostTracker
 from core.services.failure_classifier import FailureType
 from core.services.prompt_builder import PromptBuilder
+from core.services.resilience import build_resilient_embedder, build_resilient_llm
 from core.services.retrieval_policy_service import RetrievalPolicyService
 from core.services.telemetry import PrometheusCollector
 from core.services.token_budget_service import TokenBudgetService
@@ -48,12 +49,15 @@ OBSERVABILITY_CONFIG_PATH = BASE_DIR / "config" / "observability.yaml"
 API_CONFIG_PATH = BASE_DIR / "config" / "api.yaml"
 AUDIT_CONFIG_PATH = BASE_DIR / "config" / "audit.yaml"
 ACCESS_CONTROL_CONFIG_PATH = BASE_DIR / "config" / "access_control.yaml"
+RESILIENCE_CONFIG_PATH = BASE_DIR / "config" / "resilience.yaml"
 
 # Endpoints that never require an API key (liveness/readiness + OpenAPI docs).
 _PUBLIC_PATHS = {"/health", "/ready", "/metrics", "/docs", "/redoc", "/openapi.json"}
 
 
-def _load_config(config_path: Path) -> dict:
+def _load_config(config_path: Optional[Path]) -> dict:
+    if config_path is None:
+        return {}
     try:
         with open(config_path, "r") as f:
             return yaml.safe_load(f) or {}
@@ -83,6 +87,7 @@ def build_pipeline(
     retrieval_config_path: Path = RETRIEVAL_CONFIG_PATH,
     governance_config_path: Optional[Path] = None,
     observability_config_path: Optional[Path] = None,
+    resilience_config_path: Optional[Path] = None,
 ) -> RAGPipeline:
     """
     Composition root: assemble the RAG pipeline by resolving every pluggable
@@ -106,6 +111,21 @@ def build_pipeline(
 
     active_llm = model_registry.get_active_model()
     embedder = model_registry.get_active_embedder()
+
+    # Provider resilience (issue #45): retries + circuit breaker + failover,
+    # applied as wrappers so concrete providers stay untouched. Off by default;
+    # with resilience disabled the wrappers are transparent pass-throughs.
+    resilience_config = (_load_config(resilience_config_path) or {}).get("resilience") or {}
+    if resilience_config.get("enabled", False):
+        fallback_models = [
+            str(name) for name in (resilience_config.get("fallback_models") or [])
+        ]
+        llm_chain = [active_llm] + [
+            model_registry.get_model(name) for name in fallback_models
+        ]
+        active_llm = build_resilient_llm(llm_chain, resilience_config)
+        embedder = build_resilient_embedder(embedder, resilience_config)
+
     retriever = retriever_registry.create(embedder=embedder)
     reranker = reranker_registry.create()
     evaluator = evaluator_registry.create()
@@ -247,6 +267,7 @@ def create_app(
     api_config_path: Path = API_CONFIG_PATH,
     audit_config_path: Path = AUDIT_CONFIG_PATH,
     access_control_config_path: Path = ACCESS_CONTROL_CONFIG_PATH,
+    resilience_config_path: Path = RESILIENCE_CONFIG_PATH,
     pipeline_builder: Callable[..., RAGPipeline] = build_pipeline,
 ) -> FastAPI:
     """
@@ -275,6 +296,7 @@ def create_app(
             retrieval_config_path=retrieval_config_path,
             governance_config_path=governance_config_path,
             observability_config_path=observability_config_path,
+            resilience_config_path=resilience_config_path,
         )
         application.state.introspect = IntrospectionService(
             models_config_path=models_config_path,
@@ -317,6 +339,7 @@ def create_app(
                 "governance_config_path": governance_config_path,
                 "observability_config_path": observability_config_path,
                 "api_config_path": api_config_path,
+                "resilience_config_path": resilience_config_path,
             },
             allow_rebuild=allow_rebuild,
         )
