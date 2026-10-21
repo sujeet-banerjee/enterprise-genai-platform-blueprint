@@ -33,6 +33,7 @@ class RAGPipeline:
         observability_config_path: Optional[str] = None,
         query_expander: Optional[Any] = None,
         cache: Optional[Any] = None,
+        redactor: Optional[Any] = None,
     ):
         self.embedder = embedder
         self.prompt_builder = prompt_builder
@@ -48,6 +49,11 @@ class RAGPipeline:
         self.retrieval_policy_service = retrieval_policy_service
         self.query_expander = query_expander
         self.cache = cache
+        # Input-side redaction (issue #72): when a redactor is injected, secrets
+        # in the query and retrieved docs are stripped *before* prompt
+        # construction so nothing sensitive reaches the model provider or the
+        # returned envelope. None => data path is byte-identical to before.
+        self.redactor = redactor
         self.config_path = config_path or str(
             Path(__file__).resolve().parent.parent / "config" / "retrieval.yaml"
         )
@@ -220,6 +226,37 @@ class RAGPipeline:
         merged_docs, merged_scores = self._merge_documents(all_docs, all_scores)
         return merged_docs, merged_scores, variants, len(variants) > 1
 
+    def _redact_inputs(
+        self, query: str, docs: List[Document]
+    ) -> tuple[str, List[Document], bool]:
+        """Redact the query and retrieved docs before prompt construction (#72).
+
+        Returns ``(redacted_query, redacted_docs, applied)``. ``applied`` is True
+        only when a redactor is present and enabled; otherwise the inputs are
+        returned unchanged and the pipeline behaves exactly as before.
+        """
+        redactor = self.redactor
+        if redactor is None or not getattr(redactor, "enabled", False):
+            return query, docs, False
+
+        redacted_query = redactor.redact_text(query)
+
+        redacted_docs: List[Document] = []
+        for doc in docs:
+            original = getattr(doc, "content", "")
+            content = redactor.redact_text(original)
+            if content == original:
+                redacted_docs.append(doc)
+                continue
+            redacted_docs.append(
+                Document(
+                    content=content,
+                    metadata=getattr(doc, "metadata", None),
+                    score=getattr(doc, "score", None),
+                )
+            )
+        return redacted_query, redacted_docs, True
+
     def _record_and_handle_stage_error(
         self,
         stage: str,
@@ -389,6 +426,22 @@ class RAGPipeline:
         else:
             final_scores = list(initial_scores)
 
+        # 3b. Input redaction stage (issue #72). When a redactor is configured,
+        # strip secrets from the query and retrieved docs *before* they are
+        # token-budgeted, templated into the prompt, sent to the model provider,
+        # or returned to the caller. Embedding/retrieval keep the original query
+        # so retrieval semantics are unchanged.
+        redaction_applied = False
+        try:
+            with tracker.measure_stage("input_redaction"):
+                query, docs, redaction_applied = self._redact_inputs(query, docs)
+        except Exception as exc:
+            return self._record_and_handle_stage_error(
+                "input_redaction", exc, tracker, query, effective_top_k, should_raise
+            )
+        if redaction_applied:
+            tracker.set_trace_attribute("input_redaction", True)
+
         # 4. Token Budget Governance stage (delegated to TokenBudgetService; system_prompt from PromptBuilder)
         try:
             with tracker.measure_stage("token_budget"):
@@ -493,6 +546,7 @@ class RAGPipeline:
             "llm_model": self.llm.model_name,
             "failure_tags": list(tracker.failure_tags),
             "cache_hit": False,
+            "redaction_enabled": redaction_applied,
         }
         # Resilience metadata (issue #45): populated only when the llm/embedder
         # are wrapped; empty otherwise.

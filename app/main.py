@@ -197,6 +197,23 @@ def build_pipeline(
     generation_config = _generation_config_from_model(active_model_config)
     token_budget_service = TokenBudgetService(config_path=str(retrieval_config_path))
 
+    # Input-side redaction (issue #72): strip secrets from the query and
+    # retrieved docs before prompt construction, so nothing sensitive reaches
+    # the model provider or the returned envelope. Driven by the same
+    # observability config that governs log/trace redaction (issue #16), with the
+    # legacy inline section as a fallback (issue #34).
+    obs_config = (
+        _load_config(observability_config_path)
+        if observability_config_path
+        else {}
+    ) or (retrieval_config.get("observability") or {})
+    from core.services.observability import SensitiveDataRedactor
+
+    input_redactor = SensitiveDataRedactor(
+        enabled=bool(obs_config.get("redact_sensitive_data", True)),
+        patterns=obs_config.get("sensitive_patterns"),
+    )
+
     # Per-model pricing from models.yaml: the active model's rates are passed
     # explicitly and a keyed map covers models whose model_name differs from
     # their config key (issue #14).
@@ -253,6 +270,7 @@ def build_pipeline(
         ),
         query_expander=query_expander,
         cache=cache,
+        redactor=input_redactor,
     )
 
 
