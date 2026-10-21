@@ -105,3 +105,9 @@ cache:
   enabled: false
   max_entries: 128
   ttl_seconds: 300
+
+guardrails:
+  # Upper bound on the raw query length (characters) before token budgeting
+  # (issue #73). Prevents a single request from exceeding the context window.
+  # Set to null to disable the bound.
+  max_query_chars: 8000

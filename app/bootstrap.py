@@ -127,6 +127,7 @@ class PipelineComponents:
     retrieval_config: dict = field(default_factory=dict)
     governance_config: dict = field(default_factory=dict)
     observability_config: dict = field(default_factory=dict)
+    max_query_chars: Optional[int] = None
 
     def build_pipeline(
         self,
@@ -136,6 +137,7 @@ class PipelineComponents:
         observability_config_path: Optional[str] = None,
         top_k: Optional[int] = None,
         raise_on_failure: bool = True,
+        max_query_chars: Optional[int] = None,
     ) -> RAGPipeline:
         """Construct a `RAGPipeline` from this component bundle."""
         return RAGPipeline(
@@ -158,6 +160,7 @@ class PipelineComponents:
             query_expander=self.query_expander,
             cache=self.cache,
             redactor=self.redactor,
+            max_query_chars=max_query_chars,
         )
 
 
@@ -304,6 +307,11 @@ def assemble_components(
         cost_governor = None
         retrieval_policy_service = None
 
+    # Query-length bound (issue #73): read the pipeline-level guardrail config.
+    guardrail_cfg = retrieval_config.get("guardrails") or {}
+    _mqc = guardrail_cfg.get("max_query_chars")
+    max_query_chars = int(_mqc) if _mqc is not None else None
+
     return PipelineComponents(
         llm=active_llm,
         embedder=embedder,
@@ -327,4 +335,5 @@ def assemble_components(
         retrieval_config=retrieval_config,
         governance_config=governance_config,
         observability_config=observability_config,
+        max_query_chars=max_query_chars,
     )

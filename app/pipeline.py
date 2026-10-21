@@ -8,6 +8,7 @@ import yaml
 from core.interfaces.reranker import BaseReranker
 from core.interfaces.retriever import Document
 from core.services.failure_classifier import FailureClassifier, FailureType
+from core.services.guardrails import validate_query_length
 from core.services.observability import PipelineObservabilityTracker
 
 
@@ -34,6 +35,7 @@ class RAGPipeline:
         query_expander: Optional[Any] = None,
         cache: Optional[Any] = None,
         redactor: Optional[Any] = None,
+        max_query_chars: Optional[int] = None,
     ):
         self.embedder = embedder
         self.prompt_builder = prompt_builder
@@ -71,6 +73,21 @@ class RAGPipeline:
         )
         gov_cfg = self._load_section(governance_config_path) or (
             self._retrieval_config.get("governance") or {}
+        )
+
+        # Query-length bound (issue #73): enforce an upper bound on the raw query
+        # before token budgeting so a single request cannot blow the context
+        # window. Config-driven (guardrails.max_query_chars); None disables it.
+        guardrail_cfg = self._retrieval_config.get("guardrails") or {}
+        resolved_max_query_chars = (
+            max_query_chars
+            if max_query_chars is not None
+            else guardrail_cfg.get("max_query_chars")
+        )
+        self.max_query_chars: Optional[int] = (
+            int(resolved_max_query_chars)
+            if resolved_max_query_chars is not None
+            else None
         )
 
         self.top_k = int(top_k if top_k is not None else ret_cfg.get("top_k", 3))
@@ -343,6 +360,16 @@ class RAGPipeline:
                     hit["observability"]["request_id"] = request_id
                 self.last_observability = hit["observability"]
                 return hit
+
+        # 0. Query-length guard (issue #73): reject an over-long query *before*
+        # any embedding/retrieval work. Config-driven; None disables the bound.
+        try:
+            with tracker.measure_stage("query_validation"):
+                validate_query_length(query, self.max_query_chars)
+        except Exception as exc:
+            return self._record_and_handle_stage_error(
+                "query_validation", exc, tracker, query, effective_top_k, should_raise
+            )
 
         # 0. Retrieval depth governance (token economics tuned by RetrievalPolicyService)
         if self.retrieval_policy_service is not None and top_k is None:
