@@ -1,0 +1,2 @@
+# Keep the tracked git hooks as LF so the shell shebang works on Linux/macOS clones.
+.githooks/* text eol=lf
