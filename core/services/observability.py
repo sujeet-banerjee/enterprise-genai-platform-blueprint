@@ -381,7 +381,12 @@ class PipelineObservabilityTracker:
         if isinstance(sanitized, dict) and ids.get("trace_id"):
             sanitized.setdefault("otel", ids)
         self.end_trace()
-        serialized = json.dumps(sanitized, default=str)
+        # ``sanitized`` already passed through the redactor, but we re-apply the
+        # redactor to the serialized string immediately before logging so the
+        # value handed to the logger is provably redacted at the sink itself
+        # (defense in depth; also makes the sanitization explicit to static
+        # analysis instead of relying on recognizing the redactor as a barrier).
+        serialized = self._redactor.redact_text(json.dumps(sanitized, default=str))
         prefix = (
             f"[trace_id={ids['trace_id']} span_id={ids['span_id']}] "
             if ids.get("trace_id")
