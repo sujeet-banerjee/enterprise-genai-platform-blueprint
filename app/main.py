@@ -9,6 +9,12 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 from app.audit_api import register_audit_routes
+from app.bootstrap import (
+    assemble_components,
+    generation_config_from_model,
+    load_config,
+    validate_startup_configs,
+)
 from app.evaluation_api import EvaluationService, register_evaluation_routes
 from app.introspection import IntrospectionService
 from app.ops_api import RunHistory, register_ops_routes
@@ -24,23 +30,10 @@ from app.schemas import (
 )
 from app.whatif_api import PipelineRebuildService, describe_pipeline, register_whatif_routes
 from core.config.generation_config import GenerationConfig
-from core.config.schema import SCHEMAS
-from core.config.validator import load_and_validate, resolve_config_file
-from core.registry.evaluator_registry import EvaluatorRegistry
-from core.registry.model_registry import ModelRegistry
-from core.registry.query_expander_registry import QueryExpanderRegistry
-from core.registry.reranker_registry import RerankerRegistry
-from core.registry.retriever_registry import RetrieverRegistry
 from core.services.access_control import AccessController
 from core.services.audit_log import AuditLogger
-from core.services.cost_governor import CostGovernor
-from core.services.cost_tracker import CostTracker
 from core.services.failure_classifier import FailureType
-from core.services.prompt_builder import PromptBuilder
-from core.services.resilience import build_resilient_embedder, build_resilient_llm
-from core.services.retrieval_policy_service import RetrievalPolicyService
 from core.services.telemetry import PrometheusCollector
-from core.services.token_budget_service import TokenBudgetService
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -76,55 +69,20 @@ _PUBLIC_PATHS = {"/health", "/ready", "/metrics", "/docs", "/redoc", "/openapi.j
 def _load_config(config_path: Optional[Path], *, validate: bool = True) -> dict:
     """Load a config file, resolving secret references (issue #46).
 
-    When ``validate`` is true (the default) and the file exists, it is checked
-    against its schema first and a hard schema/secret error fails fast with a
-    precise message. Missing optional files still yield ``{}`` (backward
-    compatible); files whose stem has no registered schema load leniently.
+    Thin alias for :func:`app.bootstrap.load_config` (kept for backward
+    compatibility with existing importers).
     """
-    if config_path is None:
-        return {}
-    path = Path(config_path)
-    if not path.exists():
-        return {}
-    if validate and path.stem in SCHEMAS:
-        return load_and_validate(path)
-    return resolve_config_file(path)
+    return load_config(config_path, validate=validate)
 
 
 def _validate_startup_configs(*paths: Optional[Path]) -> None:
-    """Validate each existing schema-backed config, failing fast on errors.
-
-    ``prompt_config.yaml`` uses the ``prompt_config`` schema; its stem already
-    matches. Configs without a registered schema (or missing optional files) are
-    skipped. Raises :class:`ConfigValidationError` on the first invalid file.
-    """
-    from core.config.validator import ConfigValidationError, validate_config_file
-
-    for path in paths:
-        if path is None:
-            continue
-        candidate = Path(path)
-        if not candidate.exists() or candidate.stem not in SCHEMAS:
-            continue
-        issues = [i for i in validate_config_file(candidate) if i.kind != "version-warning"]
-        if issues:
-            raise ConfigValidationError(candidate, issues)
+    """Alias for :func:`app.bootstrap.validate_startup_configs` (issue #46)."""
+    validate_startup_configs(*paths)
 
 
 def _generation_config_from_model(model_cfg: dict) -> GenerationConfig:
-    """
-    Derive GenerationConfig from the active model's configuration so
-    temperature / max_tokens / top_p / stop are tunable via models.yaml
-    (issue #12). ``max_new_tokens`` (HuggingFace naming) is honored as a
-    fallback for ``max_tokens``. Defaults match GenerationConfig's own.
-    """
-    max_tokens = int(model_cfg.get("max_tokens") or model_cfg.get("max_new_tokens") or 256)
-    return GenerationConfig(
-        temperature=float(model_cfg.get("temperature", 0.7)),
-        top_p=float(model_cfg.get("top_p", 0.9)),
-        max_tokens=max_tokens,
-        stop=model_cfg.get("stop"),
-    )
+    """Alias for :func:`app.bootstrap.generation_config_from_model` (issue #12)."""
+    return generation_config_from_model(model_cfg)
 
 
 def build_pipeline(
@@ -137,157 +95,26 @@ def build_pipeline(
 ) -> RAGPipeline:
     """
     Composition root: assemble the RAG pipeline by resolving every pluggable
-    component from configuration. Embedder/LLM come from ModelRegistry, the
-    retriever from RetrieverRegistry, the reranker from RerankerRegistry and the
-    evaluator from EvaluatorRegistry — so swapping vendors is a config change and
-    this module never imports a concrete implementation.
+    component from configuration.
+
+    The actual assembly lives in :func:`app.bootstrap.assemble_components` so the
+    experiment runner (issue #75) shares the exact same wiring; this function is
+    a thin wrapper that also injects the config paths into the pipeline.
     """
-    model_registry = ModelRegistry(str(models_config_path))
-    retriever_registry = RetrieverRegistry(str(retrieval_config_path))
-    reranker_registry = RerankerRegistry(str(retrieval_config_path))
-    evaluator_registry = EvaluatorRegistry(str(retrieval_config_path))
-    query_expander_registry = QueryExpanderRegistry(str(retrieval_config_path))
-
-    # Fail fast on invalid configuration (issue #46): validate every primary
-    # config against its schema and resolve secret references before building
-    # any component, so a typo or missing secret stops start-up with a precise
-    # message instead of surfacing late (or silently).
-    _validate_startup_configs(
-        models_config_path,
-        prompt_config_path,
-        retrieval_config_path,
-        governance_config_path,
-        observability_config_path,
-        resilience_config_path,
+    components = assemble_components(
+        models_config_path=models_config_path,
+        prompt_config_path=prompt_config_path,
+        retrieval_config_path=retrieval_config_path,
+        governance_config_path=governance_config_path,
+        observability_config_path=observability_config_path,
+        resilience_config_path=resilience_config_path,
     )
-
-    retrieval_config = _load_config(retrieval_config_path)
-    # Governance lives in its own file (issue #34); fall back to the legacy
-    # inline section in retrieval.yaml when no dedicated file is configured.
-    governance_config = _load_config(governance_config_path) if governance_config_path else {}
-    if not governance_config:
-        governance_config = retrieval_config.get("governance") or {}
-
-    active_llm = model_registry.get_active_model()
-    embedder = model_registry.get_active_embedder()
-
-    # Provider resilience (issue #45): retries + circuit breaker + failover,
-    # applied as wrappers so concrete providers stay untouched. Off by default;
-    # with resilience disabled the wrappers are transparent pass-throughs.
-    resilience_config = (_load_config(resilience_config_path) or {}).get("resilience") or {}
-    if resilience_config.get("enabled", False):
-        fallback_models = [
-            str(name) for name in (resilience_config.get("fallback_models") or [])
-        ]
-        llm_chain = [active_llm] + [
-            model_registry.get_model(name) for name in fallback_models
-        ]
-        active_llm = build_resilient_llm(llm_chain, resilience_config)
-        embedder = build_resilient_embedder(embedder, resilience_config)
-
-    retriever = retriever_registry.create(embedder=embedder)
-    reranker = reranker_registry.create()
-    evaluator = evaluator_registry.create()
-    # Query expansion is opt-in (query_expansion.enabled). The LLM provider gets
-    # the active model injected so it never loads a second copy (issue #23).
-    query_expander = query_expander_registry.create(llm=active_llm)
-
-    # Optional response cache (issue #26); off by default. The namespace ties
-    # entries to the active component identities so a rebuild can't serve stale
-    # answers from a different model/retriever.
-    cache = None
-    cache_cfg = retrieval_config.get("cache") or {}
-    if bool(cache_cfg.get("enabled", False)):
-        from core.services.response_cache import ResponseCache
-
-        cache = ResponseCache(
-            enabled=True,
-            max_entries=int(cache_cfg.get("max_entries", 128)),
-            ttl_seconds=cache_cfg.get("ttl_seconds", 300.0),
-            namespace=f"{getattr(active_llm, 'model_name', 'llm')}|"
-            f"{type(retriever).__name__}|"
-            f"{getattr(embedder, 'model_name', 'embedder')}",
-        )
-
-    prompt_builder = PromptBuilder(str(prompt_config_path))
-    active_model_config = model_registry.get_active_model_config()
-    generation_config = _generation_config_from_model(active_model_config)
-    token_budget_service = TokenBudgetService(config_path=str(retrieval_config_path))
-
-    # Input-side redaction (issue #72): strip secrets from the query and
-    # retrieved docs before prompt construction, so nothing sensitive reaches
-    # the model provider or the returned envelope. Driven by the same
-    # observability config that governs log/trace redaction (issue #16), with the
-    # legacy inline section as a fallback (issue #34).
-    obs_config = (
-        _load_config(observability_config_path)
-        if observability_config_path
-        else {}
-    ) or (retrieval_config.get("observability") or {})
-    from core.services.observability import SensitiveDataRedactor
-
-    input_redactor = SensitiveDataRedactor(
-        enabled=bool(obs_config.get("redact_sensitive_data", True)),
-        patterns=obs_config.get("sensitive_patterns"),
-    )
-
-    # Per-model pricing from models.yaml: the active model's rates are passed
-    # explicitly and a keyed map covers models whose model_name differs from
-    # their config key (issue #14).
-    model_pricing: dict = {}
-    for _name, _cfg in (model_registry.config.get("models") or {}).items():
-        _cfg = _cfg or {}
-        if "input_cost_per_1k" in _cfg or "output_cost_per_1k" in _cfg:
-            _entry = {
-                "input_cost_per_1k": _cfg.get("input_cost_per_1k"),
-                "output_cost_per_1k": _cfg.get("output_cost_per_1k"),
-            }
-            model_pricing[_name] = _entry
-            model_pricing.setdefault(str(_cfg.get("model_name", _name)), _entry)
-    cost_tracker = CostTracker(
-        input_cost_per_1k=active_model_config.get("input_cost_per_1k"),
-        output_cost_per_1k=active_model_config.get("output_cost_per_1k"),
-        model_pricing=model_pricing,
-    )
-
-    # Governance services wired into the composition root so every request is cost- and
-    # token-governed. Both are optional in RAGPipeline, so the pipeline stays vendor-neutral.
-    # ``governance.enabled`` gates whether they are attached at all (default: enabled).
-    governance_enabled = bool(governance_config.get("enabled", True))
-    if governance_enabled:
-        cost_governor = CostGovernor(
-            max_cost_per_request=float(governance_config.get("max_cost_per_request_usd", 1.0))
-        )
-        retrieval_policy_service = RetrievalPolicyService(
-            context_window=active_llm.context_window,
-            system_prompt_tokens=token_budget_service.estimate_tokens(prompt_builder.system_prompt),
-            reserved_output_tokens=generation_config.max_tokens,
-            safety_margin=int(governance_config.get("safety_margin_tokens", 200)),
-        )
-    else:
-        cost_governor = None
-        retrieval_policy_service = None
-
-    return RAGPipeline(
-        embedder=embedder,
-        prompt_builder=prompt_builder,
-        retriever=retriever,
-        llm=active_llm,
-        evaluator=evaluator,
-        token_budget_service=token_budget_service,
-        generation_config=generation_config,
-        cost_tracker=cost_tracker,
-        reranker=reranker,
+    return components.build_pipeline(
         config_path=str(retrieval_config_path),
-        cost_governor=cost_governor,
-        retrieval_policy_service=retrieval_policy_service,
         governance_config_path=str(governance_config_path) if governance_config_path else None,
         observability_config_path=(
             str(observability_config_path) if observability_config_path else None
         ),
-        query_expander=query_expander,
-        cache=cache,
-        redactor=input_redactor,
     )
 
 
@@ -387,6 +214,9 @@ def create_app(
             models_config_path=models_config_path,
             prompt_config_path=prompt_config_path,
             retrieval_config_path=retrieval_config_path,
+            governance_config_path=governance_config_path,
+            observability_config_path=observability_config_path,
+            resilience_config_path=resilience_config_path,
         )
         application.state.history = RunHistory(
             max_runs=int(api_config.get("history_max_runs", 1000)),

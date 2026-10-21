@@ -1,22 +1,21 @@
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Union
 
-from core.config.generation_config import GenerationConfig
 from core.implementations.chunker import ChunkerFactory
-from core.interfaces.retriever import BaseRetriever, Document
-from core.registry.evaluator_registry import EvaluatorRegistry
-from core.registry.model_registry import ModelRegistry
-from core.registry.reranker_registry import RerankerRegistry
-from core.registry.retriever_registry import RetrieverRegistry
-from core.services.cost_tracker import CostTracker
-from core.services.prompt_builder import PromptBuilder
-from core.services.token_budget_service import TokenBudgetService
+from core.interfaces.retriever import Document
 
 
 class ExperimentRunner:
     """
     Executes reproducible comparative experiments across embedding models,
     chunking strategies, and retrieval/reranking configurations.
+
+    Component assembly is delegated to ``app.bootstrap.assemble_components``
+    (issue #75) so experiments share the exact composition root used by the HTTP
+    application - including governance, observability-driven redaction, provider
+    resilience, query expansion, caching and config-driven generation settings.
+    Previously this class re-implemented assembly and silently drifted from
+    production.
     """
 
     DEFAULT_COMPARISON_MODELS = (
@@ -29,15 +28,24 @@ class ExperimentRunner:
         models_config_path: Optional[str] = None,
         prompt_config_path: Optional[str] = None,
         retrieval_config_path: Optional[str] = None,
+        governance_config_path: Optional[str] = None,
+        observability_config_path: Optional[str] = None,
+        resilience_config_path: Optional[str] = None,
     ):
         base_dir = Path(__file__).resolve().parent.parent.parent
         self.models_config_path = models_config_path or str(base_dir / "config" / "models.yaml")
-        self.prompt_config_path = prompt_config_path or str(base_dir / "config" / "prompt_config.yaml")
-        self.retrieval_config_path = retrieval_config_path or str(base_dir / "config" / "retrieval.yaml")
-        self.registry = ModelRegistry(self.models_config_path)
-        self.retriever_registry = RetrieverRegistry(self.retrieval_config_path)
-        self.reranker_registry = RerankerRegistry(self.retrieval_config_path)
-        self.evaluator_registry = EvaluatorRegistry(self.retrieval_config_path)
+        self.prompt_config_path = prompt_config_path or str(
+            base_dir / "config" / "prompt_config.yaml"
+        )
+        self.retrieval_config_path = retrieval_config_path or str(
+            base_dir / "config" / "retrieval.yaml"
+        )
+        # Dedicated governance/observability/resilience files (issues #34/#72/#45).
+        # ``None`` falls back to the legacy inline sections in retrieval.yaml so
+        # existing callers keep working unchanged.
+        self.governance_config_path = governance_config_path
+        self.observability_config_path = observability_config_path
+        self.resilience_config_path = resilience_config_path
 
     def run_single_experiment(
         self,
@@ -49,43 +57,50 @@ class ExperimentRunner:
         use_reranker: Optional[bool] = None,
         top_k: int = 3,
     ) -> Dict[str, Any]:
-        from app.pipeline import RAGPipeline
-
-        embedder = self.registry.get_embedder(embedding_model)
-        llm = self.registry.get_active_model()
+        from app.bootstrap import assemble_components
 
         if chunk_strategy:
-            chunker = ChunkerFactory.create(strategy=chunk_strategy, config_path=self.retrieval_config_path)
+            chunker = ChunkerFactory.create(
+                strategy=chunk_strategy, config_path=self.retrieval_config_path
+            )
             indexed_docs: Sequence[Union[dict, Document, str]] = chunker.chunk_documents(docs)
         else:
             indexed_docs = docs
 
-        # Resolve the retriever via the same config-driven registry used by the
-        # composition root (issue #17). ``name=None`` follows
-        # ``retrieval.default_retriever``; chunking is already applied above so
-        # the registry's own chunking is disabled.
-        retriever: BaseRetriever = self.retriever_registry.create(
-            name=retriever_backend, docs=indexed_docs, embedder=embedder, chunk=False
+        # Assemble via the shared composition root (issue #75): governance,
+        # redaction, resilience, caching and generation config are all wired the
+        # same way as production. Chunking is applied above, so the retriever's
+        # own chunking is disabled (``chunk=False``).
+        components = assemble_components(
+            models_config_path=Path(self.models_config_path),
+            prompt_config_path=Path(self.prompt_config_path),
+            retrieval_config_path=Path(self.retrieval_config_path),
+            governance_config_path=(
+                Path(self.governance_config_path) if self.governance_config_path else None
+            ),
+            observability_config_path=(
+                Path(self.observability_config_path) if self.observability_config_path else None
+            ),
+            resilience_config_path=(
+                Path(self.resilience_config_path) if self.resilience_config_path else None
+            ),
+            embedding_model=embedding_model,
+            retriever_backend=retriever_backend,
+            use_reranker=use_reranker,
+            docs=indexed_docs,
+            chunk=False,
         )
 
-        reranker = self.reranker_registry.create(enabled=use_reranker)
-        prompt_builder = PromptBuilder(self.prompt_config_path)
-        evaluator = self.evaluator_registry.create()
-        token_budget_service = TokenBudgetService(config_path=self.retrieval_config_path)
-        cost_tracker = CostTracker()
+        embedder = components.embedder
+        retriever = components.retriever
+        reranker = components.reranker
+        evaluator = components.evaluator
 
-        pipeline = RAGPipeline(
-            embedder=embedder,
-            retriever=retriever,
-            llm=llm,
-            prompt_builder=prompt_builder,
-            evaluator=evaluator,
-            token_budget_service=token_budget_service,
-            generation_config=GenerationConfig(max_tokens=512),
-            cost_tracker=cost_tracker,
-            reranker=reranker,
-            top_k=top_k,
+        pipeline = components.build_pipeline(
             config_path=self.retrieval_config_path,
+            governance_config_path=self.governance_config_path,
+            observability_config_path=self.observability_config_path,
+            top_k=top_k,
         )
 
         pipeline_result = pipeline.run(query)

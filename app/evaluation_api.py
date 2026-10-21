@@ -137,6 +137,9 @@ class EvaluationService:
         prompt_config_path: Path,
         retrieval_config_path: Path,
         max_workers: int = 1,
+        governance_config_path: Optional[Path] = None,
+        observability_config_path: Optional[Path] = None,
+        resilience_config_path: Optional[Path] = None,
     ):
         self.models_config_path = Path(models_config_path)
         self.prompt_config_path = Path(prompt_config_path)
@@ -146,6 +149,15 @@ class EvaluationService:
             models_config_path=str(self.models_config_path),
             prompt_config_path=str(self.prompt_config_path),
             retrieval_config_path=str(self.retrieval_config_path),
+            governance_config_path=(
+                str(governance_config_path) if governance_config_path else None
+            ),
+            observability_config_path=(
+                str(observability_config_path) if observability_config_path else None
+            ),
+            resilience_config_path=(
+                str(resilience_config_path) if resilience_config_path else None
+            ),
         )
         self.store = _ExperimentStore()
         self._executor = ThreadPoolExecutor(
