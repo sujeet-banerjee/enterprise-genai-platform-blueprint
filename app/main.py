@@ -1,3 +1,4 @@
+import os
 import uuid
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -42,15 +43,31 @@ from core.services.telemetry import PrometheusCollector
 from core.services.token_budget_service import TokenBudgetService
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-PROMPT_CONFIG_PATH = BASE_DIR / "config" / "prompt_config.yaml"
-MODELS_CONFIG_PATH = BASE_DIR / "config" / "models.yaml"
-RETRIEVAL_CONFIG_PATH = BASE_DIR / "config" / "retrieval.yaml"
-GOVERNANCE_CONFIG_PATH = BASE_DIR / "config" / "governance.yaml"
-OBSERVABILITY_CONFIG_PATH = BASE_DIR / "config" / "observability.yaml"
-API_CONFIG_PATH = BASE_DIR / "config" / "api.yaml"
-AUDIT_CONFIG_PATH = BASE_DIR / "config" / "audit.yaml"
-ACCESS_CONTROL_CONFIG_PATH = BASE_DIR / "config" / "access_control.yaml"
-RESILIENCE_CONFIG_PATH = BASE_DIR / "config" / "resilience.yaml"
+
+
+def _config_dir() -> Path:
+    """Resolve the config directory (issue #65 / G0).
+
+    Defaults to ``<repo>/config`` so behaviour is unchanged. Set
+    ``GENAI_CONFIG_DIR`` to point at a mounted config directory (e.g. a
+    Kubernetes ConfigMap) - this is the seam every deployment mode relies on.
+    """
+    override = os.environ.get("GENAI_CONFIG_DIR", "").strip()
+    if override:
+        return Path(override).expanduser()
+    return BASE_DIR / "config"
+
+
+CONFIG_DIR = _config_dir()
+PROMPT_CONFIG_PATH = CONFIG_DIR / "prompt_config.yaml"
+MODELS_CONFIG_PATH = CONFIG_DIR / "models.yaml"
+RETRIEVAL_CONFIG_PATH = CONFIG_DIR / "retrieval.yaml"
+GOVERNANCE_CONFIG_PATH = CONFIG_DIR / "governance.yaml"
+OBSERVABILITY_CONFIG_PATH = CONFIG_DIR / "observability.yaml"
+API_CONFIG_PATH = CONFIG_DIR / "api.yaml"
+AUDIT_CONFIG_PATH = CONFIG_DIR / "audit.yaml"
+ACCESS_CONTROL_CONFIG_PATH = CONFIG_DIR / "access_control.yaml"
+RESILIENCE_CONFIG_PATH = CONFIG_DIR / "resilience.yaml"
 
 # Endpoints that never require an API key (liveness/readiness + OpenAPI docs).
 _PUBLIC_PATHS = {"/health", "/ready", "/metrics", "/docs", "/redoc", "/openapi.json"}
