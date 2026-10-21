@@ -4,11 +4,28 @@ import logging
 import re
 import time
 import uuid
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 import yaml
+
+from core.services.telemetry import build_otel_tracer
+
+
+def _build_otel_from_config(obs_cfg: Optional[dict]) -> Optional[Any]:
+    """Build an OTel tracer from the ``observability.otel`` block (issue #47).
+
+    Returns ``None`` when tracing is disabled or the OTel SDK is not installed,
+    so the disabled path never constructs a provider (zero overhead).
+    """
+    if not isinstance(obs_cfg, dict):
+        return None
+    otel_cfg = obs_cfg.get("otel")
+    if not isinstance(otel_cfg, dict):
+        return None
+    return build_otel_tracer(otel_cfg)
+
 
 
 class _HybridMethod:
@@ -181,6 +198,7 @@ class PipelineObservabilityTracker:
         config_path: Optional[str] = None,
         logger: Optional[logging.Logger] = None,
         observability_config_path: Optional[str] = None,
+        otel: Optional[Any] = None,
     ):
         self.request_id = str(uuid.uuid4())
         self.start_perf = time.perf_counter()
@@ -202,6 +220,13 @@ class PipelineObservabilityTracker:
             patterns=obs_cfg.get("sensitive_patterns") if isinstance(obs_cfg, dict) else None,
         )
         self.logger = logger or self._configure_logger(obs_cfg)
+
+        # OTel-native tracing (issue #47): explicit injection wins, else built
+        # from the observability ``otel:`` block. ``None`` == tracing disabled.
+        self.otel = otel if otel is not None else _build_otel_from_config(obs_cfg)
+        self._root_span_cm: Optional[Any] = None
+        self._root_span: Optional[Any] = None
+        self._pending_attrs: Dict[str, Any] = {}
 
     @staticmethod
     def _load_obs_config(config_path: Optional[str], dedicated: bool = False) -> dict:
@@ -248,15 +273,74 @@ class PipelineObservabilityTracker:
     @contextmanager
     def measure_stage(self, stage_name: str):
         t0 = time.perf_counter()
+        span_cm = self._stage_span(stage_name)
         try:
-            yield
+            with span_cm as span:
+                yield span
         finally:
             elapsed_ms = round((time.perf_counter() - t0) * 1000.0, 4)
             self.stage_latencies_ms[stage_name] = elapsed_ms
 
+    def _stage_span(self, stage_name: str):
+        """Open an OTel child span for a stage (no-op when tracing is off)."""
+        if self.otel is not None and self.otel.is_available():
+            self._ensure_root_span()
+            return self.otel.span(f"pipeline.{stage_name}")
+        return nullcontext(None)
+
+    def _ensure_root_span(self) -> None:
+        """Lazily open the root ``pipeline.run`` span so stages nest under it."""
+        if self._root_span_cm is not None or self.otel is None:
+            return
+        if not self.otel.is_available():
+            return
+        self._root_span_cm = self.otel.span(
+            "pipeline.run", {"request_id": self.request_id, **self._pending_attrs}
+        )
+        self._root_span = self._root_span_cm.__enter__()
+
+    def set_trace_attribute(self, key: str, value: Any) -> None:
+        """Attach an attribute to the root span (no-op when tracing is off).
+
+        Attributes set before the root span exists are buffered and applied when
+        it is lazily opened, so ordering within :meth:`RAGPipeline.run` is safe.
+        """
+        if value is None or self.otel is None or not self.otel.is_available():
+            return
+        if self._root_span is None:
+            self._pending_attrs[key] = value
+            return
+        try:
+            self._root_span.set_attribute(key, value)
+        except Exception:  # pragma: no cover - defensive
+            pass
+
+    def end_trace(self) -> None:
+        """Close the root span if one was opened (idempotent)."""
+        if self._root_span_cm is not None:
+            try:
+                self._root_span_cm.__exit__(None, None, None)
+            except Exception:  # pragma: no cover - defensive
+                pass
+            self._root_span_cm = None
+            self._root_span = None
+
+    def start_trace_span(self, attributes: Optional[Dict[str, Any]] = None):
+        """Open the root ``pipeline.run`` span as a context (or no-op)."""
+        if self.otel is not None and self.otel.is_available():
+            return self.otel.span("pipeline.run", attributes)
+        return nullcontext(None)
+
+    def trace_context(self) -> Dict[str, Optional[str]]:
+        """Trace/span ids for log correlation (empty when tracing is off)."""
+        if self.otel is not None and self.otel.is_available():
+            return self.otel.current_ids()
+        return {"trace_id": None, "span_id": None}
+
     def add_failure_tag(self, tag: str) -> None:
         if tag and tag not in self.failure_tags:
             self.failure_tags.append(tag)
+        self.set_trace_attribute("failure_tags", ",".join(self.failure_tags))
 
     def get_latency_report(self) -> Dict[str, float]:
         total_ms = round((time.perf_counter() - self.start_perf) * 1000.0, 4)
@@ -291,11 +375,27 @@ class PipelineObservabilityTracker:
 
     def log_trace(self, trace_payload: Dict[str, Any], is_error: bool = False) -> Dict[str, Any]:
         sanitized = self._redactor.redact_obj(trace_payload)
+        # Trace/span ids for log correlation (issue #47); captured before the
+        # root span is closed so the exported trace and the log ids agree.
+        ids = self.trace_context()
+        if isinstance(sanitized, dict) and ids.get("trace_id"):
+            sanitized.setdefault("otel", ids)
+        self.end_trace()
         serialized = json.dumps(sanitized, default=str)
+        prefix = (
+            f"[trace_id={ids['trace_id']} span_id={ids['span_id']}] "
+            if ids.get("trace_id")
+            else ""
+        )
         if is_error:
-            self.logger.error("RAGPipeline execution failed: %s", serialized)
+            self.logger.error("%sRAGPipeline execution failed: %s", prefix, serialized)
         elif self.failure_tags:
-            self.logger.warning("RAGPipeline completed with failure tags %s: %s", self.failure_tags, serialized)
+            self.logger.warning(
+                "%sRAGPipeline completed with failure tags %s: %s",
+                prefix,
+                self.failure_tags,
+                serialized,
+            )
         else:
-            self.logger.info("RAGPipeline execution trace: %s", serialized)
+            self.logger.info("%sRAGPipeline execution trace: %s", prefix, serialized)
         return sanitized

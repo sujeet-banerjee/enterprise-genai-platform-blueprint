@@ -73,6 +73,14 @@ class RAGPipeline:
             obs_cfg.get("low_retrieval_score_threshold", ret_cfg.get("low_score_threshold", 0.25))
         )
 
+        # OTel-native tracing (issue #47): build the exporter once (from the
+        # ``otel:`` block) and reuse it across per-request trackers; None when
+        # disabled, keeping the disabled path zero-overhead.
+        from core.services.telemetry import build_otel_tracer
+
+        otel_cfg = obs_cfg.get("otel") if isinstance(obs_cfg, dict) else None
+        self.otel = build_otel_tracer(otel_cfg) if isinstance(otel_cfg, dict) else None
+
         self.last_observability: Optional[Dict[str, Any]] = None
         self.last_failure: Optional[str] = None
 
@@ -276,6 +284,7 @@ class RAGPipeline:
         tracker = PipelineObservabilityTracker(
             config_path=self.config_path,
             observability_config_path=self.observability_config_path,
+            otel=self.otel,
         )
         if request_id:
             tracker.request_id = request_id
@@ -322,6 +331,12 @@ class RAGPipeline:
             return self._record_and_handle_stage_error(
                 "embedding", exc, tracker, query, effective_top_k, should_raise
             )
+        # OTel span attributes (issue #47): set after the first stage so the root
+        # span exists; no-op when tracing is disabled.
+        tracker.set_trace_attribute("top_k", effective_top_k)
+        tracker.set_trace_attribute("retriever", type(self.retriever).__name__)
+        tracker.set_trace_attribute("embedding_model", getattr(self.embedder, "model_name", None))
+        tracker.set_trace_attribute("llm_model", getattr(self.llm, "model_name", None))
 
         # 2. Retrieval stage (multi-query expansion when configured, else verbatim)
         try:

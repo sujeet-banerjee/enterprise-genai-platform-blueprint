@@ -266,7 +266,7 @@ All behaviour is driven by YAML in config/:
 - config/models.yaml - active LLM/embedding models, per-model params, provider mappings
 - config/retrieval.yaml - retriever, similarity metric, reranking, query expansion, chunking strategies, token budget
 - config/governance.yaml - cost/retrieval-policy governance (enabled, cost cap, safety margin)
-- config/observability.yaml - logging, redaction toggle and sensitive patterns
+- config/observability.yaml - logging, redaction toggle, sensitive patterns and OTel tracing (`otel:` block, disabled by default)
 - config/prompt_config.yaml - prompt profiles
 - config/api.yaml - API key stub, rebuild gate, batch/store limits (all disabled/lean by default)
 - config/audit.yaml - append-only audit trail (disabled by default; optional JSONL `path`)
@@ -511,6 +511,24 @@ resilience:
 
 The wrapper is transparent (`model_name`/cost still reflect the primary); the request trace
 gains a `resilience` block with `served_by`, `retries` and `failovers`.
+
+**Export traces to Jaeger/Tempo/Datadog** (OTel-native, OTLP) - enable the `otel` block in
+`config/observability.yaml` and start the collector + Jaeger (same `observability` profile;
+Jaeger UI at http://localhost:16686). Disabled by default:
+
+```yaml
+# config/observability.yaml
+otel:
+  enabled: true
+  endpoint: "http://localhost:4318/v1/traces"
+  service_name: "enterprise-genai-platform"
+  sample_ratio: 1.0
+```
+
+Each request emits a root `pipeline.run` span with one child span per stage, carrying
+`request_id`, `top_k`, `retriever`, `llm_model`, `embedding_model` and `failure_tags`; the
+structured logs are correlated with the trace/span id. The in-process trace remains the source
+of truth (`GET /v1/traces/{request_id}`).
 
 With rebuild enabled you can swap the live pipeline without restarting:
 
