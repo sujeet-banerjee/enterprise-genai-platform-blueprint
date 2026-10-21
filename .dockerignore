@@ -1,0 +1,41 @@
+# Keep the build context small and the image reproducible (issue #65 / G0).
+.git
+.gitignore
+.github
+.githooks
+
+# Python build/runtime cruft
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+
+# Tests, docs, examples, UI are not needed inside the runtime image
+tests/
+docs/
+examples/
+ui/
+deployment/observability/
+*.md
+!README.md
+
+# Local secrets / env (never bake these in)
+.env
+.env.*
+*.pem
+*.key
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+~$*

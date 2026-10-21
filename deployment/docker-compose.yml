@@ -3,31 +3,65 @@ services:
     build:
       context: ..
       dockerfile: deployment/Dockerfile
+      args:
+        # Lean by default. Set INSTALL_EXTRAS=".[observability]" to bundle the
+        # Prometheus client + OTel OTLP exporter in the image (issues #44/#47).
+        INSTALL_EXTRAS: ${INSTALL_EXTRAS:-}
     image: enterprise-genai-platform:local
+    restart: unless-stopped
     ports:
       - "8000:8000"
     environment:
+      # Config directory seam (issue #65). Mounts override the baked-in config.
+      GENAI_CONFIG_DIR: /app/config
       # Enables the Prometheus /metrics endpoint (issue #44).
       GENAI_OBSERVABILITY: "1"
       # OTLP endpoint for OTel trace export (issue #47) when tracing is enabled.
       OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4318/v1/traces"
+      HF_HOME: /app/.cache/huggingface
+    # Secrets (OPENAI_API_KEY, HF_TOKEN, GENAI_API_KEY, ...) - never baked in.
+    # Copy .env.example to .env and fill in; the file is gitignored.
+    env_file:
+      - path: ../.env
+        required: false
+    volumes:
+      # Drop an env-specific config/ (or ConfigMap) here to override the image.
+      - ../config:/app/config:ro
+      - hf-cache:/app/.cache/huggingface
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 40s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 4G
+        reservations:
+          cpus: "0.5"
+          memory: 1G
 
   # Observability stack (issue #44). Start with:
   #   docker compose --profile observability up
   prometheus:
     image: prom/prometheus:latest
     profiles: ["observability"]
+    restart: unless-stopped
     ports:
       - "9090:9090"
     volumes:
       - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - ./observability/prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
     depends_on:
-      - api
+      api:
+        condition: service_healthy
 
   grafana:
     image: grafana/grafana:latest
     profiles: ["observability"]
+    restart: unless-stopped
     ports:
       - "3000:3000"
     environment:
@@ -46,6 +80,7 @@ services:
   otel-collector:
     image: otel/opentelemetry-collector-contrib:latest
     profiles: ["observability"]
+    restart: unless-stopped
     command: ["--config=/etc/otelcol/config.yml"]
     volumes:
       - ./observability/otel-collector/config.yml:/etc/otelcol/config.yml:ro
@@ -57,8 +92,13 @@ services:
   jaeger:
     image: jaegertracing/all-in-one:latest
     profiles: ["observability"]
+    restart: unless-stopped
     ports:
       - "16686:16686"
       - "4317:4317"
     environment:
       COLLECTOR_OTLP_ENABLED: "true"
+
+volumes:
+  # Persist downloaded embedding/LLM weights across container restarts.
+  hf-cache:
