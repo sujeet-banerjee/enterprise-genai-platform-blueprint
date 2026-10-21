@@ -587,6 +587,34 @@ alert rules, Grafana datasource/dashboard provisioning, a `GenAI Platform Overvi
 bring it up with `docker compose --profile observability up`. Multi-tenant labels (`tenant`,
 `app`) are added later by H1-A3 attribution without renaming any series.
 
+## 9.2 Provider resilience (retries, circuit breaker, failover)
+
+Provider resilience is a set of **transparent wrappers** around the LLM/embedder interfaces
+(`core/services/resilience.py`, roadmap issue #45), so concrete providers in
+`core/implementations/` stay untouched. It is **disabled by default** — with
+`resilience.enabled: false` (the shipped default) the composition root uses the raw providers
+and current behaviour is unchanged.
+
+| Building block | Purpose |
+|----------------|---------|
+| `RetryPolicy` | bounded exponential backoff + jitter for transient errors (timeouts, 429, 5xx), injectable sleeper for tests |
+| `CircuitBreaker` | closed/open/half-open breaker so a down provider fails fast instead of amplifying latency |
+| `ResilientEmbedder` | retry + breaker around a single embedder |
+| `ResilientLLM` | retry + per-provider breaker + an ordered **failover chain** of LLMs |
+
+Transient errors are classified by `is_transient_error` (an exception's `retryable` attribute
+or `status_code` overrides the heuristic). When every provider (and every retry) fails, the
+wrapper raises `RetryExhaustedError` tagged `upstream_retry_exhausted`; a short-circuited call
+raises `CircuitOpenError` tagged `provider_circuit_open`. The wrapper records which provider
+actually served the request (`served_by`) and the retry/failover counts; the pipeline copies
+this into `trace["resilience"]` when present.
+
+Configuration lives in `config/resilience.yaml` (`resilience.enabled`, `max_attempts`,
+`backoff_initial_ms`, `backoff_max_ms`, `jitter`, `breaker_threshold`, `breaker_reset_ms`,
+`fallback_models`, `fallback_embedders`). `fallback_models` names keys in `models.yaml`; the
+primary is always `active_model`. Identity (`model_name`, `context_window`) is taken from the
+primary so cost accounting and prompt budgeting are unaffected by failover.
+
 ---
 
 # 10. Evaluation-first Design

@@ -144,13 +144,16 @@ class PipelineRebuildService:
         return paths
 
     def _builder_kwargs(self, paths: Dict[str, Path]) -> Dict[str, Any]:
-        return {
+        kwargs: Dict[str, Any] = {
             "models_config_path": paths["models_config_path"],
             "prompt_config_path": paths["prompt_config_path"],
             "retrieval_config_path": paths["retrieval_config_path"],
             "governance_config_path": paths["governance_config_path"],
             "observability_config_path": paths["observability_config_path"],
         }
+        if "resilience_config_path" in paths:
+            kwargs["resilience_config_path"] = paths["resilience_config_path"]
+        return kwargs
 
     # -- rebuild ----------------------------------------------------------
 
