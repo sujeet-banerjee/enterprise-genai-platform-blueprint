@@ -561,6 +561,32 @@ are logged. Redaction patterns and the enable flag are intended to be config-dri
 (`observability.sensitive_patterns`, `observability.redact_sensitive_data`) — currently
 hardcoded (roadmap #16).
 
+## 9.1 Prometheus metrics (`GET /metrics`)
+
+`GET /metrics` exposes the same aggregates as `GET /v1/metrics` in the **Prometheus text
+exposition** format, for scraping by Prometheus/Grafana (roadmap issue #44). The collector
+(`core/services/telemetry.py::PrometheusCollector`) is fed from the run result next to
+`RunHistory`, so there is no duplicate bookkeeping. Series:
+
+| Metric | Type | Labels |
+|--------|------|--------|
+| `genai_requests_total` | counter | `status` (success/failed) |
+| `genai_failures_total` | counter | `failure_type` |
+| `genai_failure_tags_total` | counter | `tag` |
+| `genai_stage_latency_ms` | histogram | `stage` (embedding/retrieval/reranking/generation/total) |
+| `genai_cost_usd_total` | counter | — |
+| `genai_model_cost_usd_total` | counter | `model` |
+| `genai_cache_events_total` | counter | `event` (hit/miss) |
+| `genai_governance_denials_total` | counter | `reason` |
+| `genai_in_flight_requests` | gauge | — |
+
+`prometheus-client` is an **optional extra** (`pip install -e ".[observability]"`); when it is
+absent the endpoint returns a 503 envelope (`prometheus_not_installed`) and the core install is
+unaffected. A turnkey stack ships in `deployment/observability/` (Prometheus scrape config +
+alert rules, Grafana datasource/dashboard provisioning, a `GenAI Platform Overview` dashboard);
+bring it up with `docker compose --profile observability up`. Multi-tenant labels (`tenant`,
+`app`) are added later by H1-A3 attribution without renaming any series.
+
 ---
 
 # 10. Evaluation-first Design

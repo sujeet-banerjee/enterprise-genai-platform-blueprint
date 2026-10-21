@@ -14,7 +14,7 @@ from typing import Any, Callable, Deque, Dict, List, Optional
 
 import yaml
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 
 from app.schemas import GovernanceStatusResponse, MetricsResponse
 from core.services.failure_classifier import FailureType
@@ -264,3 +264,25 @@ def register_ops_routes(
         payload = history.metrics()
         payload["request_id"] = _request_id(request)
         return MetricsResponse(**payload)
+
+    @application.get("/metrics")
+    def prometheus_metrics(request: Request):
+        """Prometheus text exposition (issue #44).
+
+        Requires the optional ``prometheus-client`` extra; when it is absent the
+        endpoint returns a 503 envelope explaining how to enable it.
+        """
+        telemetry = getattr(request.app.state, "telemetry", None)
+        if telemetry is None or not telemetry.is_available():
+            return JSONResponse(
+                status_code=503,
+                content=error_envelope(
+                    "Prometheus metrics are unavailable; install the "
+                    "'observability' extra (pip install -e \".[observability]\").",
+                    FailureType.NOT_READY.value,
+                    ["prometheus_not_installed"],
+                    _request_id(request),
+                ),
+            )
+        payload, content_type = telemetry.render()
+        return Response(content=payload, media_type=content_type)

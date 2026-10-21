@@ -1,0 +1,54 @@
+groups:
+  - name: enterprise-genai-platform
+    rules:
+      - alert: HighErrorRate
+        expr: |
+          sum(rate(genai_requests_total{status="failed"}[5m]))
+            /
+          sum(rate(genai_requests_total[5m])) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Pipeline error rate above 10%"
+          description: "More than 10% of requests failed over the last 5 minutes."
+
+      - alert: HighP95Latency
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum(rate(genai_stage_latency_ms_bucket{stage="total"}[5m])) by (le)
+          ) > 5000
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "p95 total latency above 5s"
+          description: "The 95th percentile total latency exceeded 5 seconds."
+
+      - alert: CostSpike
+        expr: sum(rate(genai_cost_usd_total[10m])) * 3600 > 5
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Cost rate above $5/hour"
+          description: "Estimated spend is accelerating; review traffic and model choice."
+
+      - alert: FailureTagSpike
+        expr: sum by (tag) (rate(genai_failure_tags_total[10m])) > 1
+        for: 10m
+        labels:
+          severity: info
+        annotations:
+          summary: "Failure tag '{{ $labels.tag }}' is spiking"
+          description: "A single failure tag is being emitted more than once per second."
+
+      - alert: GovernanceDenials
+        expr: sum(rate(genai_governance_denials_total[10m])) > 0.5
+        for: 10m
+        labels:
+          severity: info
+        annotations:
+          summary: "Elevated governance denials"
+          description: "Governance/guardrail denials are elevated; check policy config."

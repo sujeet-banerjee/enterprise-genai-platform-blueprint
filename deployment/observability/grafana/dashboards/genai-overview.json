@@ -1,0 +1,82 @@
+{
+  "annotations": {"list": []},
+  "editable": true,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "title": "Total latency p50 / p95 / p99",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [
+        {"expr": "histogram_quantile(0.50, sum(rate(genai_stage_latency_ms_bucket{stage=\"total\"}[5m])) by (le))", "legendFormat": "p50"},
+        {"expr": "histogram_quantile(0.95, sum(rate(genai_stage_latency_ms_bucket{stage=\"total\"}[5m])) by (le))", "legendFormat": "p95"},
+        {"expr": "histogram_quantile(0.99, sum(rate(genai_stage_latency_ms_bucket{stage=\"total\"}[5m])) by (le))", "legendFormat": "p99"}
+      ]
+    },
+    {
+      "title": "Throughput (requests/sec by status)",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [
+        {"expr": "sum(rate(genai_requests_total[5m])) by (status)", "legendFormat": "{{status}}"}
+      ]
+    },
+    {
+      "title": "Failures by type",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [
+        {"expr": "sum(rate(genai_failures_total[5m])) by (failure_type)", "legendFormat": "{{failure_type}}"}
+      ]
+    },
+    {
+      "title": "Estimated cost over time (USD/hour)",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [
+        {"expr": "sum(rate(genai_cost_usd_total[10m])) * 3600", "legendFormat": "total"},
+        {"expr": "sum by (model) (rate(genai_model_cost_usd_total[10m])) * 3600", "legendFormat": "{{model}}"}
+      ]
+    },
+    {
+      "title": "Cache hit rate",
+      "type": "stat",
+      "gridPos": {"h": 6, "w": 8, "x": 0, "y": 16},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [
+        {"expr": "sum(rate(genai_cache_events_total{event=\"hit\"}[5m])) / clamp_min(sum(rate(genai_cache_events_total[5m])), 0.000001)", "legendFormat": "hit rate"}
+      ]
+    },
+    {
+      "title": "In-flight requests",
+      "type": "stat",
+      "gridPos": {"h": 6, "w": 8, "x": 8, "y": 16},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [
+        {"expr": "genai_in_flight_requests", "legendFormat": "in-flight"}
+      ]
+    },
+    {
+      "title": "Governance denials",
+      "type": "timeseries",
+      "gridPos": {"h": 6, "w": 8, "x": 16, "y": 16},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [
+        {"expr": "sum by (reason) (rate(genai_governance_denials_total[5m]))", "legendFormat": "{{reason}}"}
+      ]
+    }
+  ],
+  "schemaVersion": 39,
+  "tags": ["genai", "platform"],
+  "templating": {"list": []},
+  "time": {"from": "now-3h", "to": "now"},
+  "title": "GenAI Platform Overview",
+  "uid": "genai-platform-overview",
+  "version": 1
+}
