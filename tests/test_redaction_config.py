@@ -145,6 +145,30 @@ def test_tracker_defaults_use_repo_config_for_redaction():
     assert "[REDACTED]" in str(sanitized)
 
 
+def test_logged_line_is_redacted_at_the_sink(caplog):
+    """Secrets must not appear in the emitted log line (issue #75 / CodeQL).
+
+    The redacted trace is logged at the sink; the serialized line handed to the
+    logger is re-redacted so static analysis (and any log sink) sees the
+    redacted value directly.
+    """
+    import logging
+
+    tracker = PipelineObservabilityTracker(config_path=None)
+    with caplog.at_level(logging.INFO):
+        tracker.log_trace(
+            {
+                "query": "call with api_key=sk-live-abcdef123456",
+                "chunks": [{"preview": "server password: hunter2secret"}],
+            }
+        )
+
+    emitted = "\n".join(record.getMessage() for record in caplog.records)
+    assert "sk-live-abcdef123456" not in emitted
+    assert "hunter2secret" not in emitted
+
+
+
 @pytest.mark.parametrize("redact", [True, False])
 def test_pipeline_honors_redaction_toggle(tmp_path, make_pipeline, redact):
     config_path = _write_config(
