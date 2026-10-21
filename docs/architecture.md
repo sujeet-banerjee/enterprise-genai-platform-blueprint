@@ -689,6 +689,36 @@ The blueprint requires invalid configuration to fail **at startup**, not at requ
 > * Config keys that are declared but not yet honored (§6.3 "roadmap" rows) must either be
 >   enforced or removed so the contract is truthful.
 
+## 12.1 Config schemas, validation and secrets (issue #46)
+
+Every shipped `config/*.yaml` has a typed Pydantic schema in `core/config/schema.py`
+(`SCHEMAS` maps the file stem to its model). Top-level keys are **strict**
+(`extra="forbid"`) so typos and wrong types are caught with a precise message; nested
+provider registries are **permissive** because provider entries legitimately carry
+vendor-specific options. Every field has a default, so a minimal partial config still
+validates (backward compatible).
+
+Validation (`core/config/validator.py`) runs three checks: **schema** (parse + typed model),
+**secrets** (every reference must resolve), and **version drift** (`config_version` newer
+than the build is a warning, not a failure). The composition root validates the primary
+configs before building any component (`_validate_startup_configs`), so an invalid config
+fails fast at startup with `ConfigValidationError`.
+
+Operators and CI can validate ahead of deploy:
+
+```bash
+python -m app.config_validate          # all schema-backed config/*.yaml; exit 0/1/2
+python -m app.config_validate config/api.yaml --json
+```
+
+**Secrets** are never stored in config. Files reference environment-backed secrets as
+`${ENV_VAR}` or `env:ENV_VAR`; values are resolved at load time (`core/config/secrets.py`)
+and a missing reference fails fast (`SecretResolutionError`). Resolved values are kept in
+memory only — the introspection layer runs configs through `SensitiveDataRedactor` (issue
+#16), so a resolved secret is never emitted by `/v1/config`, traces or logs. In production,
+Vault (Agent Injector) or a Kubernetes `secretKeyRef` injects the value into the process
+environment, so the same `${ENV_VAR}` mechanism works unchanged.
+
 ---
 
 # 13. Deployment Modes
