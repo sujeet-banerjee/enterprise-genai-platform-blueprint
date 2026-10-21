@@ -1,0 +1,29 @@
+# Guardrail framework (Workstream B1, issue #52).
+#
+# Off by default: when ``enabled: false`` no guardrail runs and the data path is
+# byte-identical to before, so existing deployments are unaffected.
+#
+# ``input`` runs on the query + retrieved docs before prompt construction;
+# ``output`` runs on the generated response before it is returned. Each is an
+# ORDERED list: guardrails run top-to-bottom and a block stops the chain. A
+# guardrail that only redacts rewrites the text and lets the chain continue.
+#
+# Providers shipped: noop, deny_list, schema_validator.
+#   deny_list        {terms: [...], regex: false, mask: "[REDACTED]", reason: ...}
+#                    (omit ``mask`` to block; set it to redact instead)
+#   schema_validator {required_keys: [...], forbidden_keys: [...], expect_json: false}
+enabled: false
+
+input: []
+# Example (enable the feature first):
+# input:
+#   - provider: deny_list
+#     terms: ["ignore previous instructions", "disregard all prior"]
+#     mask: "[REDACTED]"
+
+output: []
+# Example:
+# output:
+#   - provider: schema_validator
+#     expect_json: true
+#     required_keys: ["answer"]

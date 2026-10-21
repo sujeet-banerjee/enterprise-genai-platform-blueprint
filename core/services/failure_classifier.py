@@ -34,6 +34,10 @@ class FailureType(str, Enum):
     # Input guardrail category (issue #73): the query exceeded the configured
     # character bound before it could be token-budgeted.
     QUERY_TOO_LONG = "query_too_long"
+    # Guardrail framework categories (issue #52): a configured input/output
+    # guardrail blocked the request/response.
+    GUARDRAIL_INPUT_BLOCKED = "guardrail_input_blocked"
+    GUARDRAIL_OUTPUT_BLOCKED = "guardrail_output_blocked"
 
 
 class FailureClassifier:
@@ -47,6 +51,8 @@ class FailureClassifier:
         "retrieval": FailureType.RETRIEVAL_FAILURE.value,
         "reranking": FailureType.RERANKING_FAILURE.value,
         "query_validation": FailureType.QUERY_TOO_LONG.value,
+        "guardrail_input": FailureType.GUARDRAIL_INPUT_BLOCKED.value,
+        "guardrail_output": FailureType.GUARDRAIL_OUTPUT_BLOCKED.value,
         "token_budget": FailureType.TOKEN_BUDGET_EXCEEDED.value,
         "cost_governance": FailureType.COST_LIMIT_EXCEEDED.value,
         "retrieval_policy": FailureType.RETRIEVAL_POLICY_FAILURE.value,

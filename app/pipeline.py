@@ -8,7 +8,7 @@ import yaml
 from core.interfaces.reranker import BaseReranker
 from core.interfaces.retriever import Document
 from core.services.failure_classifier import FailureClassifier, FailureType
-from core.services.guardrails import validate_query_length
+from core.services.guardrails import GuardrailBlockedError, validate_query_length
 from core.services.observability import PipelineObservabilityTracker
 
 
@@ -36,6 +36,8 @@ class RAGPipeline:
         cache: Optional[Any] = None,
         redactor: Optional[Any] = None,
         max_query_chars: Optional[int] = None,
+        input_guardrails: Optional[List[Any]] = None,
+        output_guardrails: Optional[List[Any]] = None,
     ):
         self.embedder = embedder
         self.prompt_builder = prompt_builder
@@ -89,6 +91,11 @@ class RAGPipeline:
             if resolved_max_query_chars is not None
             else None
         )
+
+        # Guardrail framework (issue #52): ordered input/output chains. Empty
+        # when the feature is disabled, so the stages are no-ops by default.
+        self.input_guardrails: List[Any] = list(input_guardrails or [])
+        self.output_guardrails: List[Any] = list(output_guardrails or [])
 
         self.top_k = int(top_k if top_k is not None else ret_cfg.get("top_k", 3))
         self.avg_chunk_tokens = int(gov_cfg.get("avg_chunk_tokens", ret_cfg.get("avg_chunk_tokens", 128)))
@@ -274,6 +281,51 @@ class RAGPipeline:
             )
         return redacted_query, redacted_docs, True
 
+    def _run_guardrail_chain(
+        self,
+        text: str,
+        guardrails: List[Any],
+        stage: str,
+        tracker: PipelineObservabilityTracker,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> tuple[str, List[Dict[str, Any]]]:
+        """Run an ordered guardrail chain over ``text`` (issue #52).
+
+        Returns ``(possibly_rewritten_text, decisions)`` where ``decisions`` is a
+        list of per-guardrail records for the trace/audit trail. A blocking
+        decision raises :class:`GuardrailBlockedError` so the stage handler
+        classifies it. Redacting guardrails rewrite the text and continue.
+        """
+        from core.interfaces.guardrail import GuardrailContext
+
+        decisions: List[Dict[str, Any]] = []
+        current = text
+        context = GuardrailContext(stage=stage, metadata=dict(metadata or {}))
+        for guardrail in guardrails:
+            name = getattr(guardrail, "name", guardrail.__class__.__name__)
+            result = guardrail.check(current, context)
+            record = {
+                "guardrail": name,
+                "decision": getattr(result, "decision", "allow"),
+                "allowed": bool(getattr(result, "allowed", True)),
+                "reason": getattr(result, "reason", None),
+                "labels": list(getattr(result, "labels", []) or []),
+            }
+            decisions.append(record)
+            if not record["allowed"]:
+                raise GuardrailBlockedError(
+                    stage,
+                    name,
+                    reason=record["reason"],
+                    labels=record["labels"],
+                    decisions=decisions,
+                )
+            new_text = getattr(result, "text", None)
+            if new_text is not None and new_text != current:
+                current = new_text
+                tracker.set_trace_attribute(f"{stage}_guardrail_redacted", True)
+        return current, decisions
+
     def _record_and_handle_stage_error(
         self,
         stage: str,
@@ -288,6 +340,11 @@ class RAGPipeline:
         setattr(exc, "failure_type", failure_tag)
         tracker.add_failure_tag(failure_tag)
         self.last_failure = failure_tag
+
+        # Guardrail blocks (issue #52) contribute their labels as failure tags so
+        # governance/HITL reporting can see *which* policy blocked the call.
+        for label in getattr(exc, "labels", []) or []:
+            tracker.add_failure_tag(str(label))
 
         latency_report = tracker.get_latency_report()
         trace = {
@@ -306,12 +363,18 @@ class RAGPipeline:
             "llm_model": getattr(self.llm, "model_name", self.llm.__class__.__name__),
             "latency": latency_report,
         }
+        guardrail_name = getattr(exc, "guardrail", None)
+        if guardrail_name is not None:
+            trace["guardrail"] = guardrail_name
+            chain = list(getattr(exc, "decisions", []) or [])
+            if chain:
+                trace["guardrail_decisions"] = chain
         self.last_observability = tracker.log_trace(trace, is_error=True)
 
         if should_raise:
             raise exc
 
-        return {
+        envelope = {
             "response": None,
             "error": str(exc),
             "failure_type": failure_tag,
@@ -324,6 +387,11 @@ class RAGPipeline:
             "latency": latency_report,
             "observability": self.last_observability,
         }
+        if guardrail_name is not None:
+            envelope["guardrail"] = guardrail_name
+            envelope["guardrail_reason"] = getattr(exc, "reason", None)
+            envelope["guardrail_labels"] = list(getattr(exc, "labels", []) or [])
+        return envelope
 
     def run(
         self,
@@ -469,6 +537,48 @@ class RAGPipeline:
         if redaction_applied:
             tracker.set_trace_attribute("input_redaction", True)
 
+        # 3c. Input guardrail stage (issue #52): ordered safety/policy checks on
+        # the query and retrieved docs *before* prompt construction. Disabled by
+        # default (empty chain => no-op). A blocking guardrail yields a governed
+        # input failure; a redacting guardrail rewrites the text in place.
+        input_guardrail_decisions: List[Dict[str, Any]] = []
+        if self.input_guardrails:
+            try:
+                with tracker.measure_stage("guardrail_input"):
+                    query, query_decisions = self._run_guardrail_chain(
+                        query,
+                        self.input_guardrails,
+                        "input",
+                        tracker,
+                        metadata={"target": "query", "top_k": effective_top_k},
+                    )
+                    input_guardrail_decisions.extend(query_decisions)
+                    guardrailed_docs: List[Document] = []
+                    for doc in docs:
+                        content, doc_decisions = self._run_guardrail_chain(
+                            getattr(doc, "content", ""),
+                            self.input_guardrails,
+                            "input",
+                            tracker,
+                            metadata={"target": "document"},
+                        )
+                        input_guardrail_decisions.extend(doc_decisions)
+                        if content == getattr(doc, "content", ""):
+                            guardrailed_docs.append(doc)
+                        else:
+                            guardrailed_docs.append(
+                                Document(
+                                    content=content,
+                                    metadata=getattr(doc, "metadata", None),
+                                    score=getattr(doc, "score", None),
+                                )
+                            )
+                    docs = guardrailed_docs
+            except Exception as exc:
+                return self._record_and_handle_stage_error(
+                    "guardrail_input", exc, tracker, query, effective_top_k, should_raise
+                )
+
         # 4. Token Budget Governance stage (delegated to TokenBudgetService; system_prompt from PromptBuilder)
         try:
             with tracker.measure_stage("token_budget"):
@@ -514,6 +624,29 @@ class RAGPipeline:
             return self._record_and_handle_stage_error(
                 "llm_generation", exc, tracker, query, effective_top_k, should_raise
             )
+
+        # 6b. Output guardrail stage (issue #52): ordered safety/policy checks on
+        # the generated response before it is evaluated or returned. Disabled by
+        # default (empty chain => no-op). A blocking guardrail yields a governed
+        # output failure; a redacting guardrail rewrites the response in place.
+        output_guardrail_decisions: List[Dict[str, Any]] = []
+        if self.output_guardrails:
+            try:
+                with tracker.measure_stage("guardrail_output"):
+                    response, output_guardrail_decisions = self._run_guardrail_chain(
+                        response,
+                        self.output_guardrails,
+                        "output",
+                        tracker,
+                        metadata={
+                            "target": "response",
+                            "llm_model": getattr(self.llm, "model_name", None),
+                        },
+                    )
+            except Exception as exc:
+                return self._record_and_handle_stage_error(
+                    "guardrail_output", exc, tracker, query, effective_top_k, should_raise
+                )
 
         # 7. Evaluation stage
         try:
@@ -574,6 +707,8 @@ class RAGPipeline:
             "failure_tags": list(tracker.failure_tags),
             "cache_hit": False,
             "redaction_enabled": redaction_applied,
+            "guardrails_enabled": bool(self.input_guardrails or self.output_guardrails),
+            "guardrail_decisions": input_guardrail_decisions + output_guardrail_decisions,
         }
         # Resilience metadata (issue #45): populated only when the llm/embedder
         # are wrapped; empty otherwise.
@@ -608,6 +743,7 @@ class RAGPipeline:
             "failure_tags": list(tracker.failure_tags),
             "observability": self.last_observability,
             "cache_hit": False,
+            "guardrail_decisions": input_guardrail_decisions + output_guardrail_decisions,
         }
 
         # Store a deep copy for future identical queries. Only successful runs

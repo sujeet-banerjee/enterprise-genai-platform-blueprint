@@ -85,6 +85,7 @@ flowchart TD
         Retriever[BaseRetriever]
         Reranker[BaseReranker]
         Chunker[BaseChunker]
+        Guardrail[BaseGuardrail]
         LLM[BaseLLM]
     end
 
@@ -105,6 +106,7 @@ flowchart TD
     Pipeline --> Embedder
     Pipeline --> Retriever
     Pipeline --> Reranker
+    Pipeline --> Guardrail
     Pipeline --> LLM
     Pipeline --> TokenBudget
     Pipeline --> RetrievalPolicy
@@ -119,6 +121,7 @@ flowchart TD
         RetrieverRegistry[RetrieverRegistry]
         EvaluatorRegistry[EvaluatorRegistry]
         ChunkerFactory[ChunkerFactory]
+        GuardrailRegistry[GuardrailRegistry]
     end
 
     ModelRegistry --> Embedder
@@ -126,6 +129,7 @@ flowchart TD
     RetrieverRegistry --> Retriever
     EvaluatorRegistry --> Eval
     ChunkerFactory --> Chunker
+    GuardrailRegistry --> Guardrail
 ```
 
 ## 2.3 Interface Contracts
@@ -187,6 +191,18 @@ Supporting types:
 * `chunk(docs_or_text) -> List[Document]`
 * `chunk_size`, `chunk_overlap`, `strategy_name` properties.
 
+### Guardrail Contract (`core/interfaces/guardrail.py`)
+
+* `check(text, context) -> GuardrailResult` — the sole abstract method.
+* `check_input(text, context?) / check_output(text, context?)` — edge conveniences.
+* `GuardrailResult` carries `allowed` / `decision` (`allow` / `redact` / `block`),
+  optional rewritten `text`, `reason`, and machine-readable `labels`.
+* `GuardrailContext` carries the `stage` (`input` / `output`) and a free-form
+  `metadata` bag (e.g. `top_k`, `llm_model`).
+* `name` / `stage` attributes identify the guardrail in traces.
+* Built-ins (`core/implementations/guardrails.py`): `NoopGuardrail`,
+  `DenyListGuardrail` (block or redact via `mask`), `SchemaValidatorGuardrail`.
+
 ## 2.4 Structured response
 
 Every request returns a JSON-serializable report. Beyond the baseline contract, the pipeline
@@ -231,6 +247,7 @@ sequenceDiagram
     participant E as Embedder
     participant R as Retriever
     participant RK as Reranker
+    participant GR as Guardrails (BaseGuardrail)
     participant T as TokenBudgetService
     participant PB as PromptBuilder
     participant L as LLM
@@ -247,12 +264,16 @@ sequenceDiagram
     R-->>P: ScoredDocument[]
     P->>RK: rerank_with_scores(query, docs, top_k)
     RK-->>P: reordered ScoredDocument[]
+    P->>GR: check_input(query, docs)  (ordered chain, optional)
+    GR-->>P: allow / redact / block
     P->>T: compute_budget(query, docs, system_prompt, context_window, max_tokens)
     T-->>P: retained_docs + allowed_output_tokens
     P->>PB: build(query, docs)
     PB-->>P: prompt
     P->>L: generate(prompt, generation_config)
     L-->>P: response
+    P->>GR: check_output(response)  (ordered chain, optional)
+    GR-->>P: allow / redact / block
     P->>EV: evaluate(query, docs, response)
     EV-->>P: metrics
     P->>CT: compute(model_name, start_time)
@@ -262,13 +283,15 @@ sequenceDiagram
     P-->>A: structured response + observability trace
 ```
 
-**Stage order:** Retrieval depth governance → Embedding → Retrieval → Reranking → Token Budget →
-Prompt Construction → LLM Generation → Evaluation → Cost computation → Cost governance.
+**Stage order:** Query-length guard → Retrieval depth governance → Embedding → Retrieval → Reranking
+→ Input redaction → Input guardrails → Token Budget → Prompt Construction → LLM Generation → Output
+guardrails → Evaluation → Cost computation → Cost governance.
 
 Note: Reranking is skipped when no reranker is supplied; Evaluation is skipped (empty metrics)
 when the evaluator is a no-op/`NullEvaluator`. When a query expander is configured
 (`query_expansion.enabled`), the Retrieval stage embeds and retrieves over each query variant and
-merges the results (de-duplicated, highest score wins) before Reranking (roadmap #23).
+merges the results (de-duplicated, highest score wins) before Reranking (roadmap #23). Input
+redaction (#72) and the input/output guardrail chains (#52) are no-ops unless configured.
 
 ---
 
@@ -460,6 +483,7 @@ This is what makes the "add a component, change config, done" workflow possible.
 | `cache.enabled` | composition root → `ResponseCache` | Enables exact-match response cache (roadmap #26; default off) |
 | `cache.max_entries` | `ResponseCache` | LRU bound on cached responses |
 | `cache.ttl_seconds` | `ResponseCache` | Per-entry time-to-live |
+| `guardrails.max_query_chars` | `RAGPipeline` | Upper bound on query length before token budgeting (roadmap #73; disabled when unset) |
 | `audit.enabled` | composition root → `AuditLogger` | Enables append-only audit trail (roadmap #28; default off) |
 | `audit.path` | `AuditLogger` | JSONL destination for durable audit records |
 | `audit.max_entries` | `AuditLogger` | Bounded in-memory ring size (backing `GET /v1/audit`) |
@@ -499,6 +523,30 @@ The `otel` block (disabled by default) enables OTLP trace export:
 | `endpoint` | `http://localhost:4318/v1/traces` | OTLP/HTTP collector endpoint |
 | `service_name` | `enterprise-genai-platform` | `service.name` resource attribute |
 | `sample_ratio` | `1.0` | Head sampling ratio (0.0–1.0) |
+
+### `config/guardrails.yaml`
+
+The guardrail framework (roadmap #52, workstream B1) is a pluggable,
+**config-driven** interception point on both edges of `RAGPipeline.run`.
+**Disabled by default** — when `enabled: false` no guardrail runs and the data
+path is byte-identical to before.
+
+| Key | Consumed by | Effect |
+|-----|-------------|--------|
+| `enabled` | `GuardrailRegistry` | Master toggle (default `false`) |
+| `input` | `GuardrailRegistry` → pipeline | **Ordered** list of guardrails on the query + retrieved docs (pre-prompt) |
+| `output` | `GuardrailRegistry` → pipeline | **Ordered** list of guardrails on the generated response (pre-return) |
+| `<entry>.provider` | `GuardrailRegistry` | Provider factory (`noop` / `deny_list` / `schema_validator`) |
+| `<entry>.stage` | `GuardrailRegistry` | Optional per-entry edge override (`input` / `output`) |
+| `<entry>.*` | provider | Provider-specific options (e.g. `terms`, `mask`, `regex`, `required_keys`, `expect_json`) |
+
+Guardrails run top-to-bottom; a **block** stops the chain (governed failure
+`guardrail_input_blocked` / `guardrail_output_blocked` → HTTP **403**), while a
+**redact** decision rewrites the text and the chain continues. Decisions
+(guardrail name, decision, reason, labels) are recorded on the trace
+(`guardrail_decisions`) and — with audit enabled — in the audit trail. Adding a
+vendor guardrail is: implement `BaseGuardrail` → register a factory → add a
+config entry; the composition root never imports a concrete guardrail.
 
 
 ---
@@ -542,6 +590,8 @@ recorded in the trace.
 | Configuration violation | embedding dimension mismatch, model context overflow, missing config | `dimension_mismatch`, `config_error` | Startup-time validation; hard fail at init (`_validate_contracts`) |
 | Retrieval quality | no documents, low similarity scores | `no_documents`, `low_retrieval_score` | Flag as `degraded`; log alert; quality gate (active mode) |
 | Policy violation | evaluation below threshold, cost cap exceeded | `cost_exceeded` | Quality gate enforcement (active) / logged alert (passive) |
+| Input validation | over-long query | `query_too_long` | Reject before embedding (HTTP 400); tune `guardrails.max_query_chars` (#73) |
+| Guardrail block | configured input/output policy denies | `guardrail_input_blocked`, `guardrail_output_blocked` | Governed failure envelope (HTTP 403); review `config/guardrails.yaml` (#52) |
 
 ## 8.2 Behaviour on failure
 
@@ -865,13 +915,13 @@ The same recipe applies to every capability:
 # 16. Repository Layout
 
 ```
-app/                 API + orchestration (main.py, pipeline.py)
+app/                 API + orchestration (main.py, pipeline.py, bootstrap.py)
 config/              models.yaml, prompt_config.yaml, retrieval.yaml,
-                     governance.yaml, observability.yaml
+                     governance.yaml, observability.yaml, guardrails.yaml, ...
 core/
-  interfaces/        contracts (embedder, retriever, llm, evaluator, reranker, chunker)
+  interfaces/        contracts (embedder, retriever, llm, evaluator, reranker, chunker, guardrail)
   implementations/   vendor/backend implementations
-  registry/          config-driven registries (model, retriever, evaluator)
+  registry/          config-driven registries (model, retriever, evaluator, guardrail)
   services/          governance + observability + prompt/token/cost services
   evaluation/        EvaluationEngine + Metrics
   config/            generation config

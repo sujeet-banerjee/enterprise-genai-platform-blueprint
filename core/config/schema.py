@@ -263,6 +263,21 @@ class ResilienceConfig(_StrictModel):
     resilience: Optional[ResilienceSection] = None
 
 
+# -- guardrails.yaml -----------------------------------------------------
+
+
+class GuardrailEntry(_OpenModel):
+    """A single ordered guardrail entry; options are provider-specific."""
+
+    stage: Optional[str] = None
+
+
+class GuardrailsConfig(_StrictModel):
+    enabled: Optional[bool] = None
+    input: List[Union[GuardrailEntry, str]] = Field(default_factory=list)
+    output: List[Union[GuardrailEntry, str]] = Field(default_factory=list)
+
+
 RetrievalConfig.model_rebuild()
 
 #: Map of config file stem -> (schema, human label).
@@ -276,4 +291,5 @@ SCHEMAS: Dict[str, Any] = {
     "audit": AuditConfig,
     "access_control": AccessControlConfig,
     "resilience": ResilienceConfig,
+    "guardrails": GuardrailsConfig,
 }

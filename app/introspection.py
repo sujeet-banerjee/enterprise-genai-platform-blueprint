@@ -37,6 +37,7 @@ class IntrospectionService:
         governance_config_path: Optional[Path] = None,
         observability_config_path: Optional[Path] = None,
         api_config_path: Optional[Path] = None,
+        guardrails_config_path: Optional[Path] = None,
     ):
         self.models_config_path = Path(models_config_path)
         self.retrieval_config_path = Path(retrieval_config_path)
@@ -46,6 +47,9 @@ class IntrospectionService:
             Path(observability_config_path) if observability_config_path else None
         )
         self.api_config_path = Path(api_config_path) if api_config_path else None
+        self.guardrails_config_path = (
+            Path(guardrails_config_path) if guardrails_config_path else None
+        )
 
         self.model_registry = ModelRegistry(str(self.models_config_path))
         self.retriever_registry = RetrieverRegistry(str(self.retrieval_config_path))
@@ -73,6 +77,7 @@ class IntrospectionService:
             "governance": _read_yaml(self.governance_config_path),
             "observability": _read_yaml(self.observability_config_path),
             "api": _read_yaml(self.api_config_path),
+            "guardrails": _read_yaml(self.guardrails_config_path),
         }
         redacted = self._redactor.redact_obj(merged)
         return redacted if isinstance(redacted, dict) else merged
