@@ -26,6 +26,7 @@ REPO_PROMPT = REPO_BASE / "config" / "prompt_config.yaml"
 EXPECTED_PATHS = {
     "/health",
     "/ready",
+    "/metrics",
     "/query",
     "/v1/query",
     "/v1/query:batch",

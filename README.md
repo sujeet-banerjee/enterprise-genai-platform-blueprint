@@ -136,6 +136,7 @@ the lifespan startup hook (not at import). Endpoints:
 - `POST /v1/experiments` / `GET /v1/experiments/{id}` - launch and poll experiments
 - `POST /v1/pipeline:rebuild` - runtime component swap via config overrides (gated by `api.allow_rebuild`)
 - `GET /v1/governance/status`, `GET /v1/traces/{request_id}`, `GET /v1/metrics` - governance & observability
+- `GET /metrics` - Prometheus exposition (requires the optional `observability` extra; 503 otherwise)
 - `GET /v1/audit` - read the redacted append-only audit trail (`event_type`/`limit` filters)
 - `GET /v1/access` - report the calling persona's role and effective permissions
 - Interactive docs at `/docs`
@@ -461,6 +462,14 @@ allow_rebuild: true
 max_batch_size: 25
 history_max_runs: 1000
 trace_store_max: 500
+```
+
+**Enable Prometheus metrics + the Grafana pack** - install the optional extra, then scrape
+`/metrics` (the endpoint returns a 503 envelope until the extra is installed):
+
+```bash
+pip install -e ".[observability]"   # or: pip install -r requirements-observability.txt
+docker compose -f deployment/docker-compose.yml --profile observability up
 ```
 
 With rebuild enabled you can swap the live pipeline without restarting:

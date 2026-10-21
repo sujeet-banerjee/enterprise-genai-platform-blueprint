@@ -36,6 +36,7 @@ from core.services.cost_tracker import CostTracker
 from core.services.failure_classifier import FailureType
 from core.services.prompt_builder import PromptBuilder
 from core.services.retrieval_policy_service import RetrievalPolicyService
+from core.services.telemetry import PrometheusCollector
 from core.services.token_budget_service import TokenBudgetService
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -49,7 +50,7 @@ AUDIT_CONFIG_PATH = BASE_DIR / "config" / "audit.yaml"
 ACCESS_CONTROL_CONFIG_PATH = BASE_DIR / "config" / "access_control.yaml"
 
 # Endpoints that never require an API key (liveness/readiness + OpenAPI docs).
-_PUBLIC_PATHS = {"/health", "/ready", "/docs", "/redoc", "/openapi.json"}
+_PUBLIC_PATHS = {"/health", "/ready", "/metrics", "/docs", "/redoc", "/openapi.json"}
 
 
 def _load_config(config_path: Path) -> dict:
@@ -293,6 +294,9 @@ def create_app(
             max_traces=int(api_config.get("trace_store_max", 500)),
             observability_config_path=observability_config_path,
         )
+        # Prometheus collector (issue #44): optional dependency; a no-op when
+        # prometheus-client is not installed.
+        application.state.telemetry = PrometheusCollector()
         # Audit log (issue #28): structured, append-only, off by default. It
         # reuses the history redactor so the trail never stores secrets.
         audit_config = _load_config(audit_config_path) or {}
@@ -492,6 +496,10 @@ def create_app(
         history = getattr(request.app.state, "history", None)
         if history is not None:
             history.record(request_id, result)
+
+        telemetry = getattr(request.app.state, "telemetry", None)
+        if telemetry is not None:
+            telemetry.record(result)
 
         _record_query_audit(request, request_id, result)
 
