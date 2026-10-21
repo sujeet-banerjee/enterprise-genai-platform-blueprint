@@ -29,6 +29,7 @@ from core.config.generation_config import GenerationConfig
 from core.config.schema import SCHEMAS
 from core.config.validator import load_and_validate, resolve_config_file
 from core.registry.evaluator_registry import EvaluatorRegistry
+from core.registry.guardrail_registry import GuardrailRegistry
 from core.registry.model_registry import ModelRegistry
 from core.registry.query_expander_registry import QueryExpanderRegistry
 from core.registry.reranker_registry import RerankerRegistry
@@ -119,11 +120,14 @@ class PipelineComponents:
     redactor: Optional[SensitiveDataRedactor] = None
     cost_governor: Any = None
     retrieval_policy_service: Any = None
+    input_guardrails: Any = None
+    output_guardrails: Any = None
     model_registry: Optional[ModelRegistry] = None
     retriever_registry: Optional[RetrieverRegistry] = None
     reranker_registry: Optional[RerankerRegistry] = None
     evaluator_registry: Optional[EvaluatorRegistry] = None
     query_expander_registry: Optional[QueryExpanderRegistry] = None
+    guardrail_registry: Optional[GuardrailRegistry] = None
     retrieval_config: dict = field(default_factory=dict)
     governance_config: dict = field(default_factory=dict)
     observability_config: dict = field(default_factory=dict)
@@ -161,6 +165,8 @@ class PipelineComponents:
             cache=self.cache,
             redactor=self.redactor,
             max_query_chars=max_query_chars,
+            input_guardrails=self.input_guardrails,
+            output_guardrails=self.output_guardrails,
         )
 
 
@@ -172,6 +178,7 @@ def assemble_components(
     governance_config_path: Optional[Path] = None,
     observability_config_path: Optional[Path] = None,
     resilience_config_path: Optional[Path] = None,
+    guardrails_config_path: Optional[Path] = None,
     validate: bool = True,
     # Overrides used by experiments (issue #75). ``None`` -> resolved from config.
     embedding_model: Optional[str] = None,
@@ -199,6 +206,7 @@ def assemble_components(
             governance_config_path,
             observability_config_path,
             resilience_config_path,
+            guardrails_config_path,
         )
 
     model_registry = ModelRegistry(str(models_config_path))
@@ -206,6 +214,9 @@ def assemble_components(
     reranker_registry = RerankerRegistry(str(retrieval_config_path))
     evaluator_registry = EvaluatorRegistry(str(retrieval_config_path))
     query_expander_registry = QueryExpanderRegistry(str(retrieval_config_path))
+    guardrail_registry = GuardrailRegistry(
+        str(guardrails_config_path) if guardrails_config_path else None
+    )
 
     retrieval_config = load_config(retrieval_config_path)
     governance_config = load_config(governance_config_path) if governance_config_path else {}
@@ -239,6 +250,11 @@ def assemble_components(
     # Query expansion is opt-in; the LLM provider gets the active model injected
     # so it never loads a second copy (issue #23).
     query_expander = query_expander_registry.create(llm=active_llm)
+
+    # Guardrail framework (issue #52): ordered input/output chains, disabled by
+    # default (empty lists => the pipeline stages are pure no-ops).
+    input_guardrails = guardrail_registry.build_input_chain()
+    output_guardrails = guardrail_registry.build_output_chain()
 
     # Optional response cache (issue #26); off by default. The namespace ties
     # entries to the active component identities so a rebuild cannot serve stale
@@ -327,11 +343,14 @@ def assemble_components(
         redactor=input_redactor,
         cost_governor=cost_governor,
         retrieval_policy_service=retrieval_policy_service,
+        input_guardrails=input_guardrails,
+        output_guardrails=output_guardrails,
         model_registry=model_registry,
         retriever_registry=retriever_registry,
         reranker_registry=reranker_registry,
         evaluator_registry=evaluator_registry,
         query_expander_registry=query_expander_registry,
+        guardrail_registry=guardrail_registry,
         retrieval_config=retrieval_config,
         governance_config=governance_config,
         observability_config=observability_config,

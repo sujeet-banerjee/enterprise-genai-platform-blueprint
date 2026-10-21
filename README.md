@@ -272,6 +272,7 @@ All behaviour is driven by YAML in config/:
 - config/audit.yaml - append-only audit trail (disabled by default; optional JSONL `path`)
 - config/access_control.yaml - RBAC roles/personas, capabilities and request caps (disabled by default)
 - config/resilience.yaml - provider retries, circuit breaker and LLM failover (disabled by default)
+- config/guardrails.yaml - pluggable input/output guardrail chains (disabled by default)
 
 The composition root (`app/main.py::build_pipeline()`) reads these configs and wires
 components via registries:
@@ -511,6 +512,28 @@ resilience:
 
 The wrapper is transparent (`model_name`/cost still reflect the primary); the request trace
 gains a `resilience` block with `served_by`, `retries` and `failovers`.
+
+**Add input/output guardrails** (pluggable safety/policy checks) - edit `config/guardrails.yaml`.
+Disabled by default; `input` runs on the query + retrieved docs before prompt construction,
+`output` runs on the generated response before it is returned. Each is an **ordered** list and a
+block stops the chain:
+
+```yaml
+enabled: true
+input:
+  - provider: deny_list                 # block obvious injection phrases
+    terms: ["ignore previous instructions", "disregard all prior"]
+output:
+  - provider: deny_list                 # or mask instead of block
+    terms: ["api_key", "password"]
+    mask: "[REDACTED]"
+```
+
+A **block** returns a governed failure (`guardrail_input_blocked` / `guardrail_output_blocked`,
+HTTP 403); a **redact** (when `mask` is set) rewrites the text and lets the chain continue.
+Decisions appear on the trace (`guardrail_decisions`) and in the audit trail. Add a custom
+guardrail by implementing `BaseGuardrail` (`core/interfaces/guardrail.py`), registering a factory
+in `GuardrailRegistry`, and adding a config entry - no orchestration changes.
 
 **Export traces to Jaeger/Tempo/Datadog** (OTel-native, OTLP) - enable the `otel` block in
 `config/observability.yaml` and start the collector + Jaeger (same `observability` profile;

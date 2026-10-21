@@ -153,6 +153,8 @@ class PipelineRebuildService:
         }
         if "resilience_config_path" in paths:
             kwargs["resilience_config_path"] = paths["resilience_config_path"]
+        if "guardrails_config_path" in paths:
+            kwargs["guardrails_config_path"] = paths["guardrails_config_path"]
         return kwargs
 
     # -- rebuild ----------------------------------------------------------
@@ -185,6 +187,7 @@ class PipelineRebuildService:
                 governance_config_path=paths["governance_config_path"],
                 observability_config_path=paths["observability_config_path"],
                 api_config_path=paths.get("api_config_path"),
+                guardrails_config_path=paths.get("guardrails_config_path"),
             )
             swap(pipeline, introspection)
 

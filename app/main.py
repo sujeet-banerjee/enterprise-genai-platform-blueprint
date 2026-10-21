@@ -61,6 +61,7 @@ API_CONFIG_PATH = CONFIG_DIR / "api.yaml"
 AUDIT_CONFIG_PATH = CONFIG_DIR / "audit.yaml"
 ACCESS_CONTROL_CONFIG_PATH = CONFIG_DIR / "access_control.yaml"
 RESILIENCE_CONFIG_PATH = CONFIG_DIR / "resilience.yaml"
+GUARDRAILS_CONFIG_PATH = CONFIG_DIR / "guardrails.yaml"
 
 # Endpoints that never require an API key (liveness/readiness + OpenAPI docs).
 _PUBLIC_PATHS = {"/health", "/ready", "/metrics", "/docs", "/redoc", "/openapi.json"}
@@ -92,6 +93,7 @@ def build_pipeline(
     governance_config_path: Optional[Path] = None,
     observability_config_path: Optional[Path] = None,
     resilience_config_path: Optional[Path] = None,
+    guardrails_config_path: Optional[Path] = None,
 ) -> RAGPipeline:
     """
     Composition root: assemble the RAG pipeline by resolving every pluggable
@@ -108,6 +110,7 @@ def build_pipeline(
         governance_config_path=governance_config_path,
         observability_config_path=observability_config_path,
         resilience_config_path=resilience_config_path,
+        guardrails_config_path=guardrails_config_path,
     )
     return components.build_pipeline(
         config_path=str(retrieval_config_path),
@@ -173,6 +176,7 @@ def create_app(
     audit_config_path: Path = AUDIT_CONFIG_PATH,
     access_control_config_path: Path = ACCESS_CONTROL_CONFIG_PATH,
     resilience_config_path: Path = RESILIENCE_CONFIG_PATH,
+    guardrails_config_path: Path = GUARDRAILS_CONFIG_PATH,
     pipeline_builder: Callable[..., RAGPipeline] = build_pipeline,
 ) -> FastAPI:
     """
@@ -202,6 +206,7 @@ def create_app(
             governance_config_path=governance_config_path,
             observability_config_path=observability_config_path,
             resilience_config_path=resilience_config_path,
+            guardrails_config_path=guardrails_config_path,
         )
         application.state.introspect = IntrospectionService(
             models_config_path=models_config_path,
@@ -210,6 +215,7 @@ def create_app(
             governance_config_path=governance_config_path,
             observability_config_path=observability_config_path,
             api_config_path=api_config_path,
+            guardrails_config_path=guardrails_config_path,
         )
         application.state.evaluate = EvaluationService(
             models_config_path=models_config_path,
@@ -218,6 +224,7 @@ def create_app(
             governance_config_path=governance_config_path,
             observability_config_path=observability_config_path,
             resilience_config_path=resilience_config_path,
+            guardrails_config_path=guardrails_config_path,
         )
         application.state.history = RunHistory(
             max_runs=int(api_config.get("history_max_runs", 1000)),
@@ -248,6 +255,7 @@ def create_app(
                 "observability_config_path": observability_config_path,
                 "api_config_path": api_config_path,
                 "resilience_config_path": resilience_config_path,
+                "guardrails_config_path": guardrails_config_path,
             },
             allow_rebuild=allow_rebuild,
         )
@@ -447,6 +455,11 @@ def create_app(
                 status_code = 402
             elif failure_type == FailureType.QUERY_TOO_LONG.value:
                 status_code = 400
+            elif failure_type in (
+                FailureType.GUARDRAIL_INPUT_BLOCKED.value,
+                FailureType.GUARDRAIL_OUTPUT_BLOCKED.value,
+            ):
+                status_code = 403
             else:
                 status_code = 500
             return payload_dict, status_code

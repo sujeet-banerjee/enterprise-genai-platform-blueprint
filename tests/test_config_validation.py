@@ -52,6 +52,7 @@ def test_all_shipped_configs_validate():
         "api.yaml",
         "audit.yaml",
         "governance.yaml",
+        "guardrails.yaml",
         "models.yaml",
         "observability.yaml",
         "prompt_config.yaml",
