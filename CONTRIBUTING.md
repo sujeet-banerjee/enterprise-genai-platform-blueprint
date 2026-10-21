@@ -69,6 +69,28 @@ docs(<area>): <what changed>
 
 Reference the issue number in the body (`Refs #44` / `Closes #44`).
 
+## Commit attribution
+
+Agent-authored commits are co-attributed via a tracked git hook. The hook lives in
+`.githooks/prepare-commit-msg` and appends:
+
+```
+Co-authored-by: ai-opencode-big-pickle <agent-smith@opencode.local>
+```
+
+It is **idempotent** (skips if the trailer is already present) so amends and rebase replays do
+not stack duplicates. The human author/committer identity is unchanged — this only adds the
+agent's co-authorship to the commit metadata.
+
+Git does **not** run committed hooks automatically (a deliberate security decision), so after
+cloning, opt in **once**:
+
+```bash
+git config --local core.hooksPath .githooks
+```
+
+CI only checks out and tests, so the hook never fires there and the pipeline is unaffected.
+
 ## Releases
 
 - Releases are annotated git tags following **semantic versioning**: `v<major>.<minor>.<patch>`.

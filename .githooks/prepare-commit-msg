@@ -1,0 +1,37 @@
+#!/bin/sh
+#
+# prepare-commit-msg hook: always append the AI co-author trailer.
+#
+# Tracked in .githooks/ so it is visible and reproducible. Git does NOT run
+# committed hooks automatically (a security decision); each clone must opt in
+# once with:
+#
+#     git config --local core.hooksPath .githooks
+#
+# The trailer is idempotent: it is only added when not already present, so
+# amend/rebase replays do not stack duplicates.
+
+set -eu
+
+commit_msg_file="$1"
+
+trailer="Co-authored-by: ai-opencode-big-pickle <agent-smith@opencode.local>"
+
+if [ ! -f "$commit_msg_file" ]; then
+    exit 0
+fi
+
+# Idempotency guard in pure POSIX sh (no dependency on grep being on PATH).
+found=""
+while IFS= read -r line || [ -n "$line" ]; do
+    if [ "$line" = "$trailer" ]; then
+        found="yes"
+        break
+    fi
+done < "$commit_msg_file"
+
+if [ -n "$found" ]; then
+    exit 0
+fi
+
+printf '\n%s\n' "$trailer" >> "$commit_msg_file"
