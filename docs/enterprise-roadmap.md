@@ -27,8 +27,10 @@ This branch grew in three deliberate phases (`git log`):
   true IR metrics (`context_precision_at_ids`, `context_recall_at_ids`).
 - **Governance/economics**: token budget modes, per-model pricing, cost governor, spend
   windows, retrieval policy.
-- **Observability**: structured per-request traces, failure taxonomy (17 classes), redaction,
+- **Observability**: structured per-request traces, failure taxonomy (20 classes), redaction,
   audit log, `/v1/metrics`.
+- **Safety**: input/doc redaction (#72), query-length bound (#73), and a pluggable
+  input/output guardrail framework (#52).
 - **API + a proof-of-contract UI**: 20+ endpoints, OpenAPI, error envelope, RBAC, and a
   Streamlit console that talks *only* HTTP.
 - **Engineering hygiene**: 507 tests + 2 skipped, coverage gate ≥78%, green CI on 3.11/3.13,
@@ -122,9 +124,17 @@ Issue IDs are placeholders (`E-*`) — not yet created.
 > provider and the client **raw**. This is a real egress gap. It is tracked as **#72 (input-side
 > redaction, H0)** and the surrounding gaps as umbrella **#73** (injection, PII/DLP, framework,
 > query-length bounds). #72 is implemented first as the lowest-risk slice; the rest plug into B1-B3.
+>
+> **Progress (2026-10-21):** **#72 input/doc redaction (H0, PR #76)** and the **#52 `BaseGuardrail`
+> framework + registry (B1, PR #79)** are landed; the query-length bound slice of #73 is also done
+> (PR #78). Remaining B-slices: **#53 injection/jailbreak defense (B2)** and **#54 PII/DLP (B3)**,
+> which plug into the same `guardrail_input`/`guardrail_output` seam.
 
 - **B1. Guardrail framework** — pluggable pre/post stages behind a new `BaseGuardrail`
   interface + registry: input classifier, output classifier, schema/format validation.
+  **Landed (#52, PR #79):** `core/interfaces/guardrail.py` + `core/registry/guardrail_registry.py`
+  + `config/guardrails.yaml` (default off); ordered input/output chains; block → governed failure,
+  redact rewrites text.
 - **B2. Prompt-injection & jailbreak defense** — input sanitization + injection heuristics +
   optional classifier model; adversarial test suite (red teaming in CI).
 - **B3. Data privacy / DLP** — PII detection & redaction at ingress/egress (extend the existing
@@ -282,8 +292,8 @@ framework (§8 non-goal).
 The good news: **the blueprint's separation of concerns is exactly right for this.** Each new
 capability slots in behind an existing pattern:
 
-- Guardrails → new `core/interfaces/guardrail.py` + `core/registry/guardrail_registry.py`
-  (mirrors reranker/evaluator).
+- Guardrails → `core/interfaces/guardrail.py` + `core/registry/guardrail_registry.py`
+  (mirrors reranker/evaluator). **Implemented (#52).**
 - Identity/tenancy → middleware + `AccessController` extension (already request-scoped).
 - OTel/Prometheus → a new `core/services/telemetry.py` alongside
   `PipelineObservabilityTracker`; nothing in the pipeline changes.
@@ -320,7 +330,7 @@ A capability is only "done" when it is:
 | Horizon | Theme | Workstreams | Outcome |
 |---|---|---|---|
 | **H0 — Now (0–1 mo)** | Finish the foundation & make it operable | C2 (Prometheus/Grafana + dashboard pack), D1 (resilience/failover), E2 (config schema/validation), E3 (secrets), C1 (OTel), **G0 (hardened container + Compose), G1 (deployment playbook), B3-slice #72 (input/doc redaction before prompt)** | The platform is observable, hardened, **deployable**, and no longer leaks raw secrets in the query/doc path; ops can adopt it. |
-| **H1 (1–3 mo)** | Multi-tenant & governed | A1–A4, B1–B3, B5, E1, E4, F5 (admin), **G2 (Helm + Kustomize + GitOps example + CI deploy smoke)** | Teams can onboard safely; access and cost are attributable; guardrails + audit are real; it installs on Kubernetes. |
+| **H1 (1–3 mo)** | Multi-tenant & governed | A1–A4, B1–B3, B5, E1, E4, F5 (admin), **G2 (Helm + Kustomize + GitOps example + CI deploy smoke)** — *B1 (#52) landed* | Teams can onboard safely; access and cost are attributable; guardrails + audit are real; it installs on Kubernetes. |
 | **H2 (3–6 mo)** | The product surface | C3–C6, D2–D5, F1–F4 (composer, graphs, experiments, governance console), **G3 (HA/autoscale), G4 (progressive delivery)** | This becomes a *platform teams want to use*: visual, measurable, ROI-provable, safely rollout-able. |
 | **H3 (6–12 mo)** | Enterprise scale & compliance | B4, B6, D6, E5, E6, F6, F7, **G5 (GitOps at scale), G6 (multi-region/DR + cloud IaC)** | Runs at scale, in-region, GitOps-managed, compliance-evidenced, multi-team. |
 
@@ -367,7 +377,8 @@ later deployment item.
 - Umbrella issue: **#43** (`[Roadmap] Enterprise platform bridge`).
 - Deployment is a first-class workstream: umbrella **#64** (`[Roadmap] Workstream G - Deployment & delivery`).
 - Security audit follow-ups: **#72** (input-side redaction, H0) + umbrella **#73** (guardrail gaps
-  across the RAG invocation flow).
+  across the RAG invocation flow) — #72, the query-length bound, and the **#52** `BaseGuardrail`
+  framework are landed; **#53** (injection) and **#54** (PII/DLP) remain.
 - Horizons are GitHub **milestones**: `H0 - Observability & hardening`,
   `H1 - Multi-tenant & governed`, `H2 - Product surface`,
   `H3 - Enterprise scale & compliance`.

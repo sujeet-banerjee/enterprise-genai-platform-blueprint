@@ -320,7 +320,7 @@ config/     YAML configuration - the single source of truth for behaviour
 ui/         Streamlit console (HTTP-only client of the public API)
 tests/      pytest suite (behavioural tests drive real local models)
 data/       sample corpus (data/docs.json)
-docs/       architecture.md, ux-and-api.md, INTERFACE_CHANGES.md
+docs/       architecture.md, ux-and-api.md, enterprise-roadmap.md
 ```
 
 ### How to run the backend
