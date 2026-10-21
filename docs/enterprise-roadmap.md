@@ -117,12 +117,19 @@ Issue IDs are placeholders (`E-*`) — not yet created.
 
 *Pain: prompt injection, jailbreak, PII/DLP, compliance, red teaming.*
 
+> **Audit note (2026-10-21):** tracing the end-to-end `RAGPipeline.run` path showed that today
+> **only observability output is redacted** — the query and retrieved docs reach the model
+> provider and the client **raw**. This is a real egress gap. It is tracked as **#72 (input-side
+> redaction, H0)** and the surrounding gaps as umbrella **#73** (injection, PII/DLP, framework,
+> query-length bounds). #72 is implemented first as the lowest-risk slice; the rest plug into B1-B3.
+
 - **B1. Guardrail framework** — pluggable pre/post stages behind a new `BaseGuardrail`
   interface + registry: input classifier, output classifier, schema/format validation.
 - **B2. Prompt-injection & jailbreak defense** — input sanitization + injection heuristics +
   optional classifier model; adversarial test suite (red teaming in CI).
 - **B3. Data privacy / DLP** — PII detection & redaction at ingress/egress (extend the existing
   `SensitiveDataRedactor` from regex to NER-based detection); configurable per-tenant policy.
+  **#72 (input/doc redaction before prompt construction) is the first slice of this.**
 - **B4. Policy-as-code engine** — declarative policies (OPA/Rego or an embedded rule DSL) that
   gate ingress, retrieval, generation, and egress; versioned and testable.
 - **B5. Audit & compliance exports** — immutable (append-only/WORM) audit trail, retention
@@ -241,7 +248,34 @@ comments on traces, notifications/alerts.
 **F7. Design & accessibility** — enterprise design system, WCAG 2.2 AA, keyboard-first
 composer, light/dark, i18n; embeddable widgets (dashboards in the customer's own portal).
 
----
+### Workstream G — Deployment & delivery
+
+*Pain: an enterprise cannot answer "how do we run this next to production RAG/agentic workloads?" — the container is naive, and deployment modes/processes/tools are undocumented.*
+
+A blueprint is only adoptable if it is **deployable**. This workstream makes the platform genuinely
+runnable beside production, **cloud-agnostic first** (Kubernetes/Helm primary, Docker Compose
+supported), with cloud-specific IaC as a long-term goal. Agentic workflows are **bring-your-own**:
+we ship the *seams* (worker/queue topology, checkpointing, per-tool egress) rather than an agent
+framework (§8 non-goal).
+
+- **G0. Hardened container + single-node reference** — multi-stage, non-root, healthchecked image
+  built from the real dependency files; `.dockerignore`; a backward-compatible **config-path env
+  seam**; a genuine Docker Compose single-node reference (config mounts, volumes, limits, probes).
+- **G1. Deployment playbook (`docs/deployment.md`)** — deployment **modes** (local, Compose,
+  Kubernetes, air-gapped/on-prem, managed-cloud/BYO-model, embedded/sidecar), **processes**
+  (config/prompt/model promotion, versioning, migration, rollback, blue-green/canary, backup/restore),
+  **tools** (Helm/Kustomize, ArgoCD/Flux, KEDA/HPA, Secrets/External Secrets), and agentic/RAG
+  topology seams.
+- **G2. Reference delivery artifacts** — a lean **Helm chart** + Kustomize overlays, a GitOps
+  example, and a CI build+`/health` smoke test so "deployable" is verified, not asserted.
+- **G3. Multi-replica / HA + autoscaling** — replication with shared state, HPA/KEDA. *Depends on
+  E4 (persistence).*
+- **G4. Progressive delivery** — canary/blue-green, versioned config/prompt/model rollback, upgrade
+  migrations, runbooks.
+- **G5. GitOps at scale** — ArgoCD/Flux reconciliation, environment promotion pipelines, IaC.
+- **G6. Multi-region / residency / DR + cloud-specific IaC** — the deferred long-term depth.
+
+
 
 ## 5. How this maps onto the existing architecture (minimal blast radius)
 
@@ -258,6 +292,8 @@ capability slots in behind an existing pattern:
 - Vector scale → new `BaseRetriever` providers (already the extension recipe, architecture §15).
 - UI composer → consumes existing `/v1/config`, `/v1/pipeline:rebuild`, `/v1/*introspection`;
   exports YAML, never imports `core.*` (the standing HTTP-only rule).
+- Deployment → packaging/docs/chart are **additive** under `deployment/` + `docs/`; the only code
+  change is a small, backward-compatible config-path env seam in the composition root.
 
 This is the payoff of the config-driven investment: **the roadmap is additive, not a rewrite.**
 
@@ -273,7 +309,9 @@ A capability is only "done" when it is:
 4. **Governed** — enforceable, auditable, policy-controllable.
 5. **Tested** — unit + integration/e2e with real components; contract tests; ≥ coverage gate.
 6. **Documented** — architecture + config mapping + README + example.
-7. **Deployable** — container/Helm/IaC, health-checked, rollback-able.
+7. **Deployable** — produces a hardened container + Helm chart (or Compose) with health/readiness
+   probes and a rollback path; `docs/deployment.md` covers the deployment mode; CI builds the image
+   and verifies `/health`. (Not just "it runs on my machine.")
 
 ---
 
@@ -281,13 +319,15 @@ A capability is only "done" when it is:
 
 | Horizon | Theme | Workstreams | Outcome |
 |---|---|---|---|
-| **H0 — Now (0–1 mo)** | Finish the foundation & make it operable | C2 (Prometheus/Grafana + dashboard pack), D1 (resilience/failover), E2 (config schema/validation), E3 (secrets), C1 (OTel) | The platform is observable and hardened to a real standard; ops can adopt it. |
-| **H1 (1–3 mo)** | Multi-tenant & governed | A1–A4, B1–B3, B5, E1, E4, F5 (admin) | Teams can onboard safely; access and cost are attributable; guardrails + audit are real. |
-| **H2 (3–6 mo)** | The product surface | C3–C6, D2–D5, F1–F4 (composer, graphs, experiments, governance console) | This becomes a *platform teams want to use*: visual, measurable, ROI-provable. |
-| **H3 (6–12 mo)** | Enterprise scale & compliance | B4, B6, D6, E5, E6, F6, F7 | Runs at scale, in-region, GitOps-managed, compliance-evidenced, multi-team. |
+| **H0 — Now (0–1 mo)** | Finish the foundation & make it operable | C2 (Prometheus/Grafana + dashboard pack), D1 (resilience/failover), E2 (config schema/validation), E3 (secrets), C1 (OTel), **G0 (hardened container + Compose), G1 (deployment playbook), B3-slice #72 (input/doc redaction before prompt)** | The platform is observable, hardened, **deployable**, and no longer leaks raw secrets in the query/doc path; ops can adopt it. |
+| **H1 (1–3 mo)** | Multi-tenant & governed | A1–A4, B1–B3, B5, E1, E4, F5 (admin), **G2 (Helm + Kustomize + GitOps example + CI deploy smoke)** | Teams can onboard safely; access and cost are attributable; guardrails + audit are real; it installs on Kubernetes. |
+| **H2 (3–6 mo)** | The product surface | C3–C6, D2–D5, F1–F4 (composer, graphs, experiments, governance console), **G3 (HA/autoscale), G4 (progressive delivery)** | This becomes a *platform teams want to use*: visual, measurable, ROI-provable, safely rollout-able. |
+| **H3 (6–12 mo)** | Enterprise scale & compliance | B4, B6, D6, E5, E6, F6, F7, **G5 (GitOps at scale), G6 (multi-region/DR + cloud IaC)** | Runs at scale, in-region, GitOps-managed, compliance-evidenced, multi-team. |
 
 **Dependency notes:** A (identity) unblocks B/C attribution and F5; E2 unblocks F1 (schema-driven
-composer); C1 unblocks the trace-waterfall graph (F2); E4 should precede C5/C6 production use.
+composer); C1 unblocks the trace-waterfall graph (F2); E4 should precede C5/C6 production use **and
+G3 (multi-replica) — do not scale out before persistence lands**. G0/G1 are prerequisites for every
+later deployment item.
 
 ---
 
@@ -325,10 +365,15 @@ composer); C1 unblocks the trace-waterfall graph (F2); E4 should precede C5/C6 p
 ## 11. How this roadmap is tracked
 
 - Umbrella issue: **#43** (`[Roadmap] Enterprise platform bridge`).
+- Deployment is a first-class workstream: umbrella **#64** (`[Roadmap] Workstream G - Deployment & delivery`).
+- Security audit follow-ups: **#72** (input-side redaction, H0) + umbrella **#73** (guardrail gaps
+  across the RAG invocation flow).
 - Horizons are GitHub **milestones**: `H0 - Observability & hardening`,
   `H1 - Multi-tenant & governed`, `H2 - Product surface`,
   `H3 - Enterprise scale & compliance`.
-- Horizons are opened **lazily**: H0 (#44–#47) and H1 (#48–#57) are opened now; H2/H3 items stay
-  the checklist in #43 until their horizon activates.
+- Horizons are opened **lazily**: H0 (#44–#47, **#65 G0, #66 G1**), H1 (#48–#57, **#67 G2**) are
+  opened now; H2/H3 items (incl. **#68 G3, #69 G4, #70 G5, #71 G6**) are filed but stay the
+  checklist in #43/#64 until their horizon activates.
+- The Project v2 board (**#8**) carries a **Workstream** field (A–G + Cross-cutting) for slicing.
 - Contribution workflow (branching, PR checklist, release tags) is in
   [`CONTRIBUTING.md`](../CONTRIBUTING.md).
