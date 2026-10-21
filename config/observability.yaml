@@ -8,3 +8,15 @@ sensitive_patterns:
   - "token"
   - "authorization"
   - "bearer"
+
+# OpenTelemetry-native tracing (issue #47). Disabled by default: with
+# ``enabled: false`` no tracer provider is built and the pipeline is unchanged.
+# When enabled, pipeline spans are exported over OTLP to ``endpoint`` so traces
+# land in Jaeger/Tempo/Grafana/Datadog/New Relic. Requires the optional extra:
+#   pip install -e ".[observability]"
+otel:
+  enabled: false
+  endpoint: "http://localhost:4318/v1/traces"
+  service_name: "enterprise-genai-platform"
+  sample_ratio: 1.0
+

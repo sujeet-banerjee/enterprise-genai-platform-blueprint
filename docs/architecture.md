@@ -489,6 +489,17 @@ keep working via a fallback (roadmap #34).
 | `redact_sensitive_data` | `PipelineObservabilityTracker` | Toggle redaction (roadmap #16) |
 | `low_retrieval_score_threshold` | pipeline | Low-score flagging |
 | `sensitive_patterns` | `PipelineObservabilityTracker` | Redaction patterns (roadmap #16) |
+| `otel` | `PipelineObservabilityTracker` | OTel trace export (roadmap #47) |
+
+The `otel` block (disabled by default) enables OTLP trace export:
+
+| Sub-key | Default | Effect |
+|---------|---------|--------|
+| `enabled` | `false` | Build the tracer exporter (no-op when off → zero overhead) |
+| `endpoint` | `http://localhost:4318/v1/traces` | OTLP/HTTP collector endpoint |
+| `service_name` | `enterprise-genai-platform` | `service.name` resource attribute |
+| `sample_ratio` | `1.0` | Head sampling ratio (0.0–1.0) |
+
 
 ---
 
@@ -614,6 +625,29 @@ Configuration lives in `config/resilience.yaml` (`resilience.enabled`, `max_atte
 `fallback_models`, `fallback_embedders`). `fallback_models` names keys in `models.yaml`; the
 primary is always `active_model`. Identity (`model_name`, `context_window`) is taken from the
 primary so cost accounting and prompt budgeting are unaffected by failover.
+
+## 9.3 OpenTelemetry tracing (OTLP export)
+
+Pipeline tracing is **OTel-native** (roadmap issue #47): when enabled, every request exports a
+root `pipeline.run` span with one child span per stage (`pipeline.embedding`,
+`pipeline.retrieval`, `pipeline.reranking`, `pipeline.token_budget`,
+`pipeline.prompt_construction`, `pipeline.llm_generation`, `pipeline.evaluation`,
+`pipeline.cost_governance`, `pipeline.retrieval_policy`) over **OTLP**, so traces land in an
+existing Jaeger/Tempo/Grafana/Datadog/New Relic stack.
+
+The in-process trace (`PipelineObservabilityTracker`, surfaced at `/v1/traces/{request_id}`)
+remains the **source of truth** — OTel is a pure exporter and the pipeline contract is
+unchanged. Integration is transparent: `measure_stage` opens a child span, and span attributes
+(`request_id`, `top_k`, `retriever`, `llm_model`, `embedding_model`, `failure_tags`) are set on
+the root span. Logs are correlated by prefixing the trace/span id. It is **disabled by
+default** (`observability.otel.enabled: false`) — with tracing off no tracer provider is built
+and nothing changes.
+
+`opentelemetry-*` is an **optional extra** shared with Prometheus
+(`pip install -e ".[observability]"`). A turnkey backend ships in
+`deployment/observability/otel-collector/config.yml` (OTLP receiver → Jaeger exporter);
+`docker compose --profile observability up` starts the collector and Jaeger (UI at
+`http://localhost:16686`).
 
 ---
 

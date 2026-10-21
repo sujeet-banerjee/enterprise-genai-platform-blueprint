@@ -9,6 +9,8 @@ services:
     environment:
       # Enables the Prometheus /metrics endpoint (issue #44).
       GENAI_OBSERVABILITY: "1"
+      # OTLP endpoint for OTel trace export (issue #47) when tracing is enabled.
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4318/v1/traces"
 
   # Observability stack (issue #44). Start with:
   #   docker compose --profile observability up
@@ -37,3 +39,26 @@ services:
       - ./observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
     depends_on:
       - prometheus
+
+  # OTel collector + Jaeger trace backend (issue #47). Part of the same
+  # ``observability`` profile: enable tracing (observability.yaml otel.enabled
+  # or GENAI_OBSERVABILITY) then browse traces at http://localhost:16686.
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:latest
+    profiles: ["observability"]
+    command: ["--config=/etc/otelcol/config.yml"]
+    volumes:
+      - ./observability/otel-collector/config.yml:/etc/otelcol/config.yml:ro
+    ports:
+      - "4318:4318"
+    depends_on:
+      - jaeger
+
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    profiles: ["observability"]
+    ports:
+      - "16686:16686"
+      - "4317:4317"
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"

@@ -186,11 +186,19 @@ class GovernanceConfig(_StrictModel):
 # -- observability.yaml --------------------------------------------------
 
 
+class OtelSection(_StrictModel):
+    enabled: Optional[bool] = None
+    endpoint: Optional[str] = None
+    service_name: Optional[str] = None
+    sample_ratio: Optional[float] = None
+
+
 class ObservabilityConfig(_StrictModel):
     log_level: Optional[str] = None
     redact_sensitive_data: Optional[bool] = None
     low_retrieval_score_threshold: Optional[float] = None
     sensitive_patterns: Optional[List[str]] = None
+    otel: Optional[OtelSection] = None
 
 
 # -- api.yaml ------------------------------------------------------------
