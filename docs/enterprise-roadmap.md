@@ -379,6 +379,9 @@ later deployment item.
 - Security audit follow-ups: **#72** (input-side redaction, H0) + umbrella **#73** (guardrail gaps
   across the RAG invocation flow) — #72, the query-length bound, and the **#52** `BaseGuardrail`
   framework are landed; **#53** (injection) and **#54** (PII/DLP) remain.
+- Reconciliation & console-coverage follow-ups: **#81** (reconcile `docs/**` with the shipped
+  surface, H1) and **#82** (surface audit/RBAC/guardrails/resilience/OTel/cache + `/metrics` in the
+  Streamlit console, H2).
 - Horizons are GitHub **milestones**: `H0 - Observability & hardening`,
   `H1 - Multi-tenant & governed`, `H2 - Product surface`,
   `H3 - Enterprise scale & compliance`.
