@@ -115,6 +115,7 @@ def build_pipeline(
         observability_config_path=(
             str(observability_config_path) if observability_config_path else None
         ),
+        max_query_chars=components.max_query_chars,
     )
 
 
@@ -441,7 +442,13 @@ def create_app(
             payload_dict.pop("observability", None)
 
         if payload_dict.get("error"):
-            status_code = 402 if payload_dict.get("failure_type") == "cost_limit_exceeded" else 500
+            failure_type = payload_dict.get("failure_type")
+            if failure_type == FailureType.COST_LIMIT_EXCEEDED.value:
+                status_code = 402
+            elif failure_type == FailureType.QUERY_TOO_LONG.value:
+                status_code = 400
+            else:
+                status_code = 500
             return payload_dict, status_code
         return payload_dict, 200
 

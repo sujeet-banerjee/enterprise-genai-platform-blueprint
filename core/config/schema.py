@@ -160,6 +160,10 @@ class CacheSection(_StrictModel):
     ttl_seconds: Optional[float] = None
 
 
+class GuardrailsSection(_StrictModel):
+    max_query_chars: Optional[int] = None
+
+
 class RetrievalConfig(_StrictModel):
     retrieval: Optional[RetrievalSection] = None
     evaluation: Optional[EvaluationSection] = None
@@ -168,6 +172,7 @@ class RetrievalConfig(_StrictModel):
     chunking: Optional[ChunkingSection] = None
     token_budget: Optional[TokenBudgetSection] = None
     cache: Optional[CacheSection] = None
+    guardrails: Optional[GuardrailsSection] = None
     # Legacy inline sections kept for backward compatibility (issue #34).
     governance: Optional["GovernanceConfig"] = None
     observability: Optional["ObservabilityConfig"] = None

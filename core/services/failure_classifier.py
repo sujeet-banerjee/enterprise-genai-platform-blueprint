@@ -31,6 +31,9 @@ class FailureType(str, Enum):
     UNAUTHORIZED = "unauthorized"
     BATCH_TOO_LARGE = "batch_too_large"
     FORBIDDEN = "forbidden"
+    # Input guardrail category (issue #73): the query exceeded the configured
+    # character bound before it could be token-budgeted.
+    QUERY_TOO_LONG = "query_too_long"
 
 
 class FailureClassifier:
@@ -43,6 +46,7 @@ class FailureClassifier:
         "embedding": FailureType.EMBEDDING_FAILURE.value,
         "retrieval": FailureType.RETRIEVAL_FAILURE.value,
         "reranking": FailureType.RERANKING_FAILURE.value,
+        "query_validation": FailureType.QUERY_TOO_LONG.value,
         "token_budget": FailureType.TOKEN_BUDGET_EXCEEDED.value,
         "cost_governance": FailureType.COST_LIMIT_EXCEEDED.value,
         "retrieval_policy": FailureType.RETRIEVAL_POLICY_FAILURE.value,
