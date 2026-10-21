@@ -3,7 +3,6 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Callable, Optional
 
-import yaml
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
@@ -24,6 +23,8 @@ from app.schemas import (
 )
 from app.whatif_api import PipelineRebuildService, describe_pipeline, register_whatif_routes
 from core.config.generation_config import GenerationConfig
+from core.config.schema import SCHEMAS
+from core.config.validator import load_and_validate, resolve_config_file
 from core.registry.evaluator_registry import EvaluatorRegistry
 from core.registry.model_registry import ModelRegistry
 from core.registry.query_expander_registry import QueryExpanderRegistry
@@ -55,14 +56,42 @@ RESILIENCE_CONFIG_PATH = BASE_DIR / "config" / "resilience.yaml"
 _PUBLIC_PATHS = {"/health", "/ready", "/metrics", "/docs", "/redoc", "/openapi.json"}
 
 
-def _load_config(config_path: Optional[Path]) -> dict:
+def _load_config(config_path: Optional[Path], *, validate: bool = True) -> dict:
+    """Load a config file, resolving secret references (issue #46).
+
+    When ``validate`` is true (the default) and the file exists, it is checked
+    against its schema first and a hard schema/secret error fails fast with a
+    precise message. Missing optional files still yield ``{}`` (backward
+    compatible); files whose stem has no registered schema load leniently.
+    """
     if config_path is None:
         return {}
-    try:
-        with open(config_path, "r") as f:
-            return yaml.safe_load(f) or {}
-    except Exception:
+    path = Path(config_path)
+    if not path.exists():
         return {}
+    if validate and path.stem in SCHEMAS:
+        return load_and_validate(path)
+    return resolve_config_file(path)
+
+
+def _validate_startup_configs(*paths: Optional[Path]) -> None:
+    """Validate each existing schema-backed config, failing fast on errors.
+
+    ``prompt_config.yaml`` uses the ``prompt_config`` schema; its stem already
+    matches. Configs without a registered schema (or missing optional files) are
+    skipped. Raises :class:`ConfigValidationError` on the first invalid file.
+    """
+    from core.config.validator import ConfigValidationError, validate_config_file
+
+    for path in paths:
+        if path is None:
+            continue
+        candidate = Path(path)
+        if not candidate.exists() or candidate.stem not in SCHEMAS:
+            continue
+        issues = [i for i in validate_config_file(candidate) if i.kind != "version-warning"]
+        if issues:
+            raise ConfigValidationError(candidate, issues)
 
 
 def _generation_config_from_model(model_cfg: dict) -> GenerationConfig:
@@ -101,6 +130,19 @@ def build_pipeline(
     reranker_registry = RerankerRegistry(str(retrieval_config_path))
     evaluator_registry = EvaluatorRegistry(str(retrieval_config_path))
     query_expander_registry = QueryExpanderRegistry(str(retrieval_config_path))
+
+    # Fail fast on invalid configuration (issue #46): validate every primary
+    # config against its schema and resolve secret references before building
+    # any component, so a typo or missing secret stops start-up with a precise
+    # message instead of surfacing late (or silently).
+    _validate_startup_configs(
+        models_config_path,
+        prompt_config_path,
+        retrieval_config_path,
+        governance_config_path,
+        observability_config_path,
+        resilience_config_path,
+    )
 
     retrieval_config = _load_config(retrieval_config_path)
     # Governance lives in its own file (issue #34); fall back to the legacy

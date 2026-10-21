@@ -284,6 +284,30 @@ components via registries:
   active expander (`synonym` or `llm`) produces query variants, each is retrieved and
   the results are merged/de-duplicated before reranking.
 
+### Validate config & manage secrets
+
+Every config file has a typed schema and is validated **at startup** (split into its own
+file too): an unknown key or wrong type fails fast with a precise message instead of
+surfacing late at request time. Validate manually before deploying:
+
+```bash
+python -m app.config_validate            # all config/*.yaml (exit 0 valid, 1 invalid, 2 unreadable)
+python -m app.config_validate config/api.yaml --json
+```
+
+Never put secrets in config. Reference environment-backed secrets and they are resolved at
+load time (and redacted from `/v1/config`, traces and logs):
+
+```yaml
+api:
+  api_key: ${OPENAI_API_KEY}      # or: env:OPENAI_API_KEY
+```
+
+A missing referenced secret fails fast. In production, mount secrets with Vault (Agent
+Injector) or a Kubernetes `secretKeyRef` so the value is present in the process environment
+— the same `${ENV_VAR}` syntax works unchanged. Set `config_version` at the top of a file to
+pin the schema; a newer version warns (with migration note) rather than failing.
+
 ## Development notes
 
 ### Project layout
