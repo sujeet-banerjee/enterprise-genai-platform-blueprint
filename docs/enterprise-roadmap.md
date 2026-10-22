@@ -142,7 +142,13 @@ Issue IDs are placeholders (`E-*`) — not yet created.
   corpus in `tests/test_injection_defense.py`.
 - **B3. Data privacy / DLP** — PII detection & redaction at ingress/egress (extend the existing
   `SensitiveDataRedactor` from regex to NER-based detection); configurable per-tenant policy.
-  **#72 (input/doc redaction before prompt construction) is the first slice of this.**
+  **#72 (input/doc redaction before prompt construction) was the first slice.**
+  **Landed (#54):** `pii` guardrail provider (`core/implementations/pii_guardrail.py`) with regex
+  detection (email/phone/Luhn-validated card/national id/IP), optional NER, redact-vs-block and
+  class/count-only reporting; the `pii:` block of `config/observability.yaml` scrubs traces, logs
+  and the model-facing query; audit records classes/counts, never values.
+  Still open: **#86** (`GET /v1/guardrails` introspection), **#87** (hit-rate metrics),
+  **#88** (adoptable standard profile) and per-tenant PII policy.
 - **B4. Policy-as-code engine** — declarative policies (OPA/Rego or an embedded rule DSL) that
   gate ingress, retrieval, generation, and egress; versioned and testable.
 - **B5. Audit & compliance exports** — immutable (append-only/WORM) audit trail, retention
@@ -333,7 +339,7 @@ A capability is only "done" when it is:
 | Horizon | Theme | Workstreams | Outcome |
 |---|---|---|---|
 | **H0 — Now (0–1 mo)** | Finish the foundation & make it operable | C2 (Prometheus/Grafana + dashboard pack), D1 (resilience/failover), E2 (config schema/validation), E3 (secrets), C1 (OTel), **G0 (hardened container + Compose), G1 (deployment playbook), B3-slice #72 (input/doc redaction before prompt)** | The platform is observable, hardened, **deployable**, and no longer leaks raw secrets in the query/doc path; ops can adopt it. |
-| **H1 (1–3 mo)** | Multi-tenant & governed | A1–A4, B1–B3, B5, E1, E4, F5 (admin), **G2 (Helm + Kustomize + GitOps example + CI deploy smoke)** — *B1 (#52) landed* | Teams can onboard safely; access and cost are attributable; guardrails + audit are real; it installs on Kubernetes. |
+| **H1 (1–3 mo)** | Multi-tenant & governed | A1–A4, B1–B3, B5, E1, E4, F5 (admin), **G2 (Helm + Kustomize + GitOps example + CI deploy smoke)** — *B1-B3 (#52/#53/#54) landed* | Teams can onboard safely; access and cost are attributable; guardrails + audit are real; it installs on Kubernetes. |
 | **H2 (3–6 mo)** | The product surface | C3–C6, D2–D5, F1–F4 (composer, graphs, experiments, governance console), **G3 (HA/autoscale), G4 (progressive delivery)** | This becomes a *platform teams want to use*: visual, measurable, ROI-provable, safely rollout-able. |
 | **H3 (6–12 mo)** | Enterprise scale & compliance | B4, B6, D6, E5, E6, F6, F7, **G5 (GitOps at scale), G6 (multi-region/DR + cloud IaC)** | Runs at scale, in-region, GitOps-managed, compliance-evidenced, multi-team. |
 
@@ -380,8 +386,9 @@ later deployment item.
 - Umbrella issue: **#43** (`[Roadmap] Enterprise platform bridge`).
 - Deployment is a first-class workstream: umbrella **#64** (`[Roadmap] Workstream G - Deployment & delivery`).
 - Security audit follow-ups: **#72** (input-side redaction, H0) + umbrella **#73** (guardrail gaps
-  across the RAG invocation flow) — #72, the query-length bound, and the **#52** `BaseGuardrail`
-  framework are landed; **#53** (injection) and **#54** (PII/DLP) remain.
+  across the RAG invocation flow) — #72, the query-length bound, the **#52** `BaseGuardrail`
+  framework, **#53** (injection) and **#54** (PII/DLP) are landed. Guardrail completeness follow-ups:
+  **#86** (`GET /v1/guardrails`), **#87** (hit-rate metrics), **#88** (standard profile).
 - Reconciliation & console-coverage follow-ups: **#81** (reconcile `docs/**` with the shipped
   surface, H1) and **#82** (surface audit/RBAC/guardrails/resilience/OTel/cache + `/metrics` in the
   Streamlit console, H2).

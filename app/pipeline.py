@@ -35,6 +35,7 @@ class RAGPipeline:
         query_expander: Optional[Any] = None,
         cache: Optional[Any] = None,
         redactor: Optional[Any] = None,
+        trace_redactor: Optional[Any] = None,
         max_query_chars: Optional[int] = None,
         input_guardrails: Optional[List[Any]] = None,
         output_guardrails: Optional[List[Any]] = None,
@@ -58,6 +59,10 @@ class RAGPipeline:
         # construction so nothing sensitive reaches the model provider or the
         # returned envelope. None => data path is byte-identical to before.
         self.redactor = redactor
+        # Trace/log redaction may be stricter than input redaction (issue #54):
+        # a ``pii`` guardrail protects values in traces even when the input
+        # redaction stage is off, without pre-empting its block decision.
+        self.trace_redactor = trace_redactor or redactor
         self.config_path = config_path or str(
             Path(__file__).resolve().parent.parent / "config" / "retrieval.yaml"
         )
@@ -310,6 +315,9 @@ class RAGPipeline:
                 "allowed": bool(getattr(result, "allowed", True)),
                 "reason": getattr(result, "reason", None),
                 "labels": list(getattr(result, "labels", []) or []),
+                # Issue #54: structured context (e.g. PII classes + counts).
+                # Never carries the matched value - only class names and counts.
+                "details": dict(getattr(result, "details", {}) or {}),
             }
             decisions.append(record)
             if not record["allowed"]:
@@ -391,6 +399,9 @@ class RAGPipeline:
             envelope["guardrail"] = guardrail_name
             envelope["guardrail_reason"] = getattr(exc, "reason", None)
             envelope["guardrail_labels"] = list(getattr(exc, "labels", []) or [])
+            chain = list(getattr(exc, "decisions", []) or [])
+            if chain:
+                envelope["guardrail_decisions"] = chain
         return envelope
 
     def run(
@@ -407,6 +418,7 @@ class RAGPipeline:
             config_path=self.config_path,
             observability_config_path=self.observability_config_path,
             otel=self.otel,
+            redactor=getattr(self, "trace_redactor", None),
         )
         if request_id:
             tracker.request_id = request_id

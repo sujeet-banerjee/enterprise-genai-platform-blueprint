@@ -266,13 +266,13 @@ All behaviour is driven by YAML in config/:
 - config/models.yaml - active LLM/embedding models, per-model params, provider mappings
 - config/retrieval.yaml - retriever, similarity metric, reranking, query expansion, chunking strategies, token budget
 - config/governance.yaml - cost/retrieval-policy governance (enabled, cost cap, safety margin)
-- config/observability.yaml - logging, redaction toggle, sensitive patterns and OTel tracing (`otel:` block, disabled by default)
+- config/observability.yaml - logging, redaction toggle, sensitive patterns, PII/DLP scrubbing (`pii:` block) and OTel tracing (`otel:` block), all disabled by default
 - config/prompt_config.yaml - prompt profiles
 - config/api.yaml - API key stub, rebuild gate, batch/store limits (all disabled/lean by default)
 - config/audit.yaml - append-only audit trail (disabled by default; optional JSONL `path`)
 - config/access_control.yaml - RBAC roles/personas, capabilities and request caps (disabled by default)
 - config/resilience.yaml - provider retries, circuit breaker and LLM failover (disabled by default)
-- config/guardrails.yaml - pluggable input/output guardrail chains (disabled by default)
+- config/guardrails.yaml - pluggable input/output guardrail chains, incl. `injection` and `pii` providers (disabled by default)
 
 The composition root (`app/main.py::build_pipeline()`) reads these configs and wires
 components via registries:
@@ -535,9 +535,10 @@ Decisions appear on the trace (`guardrail_decisions`) and in the audit trail. Ad
 guardrail by implementing `BaseGuardrail` (`core/interfaces/guardrail.py`), registering a factory
 in `GuardrailRegistry`, and adding a config entry - no orchestration changes.
 
-Shipped providers: `noop`, `deny_list`, `schema_validator`, and **`injection`** (prompt-injection /
-jailbreak defense, #53). The `injection` provider blocks direct injections in the query and
-neutralizes indirect injections embedded in retrieved (untrusted) documents:
+Shipped providers: `noop`, `deny_list`, `schema_validator`, **`injection`** (prompt-injection /
+jailbreak defense, #53), and **`pii`** (personal-data / DLP enforcement, #54). The `injection`
+provider blocks direct injections in the query and neutralizes indirect injections embedded in
+retrieved (untrusted) documents:
 
 ```yaml
 input:
@@ -545,6 +546,31 @@ input:
     sensitivity: medium              # low | medium | high
     trust_retrieved_documents: false # default: treat retrieved docs as untrusted
 ```
+
+The `pii` provider detects email, phone, credit card (Luhn validated), national id and IP
+addresses, plus optional NER classes (names, addresses), and either **redacts** or **blocks**:
+
+```yaml
+output:
+  - provider: pii
+    classes: [email, phone, credit_card, national_id, ip_address]  # default: all
+    mode: redact                     # redact | block
+    mask: "[REDACTED]"               # optional per-class default override
+```
+
+Only the PII **class** and a **count** are recorded (`pii:<class>`, `details.classes`) - never the
+matched value. Independent of the guardrail, the `pii:` block in `config/observability.yaml`
+scrubs the same classes from traces, logs and the query handed to the model (default off):
+
+```yaml
+# config/observability.yaml
+pii:
+  enabled: true
+  classes: [email, phone, credit_card, national_id, ip_address]
+  mode: redact                       # redact | block
+  # ner: {enabled: true, model: en_core_web_sm, classes: [person_name, address]}
+```
+
 
 **Export traces to Jaeger/Tempo/Datadog** (OTel-native, OTLP) - enable the `otel` block in
 `config/observability.yaml` and start the collector + Jaeger (same `observability` profile;

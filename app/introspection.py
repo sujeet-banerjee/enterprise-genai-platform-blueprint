@@ -12,6 +12,7 @@ import yaml
 
 from core.registry.evaluator_registry import EvaluatorRegistry
 from core.registry.model_registry import ModelRegistry
+from core.registry.pii_registry import PiiRegistry
 from core.registry.reranker_registry import RerankerRegistry
 from core.registry.retriever_registry import RetrieverRegistry
 from core.services.observability import SensitiveDataRedactor
@@ -60,11 +61,17 @@ class IntrospectionService:
         legacy_obs = retrieval_config.get("observability") or {}
         dedicated_obs = _read_yaml(self.observability_config_path)
         obs_config = dedicated_obs or legacy_obs
+        # PII / DLP scrubbing (issue #54): the config view must not leak
+        # personal data either, so the redactor gets the PII detector.
+        pii_registry = PiiRegistry(config=obs_config)
+        pii_detector = pii_registry.build_detector()
         self._redactor = SensitiveDataRedactor(
             enabled=bool(obs_config.get("redact_sensitive_data", True)),
             patterns=obs_config.get("sensitive_patterns")
             if isinstance(obs_config, dict)
             else None,
+            pii_detector=pii_detector,
+            pii_classes=pii_registry.classes() if pii_detector is not None else None,
         )
 
     # -- effective config -------------------------------------------------
