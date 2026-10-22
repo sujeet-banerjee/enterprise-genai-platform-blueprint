@@ -70,6 +70,25 @@
       "targets": [
         {"expr": "sum by (reason) (rate(genai_governance_denials_total[5m]))", "legendFormat": "{{reason}}"}
       ]
+    },
+    {
+      "title": "Guardrail decisions by guardrail",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 22},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [
+        {"expr": "sum by (guardrail, decision) (rate(genai_guardrail_decisions_total[5m]))", "legendFormat": "{{guardrail}} / {{decision}}"},
+        {"expr": "sum by (guardrail) (rate(genai_guardrail_blocks_total[5m]))", "legendFormat": "{{guardrail}} blocks"}
+      ]
+    },
+    {
+      "title": "Guardrail hit rate (redact + block)",
+      "type": "stat",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 22},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [
+        {"expr": "sum(rate(genai_guardrail_decisions_total{decision=~\"redact|block\"}[5m])) / clamp_min(sum(rate(genai_guardrail_decisions_total[5m])), 0.000001)", "legendFormat": "hit rate"}
+      ]
     }
   ],
   "schemaVersion": 39,

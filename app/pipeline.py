@@ -311,6 +311,8 @@ class RAGPipeline:
             result = guardrail.check(current, context)
             record = {
                 "guardrail": name,
+                # Edge this decision belongs to (issue #87 metrics).
+                "stage": stage,
                 "decision": getattr(result, "decision", "allow"),
                 "allowed": bool(getattr(result, "allowed", True)),
                 "reason": getattr(result, "reason", None),

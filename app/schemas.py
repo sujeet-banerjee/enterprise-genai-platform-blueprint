@@ -228,6 +228,7 @@ class MetricsResponse(BaseModel):
     failures_by_type: Dict[str, int] = {}
     failures_by_tag: Dict[str, int] = {}
     cost: Dict[str, Any] = {}
+    guardrails: Dict[str, Any] = {}
     request_id: Optional[str] = None
 
 

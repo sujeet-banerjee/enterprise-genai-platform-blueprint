@@ -685,7 +685,14 @@ exposition** format, for scraping by Prometheus/Grafana (roadmap issue #44). The
 | `genai_model_cost_usd_total` | counter | `model` |
 | `genai_cache_events_total` | counter | `event` (hit/miss) |
 | `genai_governance_denials_total` | counter | `reason` |
+| `genai_guardrail_decisions_total` | counter | `guardrail`, `decision` (allow/redact/block) |
+| `genai_guardrail_blocks_total` | counter | `guardrail`, `stage` (input/output) |
 | `genai_in_flight_requests` | gauge | — |
+
+Guardrail counters (issue #87) are fed from the per-request `guardrail_decisions` records,
+so measuring hit-rate costs no extra scanning. Cache hits replays the original decisions
+without running a guardrail, so they are excluded from both the Prometheus counters and the
+`GET /v1/metrics` breakdown (`guardrails.by_guardrail` / `by_decision` / `total_blocks`).
 
 `prometheus-client` is an **optional extra** (`pip install -e ".[observability]"`); when it is
 absent the endpoint returns a 503 envelope (`prometheus_not_installed`) and the core install is

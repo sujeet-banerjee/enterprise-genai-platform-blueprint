@@ -102,6 +102,20 @@ class RunHistory:
         }
         failure_type = result.get("failure_type")
         failure_tags = [str(tag) for tag in (result.get("failure_tags") or [])]
+        guardrail_decisions: List[Dict[str, str]] = []
+        # Cache hits replay the original decisions without running a guardrail
+        # (issue #87), so they are excluded from hit-rate aggregation.
+        if result.get("cache_hit") is not True:
+            for decision in result.get("guardrail_decisions") or []:
+                if not isinstance(decision, dict):
+                    continue
+                guardrail_decisions.append(
+                    {
+                        "guardrail": str(decision.get("guardrail") or "unknown"),
+                        "decision": str(decision.get("decision") or "allow"),
+                        "stage": str(decision.get("stage") or ""),
+                    }
+                )
         entry = {
             "request_id": request_id,
             "success": not result.get("error") and not failure_type,
@@ -109,6 +123,7 @@ class RunHistory:
             "failure_tags": failure_tags,
             "cost_usd": float(cost.get("estimated_cost_usd") or 0.0),
             "latency": latency,
+            "guardrail_decisions": guardrail_decisions,
         }
         trace = result.get("observability")
         with self._lock:
@@ -175,6 +190,19 @@ class RunHistory:
         costs = [entry["cost_usd"] for entry in runs]
         priced = [value for value in costs if value > 0]
 
+        by_guardrail: Dict[str, Dict[str, int]] = {}
+        for entry in runs:
+            for decision in entry.get("guardrail_decisions") or []:
+                counts = by_guardrail.setdefault(
+                    decision["guardrail"], {"allow": 0, "redact": 0, "block": 0}
+                )
+                outcome = decision["decision"]
+                counts[outcome] = counts.get(outcome, 0) + 1
+        by_decision = {
+            name: sum(counts.get(name, 0) for counts in by_guardrail.values())
+            for name in ("allow", "redact", "block")
+        }
+
         return {
             "total_runs": total,
             "success_count": success_count,
@@ -190,6 +218,12 @@ class RunHistory:
                 "total_cost_usd": round(sum(costs), 6),
                 "mean_cost_usd": round(sum(costs) / total, 6) if total else 0.0,
                 "priced_runs": len(priced),
+            },
+            "guardrails": {
+                "by_guardrail": {name: by_guardrail[name] for name in sorted(by_guardrail)},
+                "by_decision": by_decision,
+                "total_decisions": sum(by_decision.values()),
+                "total_blocks": by_decision["block"],
             },
         }
 
