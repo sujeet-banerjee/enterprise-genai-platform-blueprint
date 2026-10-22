@@ -28,6 +28,8 @@ from app.schemas import (
     ModelsResponse,
     RerankersResponse,
     RetrieversResponse,
+    TenantInfo,
+    TenantsResponse,
 )
 from app.whatif_api import PipelineRebuildService, describe_pipeline, register_whatif_routes
 from core.config.generation_config import GenerationConfig
@@ -35,6 +37,7 @@ from core.services.access_control import AccessController
 from core.services.audit_log import AuditLogger
 from core.services.failure_classifier import FailureType
 from core.services.telemetry import PrometheusCollector
+from core.services.tenancy import TenantResolver, UnknownTenantError
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -63,6 +66,7 @@ AUDIT_CONFIG_PATH = CONFIG_DIR / "audit.yaml"
 ACCESS_CONTROL_CONFIG_PATH = CONFIG_DIR / "access_control.yaml"
 RESILIENCE_CONFIG_PATH = CONFIG_DIR / "resilience.yaml"
 GUARDRAILS_CONFIG_PATH = CONFIG_DIR / "guardrails.yaml"
+TENANTS_CONFIG_PATH = CONFIG_DIR / "tenants.yaml"
 
 # Endpoints that never require an API key (liveness/readiness + OpenAPI docs).
 _PUBLIC_PATHS = {"/health", "/ready", "/metrics", "/docs", "/redoc", "/openapi.json"}
@@ -167,7 +171,9 @@ def _error_envelope(
     }
 
 
-def _record_pii_audit(audit: Any, request_id: str, result: dict) -> None:
+def _record_pii_audit(
+    audit: Any, request_id: str, result: dict, tenant: Optional[str] = None
+) -> None:
     """Record PII / DLP decisions in the audit trail (issue #54).
 
     Only the **class** and a **count** are stored - the matched value never
@@ -195,6 +201,7 @@ def _record_pii_audit(audit: Any, request_id: str, result: dict) -> None:
                 "total": int(details.get("total") or 0) if isinstance(details, dict) else 0,
             },
             request_id=request_id,
+            tenant=tenant,
         )
 
 
@@ -209,6 +216,7 @@ def create_app(
     access_control_config_path: Path = ACCESS_CONTROL_CONFIG_PATH,
     resilience_config_path: Path = RESILIENCE_CONFIG_PATH,
     guardrails_config_path: Path = GUARDRAILS_CONFIG_PATH,
+    tenants_config_path: Path = TENANTS_CONFIG_PATH,
     pipeline_builder: Callable[..., RAGPipeline] = build_pipeline,
 ) -> FastAPI:
     """
@@ -228,6 +236,8 @@ def create_app(
 
     access_config = _load_config(access_control_config_path) or {}
     access_controller = AccessController.from_config(access_config)
+    # Tenant / workspace model (issue #48): off by default -> implicit default.
+    tenant_resolver = TenantResolver.from_config(_load_config(tenants_config_path) or {})
 
     @asynccontextmanager
     async def lifespan(application: FastAPI):
@@ -248,6 +258,7 @@ def create_app(
             observability_config_path=observability_config_path,
             api_config_path=api_config_path,
             guardrails_config_path=guardrails_config_path,
+            tenants_config_path=tenants_config_path,
         )
         application.state.evaluate = EvaluationService(
             models_config_path=models_config_path,
@@ -311,6 +322,8 @@ def create_app(
         version="1.0.0",
         lifespan=lifespan,
     )
+    application.state.tenants = tenant_resolver
+    application.state.access = access_controller
 
     def _path_capability(path: str) -> Optional[str]:
         """Map a request path to the capability required to access it (issue #29).
@@ -345,6 +358,7 @@ def create_app(
             "/v1/rerankers",
             "/v1/evaluators",
             "/v1/guardrails",
+            "/v1/tenants",
         ):
             return "introspect"
         return None
@@ -380,6 +394,28 @@ def create_app(
         request.state.top_k_max = access_controller.top_k_max(role)
         request.state.allowed_models = access_controller.allowed_models(role)
 
+        # Tenant resolution (issue #48): header wins over the API-key mapping.
+        # An unknown explicit tenant is rejected rather than silently falling
+        # back, so a caller can never read another tenant's cached/history data.
+        try:
+            tenant = tenant_resolver.resolve(
+                tenant_header=request.headers.get("X-Tenant-ID"),
+                api_key=provided_key,
+            )
+        except UnknownTenantError as exc:
+            return JSONResponse(
+                status_code=400,
+                content=_error_envelope(
+                    str(exc),
+                    FailureType.UNKNOWN_TENANT.value,
+                    ["unknown_tenant"],
+                    request_id,
+                ),
+                headers={"X-Request-ID": request_id},
+            )
+        request.state.tenant = tenant
+        request.state.tenant_id = tenant.id
+
         required = _path_capability(request.url.path)
         if required is not None and not access_controller.has_capability(role, required):
             return JSONResponse(
@@ -397,7 +433,9 @@ def create_app(
         response.headers["X-Request-ID"] = request_id
         return response
 
-    def _record_query_audit(request: Request, request_id: str, result: dict) -> None:
+    def _record_query_audit(
+        request: Request, request_id: str, result: dict, tenant: Optional[str] = None
+    ) -> None:
         """Emit governance/policy audit events for a completed query (issue #28).
 
         Cost-governance rejections and retrieval-policy degradation are recorded
@@ -413,7 +451,7 @@ def create_app(
         if audit is None or not getattr(audit, "enabled", False):
             return
 
-        _record_pii_audit(audit, request_id, result)
+        _record_pii_audit(audit, request_id, result, tenant=tenant)
 
         failure_type = result.get("failure_type")
         failure_tags = list(result.get("failure_tags") or [])
@@ -430,6 +468,7 @@ def create_app(
                 "cost_usd": float(cost.get("estimated_cost_usd") or 0.0),
             },
             request_id=request_id,
+            tenant=tenant,
         )
 
     def _execute_query(
@@ -452,20 +491,59 @@ def create_app(
                 503,
             )
         # RBAC persona cap: clamp retrieval depth to the role's top_k_max (#29).
-        effective_top_k = payload.top_k
         role_top_k_max = getattr(request.state, "top_k_max", None)
-        if role_top_k_max is not None:
-            effective_top_k = (
-                role_top_k_max
-                if effective_top_k is None
-                else min(effective_top_k, role_top_k_max)
-            )
+        tenant = getattr(request.state, "tenant", None)
+        tenancy_enabled = bool(getattr(tenant_resolver, "enabled", False))
+        tenant_id = getattr(tenant, "id", None) if tenancy_enabled else None
+        effective_top_k = payload.top_k
+        if effective_top_k is None and tenant_id is not None:
+            overlay_top_k = tenant_resolver.overlay(tenant_id, "retrieval").get("top_k")
+            if isinstance(overlay_top_k, int):
+                effective_top_k = overlay_top_k
+        tenant_top_k_max = getattr(tenant, "top_k_max", None) if tenancy_enabled else None
+        for cap in (role_top_k_max, tenant_top_k_max):
+            if cap is not None:
+                effective_top_k = cap if effective_top_k is None else min(effective_top_k, cap)
+
+        history = getattr(request.app.state, "history", None)
+
+        # Per-tenant budget cap (issue #48): how much this tenant has spent in
+        # the retained history window. Enforced before spending more.
+        budget_cap = getattr(tenant, "budget_cap_usd", None) if tenancy_enabled else None
+        if budget_cap is not None and history is not None:
+            spent = history.spend_window(tenant_id)["total_cost_usd"]
+            if spent >= float(budget_cap):
+                envelope = _error_envelope(
+                    f"Tenant '{tenant_id}' has reached its budget cap "
+                    f"({spent:.6f} >= {float(budget_cap):.6f} USD).",
+                    FailureType.COST_LIMIT_EXCEEDED.value,
+                    ["tenant_budget_exceeded"],
+                    request_id,
+                )
+                envelope.update(
+                    {
+                        "tenant": tenant_id,
+                        "workspace": getattr(tenant, "workspace", None),
+                        "app": getattr(tenant, "app", None),
+                    }
+                )
+                _record_query_audit(request, request_id, envelope, tenant=tenant_id)
+                return envelope, 402
+
+        pipeline_kwargs: dict = {}
+        if tenancy_enabled:
+            pipeline_kwargs = {
+                "tenant": tenant_id,
+                "workspace": getattr(tenant, "workspace", None),
+                "app": getattr(tenant, "app", None),
+            }
         try:
             result = pipeline.run(
                 payload.query,
                 top_k=effective_top_k,
                 raise_on_failure=False,
                 request_id=request_id,
+                **pipeline_kwargs,
             )
         except Exception as exc:  # pragma: no cover - defensive
             return (
@@ -473,15 +551,14 @@ def create_app(
                 500,
             )
 
-        history = getattr(request.app.state, "history", None)
         if history is not None:
-            history.record(request_id, result)
+            history.record(request_id, result, tenant=tenant_id)
 
         telemetry = getattr(request.app.state, "telemetry", None)
         if telemetry is not None:
             telemetry.record(result)
 
-        _record_query_audit(request, request_id, result)
+        _record_query_audit(request, request_id, result, tenant=tenant_id)
 
         payload_dict = dict(result)
         payload_dict.setdefault("error", None)
@@ -520,12 +597,33 @@ def create_app(
         """Report the calling persona's role and effective permissions (#29)."""
         role = getattr(request.state, "role", access_controller.default_role)
         info = access_controller.describe(role)
+        tenant = getattr(request.state, "tenant", None)
         return AccessResponse(
             enabled=access_controller.enabled,
             role=info["role"],
             capabilities=info["capabilities"],
             top_k_max=info["top_k_max"],
             allowed_models=info["allowed_models"],
+            tenant=(
+                TenantInfo(**tenant_resolver.describe(tenant.id))
+                if tenant is not None
+                else None
+            ),
+            request_id=getattr(request.state, "request_id", None),
+        )
+
+    @application.get("/v1/tenants", response_model=TenantsResponse)
+    def tenants_endpoint(request: Request):
+        """Introspect tenant configuration and the caller's resolved tenant (#48)."""
+        tenant = getattr(request.state, "tenant", None)
+        current = TenantInfo(
+            **tenant_resolver.describe(tenant.id if tenant is not None else tenant_resolver.default_tenant)
+        )
+        return TenantsResponse(
+            enabled=tenant_resolver.enabled,
+            default_tenant=tenant_resolver.default_tenant,
+            current=current,
+            tenants=[TenantInfo(**item) for item in tenant_resolver.describe_all()],
             request_id=getattr(request.state, "request_id", None),
         )
 

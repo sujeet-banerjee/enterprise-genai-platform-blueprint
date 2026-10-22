@@ -29,6 +29,7 @@ def register_audit_routes(
         request: Request,
         limit: Optional[int] = None,
         event_type: Optional[str] = None,
+        tenant: Optional[str] = None,
     ):
         audit = _audit(request)
         if audit is None:
@@ -41,7 +42,7 @@ def register_audit_routes(
                     _request_id(request),
                 ),
             )
-        events = audit.events(limit=limit, event_type=event_type)
+        events = audit.events(limit=limit, event_type=event_type, tenant=tenant)
         return AuditEventsResponse(
             enabled=bool(getattr(audit, "enabled", False)),
             count=len(events),

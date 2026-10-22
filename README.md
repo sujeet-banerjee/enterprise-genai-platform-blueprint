@@ -280,6 +280,7 @@ All behaviour is driven by YAML in config/:
 - config/access_control.yaml - RBAC roles/personas, capabilities and request caps (disabled by default)
 - config/resilience.yaml - provider retries, circuit breaker and LLM failover (disabled by default)
 - config/guardrails.yaml - pluggable input/output guardrail chains, incl. `injection` and `pii` providers, plus adoptable `standard`/`strict` profiles (disabled by default)
+- config/tenants.yaml - tenant/workspace model: identity, per-tenant budget caps/retrieval depth/model allow-lists, config overlays (disabled by default => implicit `default` tenant)
 
 The composition root (`app/main.py::build_pipeline()`) reads these configs and wires
 components via registries:

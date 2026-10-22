@@ -93,7 +93,9 @@ class RunHistory:
 
     # -- ingestion --------------------------------------------------------
 
-    def record(self, request_id: str, result: Dict[str, Any]) -> None:
+    def record(
+        self, request_id: str, result: Dict[str, Any], tenant: Optional[str] = None
+    ) -> None:
         cost = result.get("cost") or {}
         latency = {
             key: float(value)
@@ -118,6 +120,7 @@ class RunHistory:
                 )
         entry = {
             "request_id": request_id,
+            "tenant": tenant if tenant is not None else result.get("tenant"),
             "success": not result.get("error") and not failure_type,
             "failure_type": failure_type,
             "failure_tags": failure_tags,
@@ -136,9 +139,16 @@ class RunHistory:
 
     # -- reads ------------------------------------------------------------
 
-    def trace(self, request_id: str) -> Optional[Any]:
+    def trace(self, request_id: str, tenant: Optional[str] = None) -> Optional[Any]:
         with self._lock:
             trace = self._traces.get(request_id)
+            if (
+                trace is not None
+                and tenant is not None
+                and isinstance(trace, dict)
+                and trace.get("tenant") not in (None, tenant)
+            ):
+                return None
             return dict(trace) if isinstance(trace, dict) else trace
 
     def run_count(self) -> int:
@@ -149,21 +159,29 @@ class RunHistory:
         with self._lock:
             return len(self._traces)
 
-    def spend_window(self) -> Dict[str, Any]:
+    def _runs_for(self, tenant: Optional[str]) -> List[Dict[str, Any]]:
         with self._lock:
             runs = list(self._runs)
+        if tenant is None:
+            return runs
+        return [entry for entry in runs if entry.get("tenant") == str(tenant)]
+
+    def spend_window(self, tenant: Optional[str] = None) -> Dict[str, Any]:
+        runs = self._runs_for(tenant)
         costs = [entry["cost_usd"] for entry in runs]
         total = sum(costs)
-        return {
+        payload: Dict[str, Any] = {
             "window_size": self.max_runs,
             "requests": len(runs),
             "total_cost_usd": round(total, 6),
             "mean_cost_usd": round(total / len(runs), 6) if runs else 0.0,
         }
+        if tenant is not None:
+            payload["tenant"] = str(tenant)
+        return payload
 
-    def metrics(self) -> Dict[str, Any]:
-        with self._lock:
-            runs = list(self._runs)
+    def metrics(self, tenant: Optional[str] = None) -> Dict[str, Any]:
+        runs = self._runs_for(tenant)
 
         total = len(runs)
         success_count = sum(1 for entry in runs if entry["success"])
@@ -225,6 +243,7 @@ class RunHistory:
                 "total_decisions": sum(by_decision.values()),
                 "total_blocks": by_decision["block"],
             },
+            **({"tenant": str(tenant)} if tenant is not None else {}),
         }
 
 
@@ -250,11 +269,37 @@ def register_ops_routes(
     def _request_id(request: Request) -> str:
         return getattr(request.state, "request_id", None) or str(uuid.uuid4())
 
+    def _tenant_scope(request: Request, requested: Optional[str]):
+        """Resolve the tenant filter for an ops read (issue #48).
+
+        With tenancy enabled a caller can only read its own tenant; asking for a
+        different tenant yields a 403 envelope. Disabled tenancy keeps the legacy
+        behavior (no filter unless ``tenant`` is explicitly provided).
+        """
+        resolver = getattr(request.app.state, "tenants", None)
+        caller = getattr(request.state, "tenant_id", None)
+        if resolver is not None and getattr(resolver, "enabled", False):
+            if requested is not None and str(requested) != str(caller):
+                return None, JSONResponse(
+                    status_code=403,
+                    content=error_envelope(
+                        f"Tenant scope '{requested}' is not permitted.",
+                        FailureType.FORBIDDEN.value,
+                        ["forbidden_tenant_scope"],
+                        _request_id(request),
+                    ),
+                )
+            return str(caller) if caller is not None else None, None
+        return (str(requested) if requested is not None else None), None
+
     @application.get("/v1/governance/status", response_model=GovernanceStatusResponse)
-    def governance_status(request: Request):
+    def governance_status(request: Request, tenant: Optional[str] = None):
         history, error = _history(request)
         if error is not None:
             return error
+        scope, scope_error = _tenant_scope(request, tenant)
+        if scope_error is not None:
+            return scope_error
         request_id = _request_id(request)
 
         governance_config: Dict[str, Any] = {}
@@ -275,16 +320,19 @@ def register_ops_routes(
             max_cost_per_request_usd=redacted.get("max_cost_per_request_usd"),
             safety_margin_tokens=redacted.get("safety_margin_tokens"),
             avg_chunk_tokens=redacted.get("avg_chunk_tokens"),
-            window=history.spend_window(),
+            window=history.spend_window(scope),
             request_id=request_id,
         )
 
     @application.get("/v1/traces/{request_id}")
-    def trace_lookup(request: Request, request_id: str):
+    def trace_lookup(request: Request, request_id: str, tenant: Optional[str] = None):
         history, error = _history(request)
         if error is not None:
             return error
-        trace = history.trace(request_id)
+        scope, scope_error = _tenant_scope(request, tenant)
+        if scope_error is not None:
+            return scope_error
+        trace = history.trace(request_id, tenant=scope)
         if trace is None:
             return JSONResponse(
                 status_code=404,
@@ -298,11 +346,14 @@ def register_ops_routes(
         return JSONResponse(status_code=200, content=trace)
 
     @application.get("/v1/metrics", response_model=MetricsResponse)
-    def metrics_endpoint(request: Request):
+    def metrics_endpoint(request: Request, tenant: Optional[str] = None):
         history, error = _history(request)
         if error is not None:
             return error
-        payload = history.metrics()
+        scope, scope_error = _tenant_scope(request, tenant)
+        if scope_error is not None:
+            return scope_error
+        payload = history.metrics(scope)
         payload["request_id"] = _request_id(request)
         return MetricsResponse(**payload)
 

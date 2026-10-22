@@ -106,7 +106,8 @@ Legend: **[E]**xisting. Every row is asserted by `tests/test_api_contract.py`
 | 7 | `GET /v1/models`, `/v1/embedding-models` | Introspection | registry listings + active flags + active generation config |
 | 8 | `GET /v1/retrievers`, `/v1/rerankers`, `/v1/evaluators` | Introspection | providers, default retriever, effective similarity metric, enabled flags |
 | 9 | `GET /v1/guardrails` | Introspection | enabled/profile/providers + resolved input/output chains (previewable while disabled); per-section build errors reported, not raised |
-| 10 | `GET /v1/access` | Introspection | RBAC roles/personas, capabilities, request caps (config-driven, disabled by default) |
+| 10 | `GET /v1/access` | Introspection | RBAC roles/personas, capabilities, request caps (config-driven, disabled by default); includes the caller's resolved tenant |
+| 10b | `GET /v1/tenants` | Introspection | tenant/workspace/app identity + per-tenant policy (budget cap, retrieval depth, model allow-list, overlays); caller's resolved tenant + all configured tenants (#48) |
 | 11 | `POST /v1/evaluate` | Evaluation | active or named evaluator; auto-retrieval; ground truth only when supported |
 | 12 | `POST /v1/experiments` | Evaluation | 202; single run or `compare_embedding_models` / `compare_chunking_strategies` |
 | 13 | `GET /v1/experiments/{exp_id}` | Evaluation | status/result from the bounded experiment store |

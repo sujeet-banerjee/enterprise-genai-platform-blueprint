@@ -494,11 +494,26 @@ This is what makes the "add a component, change config, done" workflow possible.
 | `access_control.enabled` | composition root → `AccessController` | Enables RBAC/persona enforcement (roadmap #29; default off) |
 | `access_control.roles.<role>` | `AccessController` | Per-role capabilities + `top_k_max` / `allowed_models` caps |
 | `access_control.api_keys` | `AccessController` | API-key → role mapping |
+| `tenants.enabled` | composition root → `TenantResolver` | Enables tenant/workspace isolation (roadmap #48; default off ⇒ implicit `default`) |
+| `tenants.default_tenant` | `TenantResolver` | Tenant assumed when no `X-Tenant-ID` header / key mapping applies |
+| `tenants.tenants.<id>` | `TenantResolver` | Workspace/app identity + per-tenant `budget_cap_usd`, `top_k_max`, `allowed_models`, `overrides` |
+| `tenants.api_keys` | `TenantResolver` | API-key → tenant mapping (header still wins) |
 
 Each concern has its own file (like `models.yaml` / `prompt_config.yaml`); the
 composition root loads them by explicit path. Legacy deployments that still
 carry inline `governance` / `observability` sections inside `retrieval.yaml`
 keep working via a fallback (roadmap #34).
+
+**Tenant / workspace model (roadmap #48).** `config/tenants.yaml` is resolved by
+`core/services/tenancy.py::TenantResolver` in the API middleware: the
+`X-Tenant-ID` header wins, then the `api_keys` mapping, then `default_tenant`.
+When disabled every request resolves to one implicit `default` tenant and the
+pipeline call signature is unchanged. When enabled the tenant id namespaces the
+response cache, attributes traces (incl. OTel span attributes), audit events,
+run-history/spend windows and experiments, and enforces per-tenant
+`budget_cap_usd`, `top_k_max`, `allowed_models` and request-scoped `overrides`
+(unspecified keys fall back to global config). Ops reads (`/v1/governance/status`,
+`/v1/metrics`, `/v1/traces/{id}`) are scoped to the caller's tenant.
 
 ### `config/governance.yaml`
 
@@ -991,7 +1006,8 @@ The same recipe applies to every capability:
 ```
 app/                 API + orchestration (main.py, pipeline.py, bootstrap.py)
 config/              models.yaml, prompt_config.yaml, retrieval.yaml,
-                     governance.yaml, observability.yaml, guardrails.yaml, ...
+                     governance.yaml, observability.yaml, guardrails.yaml,
+                     tenants.yaml, ...
 core/
   interfaces/        contracts (embedder, retriever, llm, evaluator, reranker, chunker, guardrail)
   implementations/   vendor/backend implementations

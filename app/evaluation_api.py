@@ -52,11 +52,14 @@ class _ExperimentStore:
         self._entries: "OrderedDict[str, Dict[str, Any]]" = OrderedDict()
         self._lock = threading.Lock()
 
-    def create(self, exp_id: str, kind: str) -> Dict[str, Any]:
+    def create(
+        self, exp_id: str, kind: str, tenant: Optional[str] = None
+    ) -> Dict[str, Any]:
         with self._lock:
             entry = {
                 "id": exp_id,
                 "kind": kind,
+                "tenant": tenant,
                 "status": STATUS_RUNNING,
                 "created_at": time.time(),
                 "finished_at": None,
@@ -271,16 +274,18 @@ class EvaluationService:
             raise ValueError(f"Expected a JSON list of documents in {path}")
         return loaded
 
-    def launch_experiment(self, payload: ExperimentLaunchRequest) -> Dict[str, Any]:
+    def launch_experiment(
+        self, payload: ExperimentLaunchRequest, tenant: Optional[str] = None
+    ) -> Dict[str, Any]:
         docs = self._resolve_docs(payload.docs, payload.documents_path)
         params = payload.model_dump()
         params.pop("docs", None)
         params.pop("documents_path", None)
 
         exp_id = str(uuid.uuid4())
-        self.store.create(exp_id, payload.kind)
+        self.store.create(exp_id, payload.kind, tenant=tenant)
         self._executor.submit(self._run_experiment, exp_id, params, docs)
-        return {"id": exp_id, "kind": payload.kind, "status": STATUS_RUNNING}
+        return {"id": exp_id, "kind": payload.kind, "status": STATUS_RUNNING, "tenant": tenant}
 
     def _run_experiment(
         self,
@@ -410,7 +415,9 @@ def register_evaluation_routes(
             return error
         request_id = getattr(request.state, "request_id", None) or str(uuid.uuid4())
         try:
-            result = service.launch_experiment(payload)
+            result = service.launch_experiment(
+                payload, tenant=getattr(request.state, "tenant_id", None)
+            )
         except FileNotFoundError as exc:
             return JSONResponse(
                 status_code=400,
@@ -436,6 +443,15 @@ def register_evaluation_routes(
         if error is not None:
             return error
         entry = service.get_experiment(exp_id)
+        resolver = getattr(request.app.state, "tenants", None)
+        caller_tenant = getattr(request.state, "tenant_id", None)
+        if (
+            entry is not None
+            and resolver is not None
+            and getattr(resolver, "enabled", False)
+            and entry.get("tenant") not in (None, caller_tenant)
+        ):
+            entry = None
         if entry is None:
             request_id = getattr(request.state, "request_id", None) or str(uuid.uuid4())
             return JSONResponse(

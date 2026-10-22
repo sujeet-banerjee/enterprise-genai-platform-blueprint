@@ -108,6 +108,8 @@ Issue IDs are placeholders (`E-*`) — not yet created.
 
 - **A1. Tenant/workspace model** — first-class `tenant`/`workspace`/`app` on every request;
   namespace config, cache, audit, spend, and vector indexes per tenant.
+  *Landed (#48):* `config/tenants.yaml` + `TenantResolver`, tenant-scoped cache/audit/
+  trace/spend/experiment attribution, budget caps and top_k/overlay policy; default-off.
 - **A2. Real identity** — replace the API-key stub with **OIDC/OAuth2 (JWT)**, SAML for SSO,
   SCIM for provisioning; map IdP groups → RBAC roles; service accounts + scoped API keys.
 - **A3. Attribution pipeline** — propagate `tenant/app/user/cost-center` via request context
@@ -346,7 +348,7 @@ A capability is only "done" when it is:
 | Horizon | Theme | Workstreams | Outcome |
 |---|---|---|---|
 | **H0 — Now (0–1 mo)** | Finish the foundation & make it operable | C2 (Prometheus/Grafana + dashboard pack), D1 (resilience/failover), E2 (config schema/validation), E3 (secrets), C1 (OTel), **G0 (hardened container + Compose), G1 (deployment playbook — landed #66), B3-slice #72 (input/doc redaction before prompt)** | The platform is observable, hardened, **deployable**, and no longer leaks raw secrets in the query/doc path; ops can adopt it. |
-| **H1 (1–3 mo)** | Multi-tenant & governed | A1–A4, B1–B3, B5, E1, E4, F5 (admin), **G2 (Helm + Kustomize + GitOps example + CI deploy smoke, landed #67)** — *B1-B3 (#52/#53/#54) landed* | Teams can onboard safely; access and cost are attributable; guardrails + audit are real; it installs on Kubernetes. |
+| **H1 (1–3 mo)** | Multi-tenant & governed | **A1 (tenant model — landed #48)**, A2–A4, B1–B3, B5, E1, E4, F5 (admin), **G2 (Helm + Kustomize + GitOps example + CI deploy smoke, landed #67)** — *B1-B3 (#52/#53/#54) landed* | Teams can onboard safely; access and cost are attributable; guardrails + audit are real; it installs on Kubernetes. |
 | **H2 (3–6 mo)** | The product surface | C3–C6, D2–D5, F1–F4 (composer, graphs, experiments, governance console), **G3 (HA/autoscale), G4 (progressive delivery)** | This becomes a *platform teams want to use*: visual, measurable, ROI-provable, safely rollout-able. |
 | **H3 (6–12 mo)** | Enterprise scale & compliance | B4, B6, D6, E5, E6, F6, F7, **G5 (GitOps at scale), G6 (multi-region/DR + cloud IaC)** | Runs at scale, in-region, GitOps-managed, compliance-evidenced, multi-team. |
 

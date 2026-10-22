@@ -373,6 +373,10 @@ class RAGPipeline:
             "llm_model": getattr(self.llm, "model_name", self.llm.__class__.__name__),
             "latency": latency_report,
         }
+        if getattr(tracker, "tenant", None) is not None:
+            trace["tenant"] = tracker.tenant
+            trace["workspace"] = tracker.workspace
+            trace["app"] = tracker.app
         guardrail_name = getattr(exc, "guardrail", None)
         if guardrail_name is not None:
             trace["guardrail"] = guardrail_name
@@ -397,6 +401,10 @@ class RAGPipeline:
             "latency": latency_report,
             "observability": self.last_observability,
         }
+        if getattr(tracker, "tenant", None) is not None:
+            envelope["tenant"] = tracker.tenant
+            envelope["workspace"] = tracker.workspace
+            envelope["app"] = tracker.app
         if guardrail_name is not None:
             envelope["guardrail"] = guardrail_name
             envelope["guardrail_reason"] = getattr(exc, "reason", None)
@@ -412,6 +420,9 @@ class RAGPipeline:
         top_k: Optional[int] = None,
         raise_on_failure: Optional[bool] = None,
         request_id: Optional[str] = None,
+        tenant: Optional[str] = None,
+        workspace: Optional[str] = None,
+        app: Optional[str] = None,
     ) -> dict:
         start_time = time.time()
         effective_top_k = int(top_k if top_k is not None else self.top_k)
@@ -424,14 +435,27 @@ class RAGPipeline:
         )
         if request_id:
             tracker.request_id = request_id
+        # Tenant attribution (issue #48): buffered on the tracker so it reaches
+        # both success and failure traces, and exported as OTel span attributes.
+        tracker.tenant = tenant
+        tracker.workspace = workspace
+        tracker.app = app
+        if tenant is not None:
+            tracker.set_trace_attribute("tenant", tenant)
+        if workspace is not None:
+            tracker.set_trace_attribute("workspace", workspace)
+        if app is not None:
+            tracker.set_trace_attribute("app", app)
 
         # -1. Response cache lookup (optional; off by default). A hit returns the
         # stored result immediately, skipping embedding/retrieval/generation and
-        # surfacing a cache_hit flag in observability (issue #26).
+        # surfacing a cache_hit flag in observability (issue #26). The tenant id
+        # is part of the cache key so two tenants never share an entry (#48).
         cache = getattr(self, "cache", None)
         cache_key = None
         if cache is not None and getattr(cache, "enabled", False):
-            cache_key = cache.make_key(query, effective_top_k)
+            cache_query = f"{tenant}\x00{query}" if tenant else query
+            cache_key = cache.make_key(cache_query, effective_top_k)
             cached = cache.get(cache_key)
             if cached is not None:
                 hit = deepcopy(cached)
@@ -724,6 +748,10 @@ class RAGPipeline:
             "guardrails_enabled": bool(self.input_guardrails or self.output_guardrails),
             "guardrail_decisions": input_guardrail_decisions + output_guardrail_decisions,
         }
+        if tenant is not None:
+            trace["tenant"] = tenant
+            trace["workspace"] = workspace
+            trace["app"] = app
         # Resilience metadata (issue #45): populated only when the llm/embedder
         # are wrapped; empty otherwise.
         resilience = {}
@@ -759,6 +787,10 @@ class RAGPipeline:
             "cache_hit": False,
             "guardrail_decisions": input_guardrail_decisions + output_guardrail_decisions,
         }
+        if tenant is not None:
+            result["tenant"] = tenant
+            result["workspace"] = workspace
+            result["app"] = app
 
         # Store a deep copy for future identical queries. Only successful runs
         # reach this point (hard failures return early via the stage handlers);
@@ -775,6 +807,9 @@ class RAGPipeline:
         max_workers: Optional[int] = None,
         request_ids: Optional[List[str]] = None,
         raise_on_failure: Optional[bool] = None,
+        tenant: Optional[str] = None,
+        workspace: Optional[str] = None,
+        app: Optional[str] = None,
     ) -> List[dict]:
         """
         Run several queries, reusing ``run`` per query (issue #27).
@@ -797,6 +832,9 @@ class RAGPipeline:
                 top_k=top_k,
                 raise_on_failure=raise_on_failure,
                 request_id=request_ids[index] if request_ids else None,
+                tenant=tenant,
+                workspace=workspace,
+                app=app,
             )
 
         workers = int(max_workers or 1)
