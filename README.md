@@ -499,6 +499,10 @@ pip install -e ".[observability]"   # or: pip install -r requirements-observabil
 docker compose -f deployment/docker-compose.yml --profile observability up
 ```
 
+The shipped dashboard includes a **guardrail decisions / hit-rate** row (allow/redact/block per
+guardrail, plus a sustained-block alert), fed by `genai_guardrail_decisions_total` and
+`genai_guardrail_blocks_total`. The same breakdown is on `GET /v1/metrics` under `guardrails`.
+
 **Harden against provider outages** (retries + circuit breaker + failover) - edit
 `config/resilience.yaml`. Disabled by default; the primary model is `active_model` and
 `fallback_models` names other keys in `models.yaml`:

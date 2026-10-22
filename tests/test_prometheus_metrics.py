@@ -108,6 +108,7 @@ def _success(
     embedding_ms=10.0,
     model="dummy",
     cache_hit=None,
+    guardrail_decisions=None,
 ):
     return {
         "response": "answer",
@@ -120,7 +121,33 @@ def _success(
             "retrieval_ms": 5.0,
             "total_ms": total_ms,
         },
+        "guardrail_decisions": list(guardrail_decisions or []),
         "observability": {"status": "success"},
+    }
+
+
+def _decision(name, decision, stage="input", allowed=True):
+    return {
+        "guardrail": name,
+        "stage": stage,
+        "decision": decision,
+        "allowed": allowed,
+        "reason": None,
+        "labels": [],
+        "details": {},
+    }
+
+
+def _blocked(decisions, failed_stage="guardrail_input"):
+    return {
+        "response": None,
+        "error": "blocked by guardrail",
+        "failure_type": "guardrail_input_blocked",
+        "failure_tags": ["guardrail_input_blocked"],
+        "cost": {},
+        "latency": {"embedding_ms": 3.0, "total_ms": 3.0},
+        "guardrail_decisions": decisions,
+        "observability": {"status": "failed", "failed_stage": failed_stage},
     }
 
 
@@ -239,6 +266,85 @@ def test_collector_records_without_http(tmp_path):
     assert 'genai_requests_total{status="failed"} 1.0' in body
 
 
+# -- guardrail hit-rate metrics (issue #87) --------------------------------
+
+
+@requires_prometheus
+def test_guardrail_decision_counters_reflect_runs(tmp_path):
+    results = [
+        _success(guardrail_decisions=[_decision("noop", "allow")]),
+        _success(guardrail_decisions=[_decision("pii", "redact")]),
+        _blocked([_decision("injection", "block", allowed=False)]),
+    ]
+    with TestClient(_app(_tmp_configs(tmp_path), results)) as client:
+        _run(client, "req-1")
+        _run(client, "req-2")
+        _run(client, "req-3")
+        body = _metrics_body(client)
+
+    assert 'genai_guardrail_decisions_total{decision="allow",guardrail="noop"} 1.0' in body
+    assert 'genai_guardrail_decisions_total{decision="redact",guardrail="pii"} 1.0' in body
+    assert 'genai_guardrail_decisions_total{decision="block",guardrail="injection"} 1.0' in body
+    assert 'genai_guardrail_blocks_total{guardrail="injection",stage="input"} 1.0' in body
+    assert 'genai_failures_total{failure_type="guardrail_input_blocked"} 1.0' in body
+
+
+@requires_prometheus
+def test_guardrail_counters_ignore_cache_hits(tmp_path):
+    decisions = [_decision("pii", "redact")]
+    results = [
+        _success(guardrail_decisions=decisions),
+        _success(cache_hit=True, guardrail_decisions=decisions),
+    ]
+    with TestClient(_app(_tmp_configs(tmp_path), results)) as client:
+        _run(client, "req-1")
+        _run(client, "req-2")
+        body = _metrics_body(client)
+
+    assert 'genai_guardrail_decisions_total{decision="redact",guardrail="pii"} 1.0' in body
+
+
+@requires_prometheus
+def test_guardrail_block_stage_falls_back_to_failed_stage(tmp_path):
+    decision = _decision("deny_list", "block", allowed=False)
+    decision.pop("stage")
+    results = [_blocked([decision], failed_stage="guardrail_output")]
+    with TestClient(_app(_tmp_configs(tmp_path), results)) as client:
+        _run(client, "req-1")
+        body = _metrics_body(client)
+
+    assert 'genai_guardrail_blocks_total{guardrail="deny_list",stage="output"} 1.0' in body
+
+
+@requires_prometheus
+def test_v1_metrics_exposes_guardrail_breakdown(tmp_path):
+    results = [
+        _success(guardrail_decisions=[_decision("noop", "allow")]),
+        _success(guardrail_decisions=[_decision("pii", "redact")]),
+        _blocked(
+            [
+                _decision("injection", "allow"),
+                _decision("injection", "block", allowed=False),
+            ]
+        ),
+        _success(cache_hit=True, guardrail_decisions=[_decision("pii", "redact")]),
+    ]
+    with TestClient(_app(_tmp_configs(tmp_path), results)) as client:
+        for index in range(len(results)):
+            _run(client, f"req-{index}")
+        payload = client.get("/v1/metrics").json()
+
+    guardrails = payload["guardrails"]
+    assert guardrails["by_guardrail"] == {
+        "injection": {"allow": 1, "redact": 0, "block": 1},
+        "noop": {"allow": 1, "redact": 0, "block": 0},
+        "pii": {"allow": 0, "redact": 1, "block": 0},
+    }
+    assert guardrails["by_decision"] == {"allow": 2, "redact": 1, "block": 1}
+    assert guardrails["total_decisions"] == 4
+    assert guardrails["total_blocks"] == 1
+
+
 def test_collector_degrades_when_library_absent(monkeypatch):
     # Simulate the optional dependency being missing: the collector reports
     # unavailable and render() raises instead of crashing at import.
@@ -290,6 +396,30 @@ def test_prometheus_alerts_and_config_are_valid_yaml():
     assert any(
         cfg["metrics_path"] == "/metrics" for cfg in scrape["scrape_configs"]
     )
+
+
+def test_grafana_dashboard_has_guardrail_panels():
+    dashboard = DEPLOYMENT / "observability" / "grafana" / "dashboards" / "genai-overview.json"
+    data = json.loads(dashboard.read_text(encoding="utf-8"))
+    exprs = [
+        target.get("expr", "")
+        for panel in data["panels"]
+        for target in panel.get("targets", [])
+    ]
+    assert any("genai_guardrail_decisions_total" in expr for expr in exprs)
+    assert any("genai_guardrail_blocks_total" in expr for expr in exprs)
+    assert any("redact|block" in expr for expr in exprs), "no guardrail hit-rate panel"
+    titles = [panel.get("title", "") for panel in data["panels"]]
+    assert any("Guardrail" in title for title in titles)
+
+
+def test_prometheus_has_guardrail_block_alert():
+    prom_dir = DEPLOYMENT / "observability" / "prometheus"
+    alerts = yaml.safe_load((prom_dir / "alerts.yml").read_text(encoding="utf-8"))
+    rules = alerts["groups"][0]["rules"]
+    rule = next(r for r in rules if r["alert"] == "GuardrailBlockRateHigh")
+    assert "genai_guardrail_decisions_total" in rule["expr"]
+    assert 'decision="block"' in rule["expr"]
 
 
 def test_compose_profile_references_observability_assets():

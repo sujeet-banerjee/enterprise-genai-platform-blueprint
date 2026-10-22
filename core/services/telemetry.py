@@ -110,6 +110,18 @@ class PrometheusCollector:
             labelnames=("reason",),
             registry=self._registry,
         )
+        self._guardrail_decisions = Counter(
+            "genai_guardrail_decisions_total",
+            "Guardrail decisions by guardrail and decision.",
+            labelnames=("guardrail", "decision"),
+            registry=self._registry,
+        )
+        self._guardrail_blocks = Counter(
+            "genai_guardrail_blocks_total",
+            "Blocking guardrail decisions by guardrail and pipeline edge.",
+            labelnames=("guardrail", "stage"),
+            registry=self._registry,
+        )
         self._in_flight = Gauge(
             "genai_in_flight_requests",
             "Pipeline requests currently being processed.",
@@ -168,6 +180,37 @@ class PrometheusCollector:
 
         for reason in result.get("governance_denials") or []:
             self._governance_denials.labels(reason=str(reason)).inc()
+
+        # Guardrail decisions (issue #87). A cache hit replays the original
+        # decisions without running any guardrail, so it must not inflate the
+        # counters; the same rule is applied by the in-process /v1/metrics store.
+        if result.get("cache_hit") is not True:
+            for decision in result.get("guardrail_decisions") or []:
+                if not isinstance(decision, dict):
+                    continue
+                name = str(decision.get("guardrail") or "unknown")
+                outcome = str(decision.get("decision") or "allow")
+                self._guardrail_decisions.labels(
+                    guardrail=name, decision=outcome
+                ).inc()
+                if outcome == "block":
+                    self._guardrail_blocks.labels(
+                        guardrail=name, stage=self._guardrail_stage(result, decision)
+                    ).inc()
+
+    @staticmethod
+    def _guardrail_stage(result: Dict[str, Any], decision: Dict[str, Any]) -> str:
+        """Resolve ``input``/``output`` for a block (issue #87)."""
+        stage = str(decision.get("stage") or "").strip().lower()
+        if stage:
+            return stage
+        observability = result.get("observability")
+        failed_stage = ""
+        if isinstance(observability, dict):
+            failed_stage = str(observability.get("failed_stage") or "")
+        if failed_stage.startswith("guardrail_"):
+            return failed_stage[len("guardrail_") :]
+        return "unknown"
 
     def _per_model_cost(self) -> Any:
         # Lazily create the labelled per-model counter (registry-safe).

@@ -52,3 +52,15 @@ groups:
         annotations:
           summary: "Elevated governance denials"
           description: "Governance/guardrail denials are elevated; check policy config."
+
+      - alert: GuardrailBlockRateHigh
+        expr: |
+          sum(rate(genai_guardrail_decisions_total{decision="block"}[10m]))
+            /
+          clamp_min(sum(rate(genai_guardrail_decisions_total[10m])), 0.000001) > 0.2
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "More than 20% of guardrail decisions are blocking"
+          description: "Sustained guardrail blocks may indicate an attack, a policy regression or a false-positive rule; review guardrail traces and config."
