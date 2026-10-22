@@ -104,6 +104,14 @@ class ApiClient:
     def evaluators(self) -> ApiResult:
         return self.get("/v1/evaluators")
 
+    def guardrails(self) -> ApiResult:
+        """Resolved guardrail chains, selected profile and enabled flag (#86/#88)."""
+        return self.get("/v1/guardrails")
+
+    def access(self) -> ApiResult:
+        """Calling persona's role and effective capabilities (#29)."""
+        return self.get("/v1/access")
+
     def effective_config(self) -> ApiResult:
         return self.get("/v1/config")
 
@@ -169,3 +177,16 @@ class ApiClient:
 
     def metrics(self) -> ApiResult:
         return self.get("/v1/metrics")
+
+    def audit(self, limit: Optional[int] = None, event_type: Optional[str] = None) -> ApiResult:
+        """Read the (redacted) audit trail, optionally filtered (#28)."""
+        params: Dict[str, Any] = {}
+        if limit is not None:
+            params["limit"] = limit
+        if event_type:
+            params["event_type"] = event_type
+        return self.get("/v1/audit", params=params or None)
+
+    def prometheus_metrics(self) -> ApiResult:
+        """Scrape ``/metrics``; the text exposition lands in ``data["raw"]``."""
+        return self.get("/metrics")
