@@ -24,6 +24,7 @@ from app.schemas import (
     EffectiveConfigResponse,
     EmbeddingModelsResponse,
     EvaluatorsResponse,
+    GuardrailsResponse,
     ModelsResponse,
     RerankersResponse,
     RetrieversResponse,
@@ -343,6 +344,7 @@ def create_app(
             "/v1/retrievers",
             "/v1/rerankers",
             "/v1/evaluators",
+            "/v1/guardrails",
         ):
             return "introspect"
         return None
@@ -697,6 +699,13 @@ def create_app(
         if error is not None:
             return error
         return EvaluatorsResponse(**service.list_evaluators())
+
+    @application.get("/v1/guardrails", response_model=GuardrailsResponse)
+    def guardrails_endpoint(request: Request):
+        service, error = _introspection(request)
+        if error is not None:
+            return error
+        return GuardrailsResponse(**service.list_guardrails())
 
     register_evaluation_routes(application, _error_envelope)
     register_whatif_routes(application, _error_envelope)

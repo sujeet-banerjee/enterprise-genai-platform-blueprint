@@ -132,6 +132,7 @@ the lifespan startup hook (not at import). Endpoints:
 - `POST /v1/query:batch` - run several queries sequentially or in parallel (`parallel: true`); per-query envelopes + summary
 - `GET /v1/config` - redacted effective configuration
 - `GET /v1/models`, `/v1/embedding-models`, `/v1/retrievers`, `/v1/rerankers`, `/v1/evaluators` - introspection
+- `GET /v1/guardrails` - resolved input/output guardrail chains (previewable while disabled)
 - `POST /v1/evaluate` - run an evaluator on a query/response
 - `POST /v1/experiments` / `GET /v1/experiments/{id}` - launch and poll experiments
 - `POST /v1/pipeline:rebuild` - runtime component swap via config overrides (gated by `api.allow_rebuild`)

@@ -36,6 +36,7 @@ EXPECTED_PATHS = {
     "/v1/retrievers",
     "/v1/rerankers",
     "/v1/evaluators",
+    "/v1/guardrails",
     "/v1/evaluate",
     "/v1/experiments",
     "/v1/experiments/{exp_id}",

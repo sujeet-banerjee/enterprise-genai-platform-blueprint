@@ -88,6 +88,23 @@ class EvaluatorsResponse(BaseModel):
     evaluators: List[EvaluatorInfo] = []
 
 
+class GuardrailInfo(BaseModel):
+    """One resolved guardrail in an input/output chain (issue #86)."""
+
+    provider: str
+    type: Optional[str] = None
+    stage: Optional[str] = None
+    options: Dict[str, Any] = {}
+
+
+class GuardrailsResponse(BaseModel):
+    enabled: bool = False
+    providers: List[str] = []
+    input: List[GuardrailInfo] = []
+    output: List[GuardrailInfo] = []
+    errors: List[str] = []
+
+
 class EffectiveConfigResponse(BaseModel):
     """Redacted effective configuration."""
 

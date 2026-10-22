@@ -11,6 +11,7 @@ from typing import Any, Dict, List, Optional
 import yaml
 
 from core.registry.evaluator_registry import EvaluatorRegistry
+from core.registry.guardrail_registry import GuardrailRegistry
 from core.registry.model_registry import ModelRegistry
 from core.registry.pii_registry import PiiRegistry
 from core.registry.reranker_registry import RerankerRegistry
@@ -56,6 +57,9 @@ class IntrospectionService:
         self.retriever_registry = RetrieverRegistry(str(self.retrieval_config_path))
         self.reranker_registry = RerankerRegistry(str(self.retrieval_config_path))
         self.evaluator_registry = EvaluatorRegistry(str(self.retrieval_config_path))
+        self.guardrail_registry = GuardrailRegistry(
+            str(self.guardrails_config_path) if self.guardrails_config_path else None
+        )
 
         retrieval_config = self.retriever_registry.config or {}
         legacy_obs = retrieval_config.get("observability") or {}
@@ -193,5 +197,22 @@ class IntrospectionService:
             "evaluators": evaluators,
         }
 
+    def list_guardrails(self) -> Dict[str, Any]:
+        """Resolved input/output guardrail chains (issue #86).
+
+        Reports the chains the registry would build from the effective config,
+        with each provider's effective options and edge. Values are safe to
+        expose: masks and policy terms only, never request data.
+        """
+        return self.guardrail_registry.describe()
+
     def listing_keys(self) -> List[str]:
-        return ["config", "models", "embedding-models", "retrievers", "rerankers", "evaluators"]
+        return [
+            "config",
+            "models",
+            "embedding-models",
+            "retrievers",
+            "rerankers",
+            "evaluators",
+            "guardrails",
+        ]

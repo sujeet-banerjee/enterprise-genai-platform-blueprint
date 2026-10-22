@@ -200,6 +200,10 @@ Supporting types:
 * `GuardrailContext` carries the `stage` (`input` / `output`) and a free-form
   `metadata` bag (e.g. `top_k`, `llm_model`).
 * `name` / `stage` attributes identify the guardrail in traces.
+* `describe() -> {provider, type, stage, options}` is a read-only introspection
+  view (roadmap #86). The base implementation covers every provider; concrete
+  guardrails override `_options()` to expose effective settings (masks, terms,
+  sensitivity, classes) and never request data or secrets.
 * Built-ins (`core/implementations/guardrails.py`): `NoopGuardrail`,
   `DenyListGuardrail` (block or redact via `mask`), `SchemaValidatorGuardrail`.
 
@@ -548,6 +552,12 @@ Guardrails run top-to-bottom; a **block** stops the chain (governed failure
 (`guardrail_decisions`) and — with audit enabled — in the audit trail. Adding a
 vendor guardrail is: implement `BaseGuardrail` → register a factory → add a
 config entry; the composition root never imports a concrete guardrail.
+
+`GET /v1/guardrails` (roadmap #86) returns the resolved chains — `enabled`,
+registered `providers`, and each entry's provider/type/edge/effective options —
+so you can preview what enabling the feature would run. Chains are reported even
+while `enabled: false`; an invalid provider in a disabled config is returned in
+`errors` instead of failing the request.
 
 #### Prompt-injection / jailbreak defense (`injection`, roadmap #53, B2)
 

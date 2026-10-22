@@ -131,6 +131,15 @@ class InjectionGuardrail(BaseGuardrail):
         self.mask = mask
         self._patterns = _compile_patterns()
 
+    def _options(self) -> dict:
+        return {
+            "sensitivity": self.sensitivity,
+            "trust_retrieved_documents": self.trust_retrieved_documents,
+            "neutralize_mode": self.neutralize_mode,
+            "mask": self.mask,
+            "classifier": type(self.classifier).__name__ if self.classifier else None,
+        }
+
     # -- detection --------------------------------------------------------
 
     def _score(self, text: str) -> Tuple[float, List[str]]:

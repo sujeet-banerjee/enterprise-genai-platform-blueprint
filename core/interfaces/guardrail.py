@@ -130,3 +130,22 @@ class BaseGuardrail(ABC):
         """Convenience wrapper for the output edge."""
         ctx = context or GuardrailContext(stage="output")
         return self.check(text, ctx)
+
+    def describe(self) -> Dict[str, Any]:
+        """Read-only view for introspection (issue #86).
+
+        The base implementation reports the provider, class and resolved edge,
+        so every guardrail - including third-party ones - is introspectable
+        without extra code. Concrete providers override ``_options`` to expose
+        their **effective** settings; those options must never include secrets.
+        """
+        return {
+            "provider": str(self.name),
+            "type": type(self).__name__,
+            "stage": self.stage,
+            "options": self._options(),
+        }
+
+    def _options(self) -> Dict[str, Any]:
+        """Provider-specific effective options (override; no secrets)."""
+        return {}

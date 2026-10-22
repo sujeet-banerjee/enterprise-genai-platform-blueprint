@@ -71,6 +71,13 @@ class PiiGuardrail(BaseGuardrail):
             self._detector = RegexPiiDetector(classes=self.classes)
         return self._detector
 
+    def _options(self) -> Dict[str, Any]:
+        return {
+            "classes": list(self.classes),
+            "mode": self.mode,
+            "mask": self.mask,
+        }
+
     def check(self, text: str, context: GuardrailContext) -> GuardrailResult:
         haystack = text if isinstance(text, str) else ""
         if not haystack or not self.classes:

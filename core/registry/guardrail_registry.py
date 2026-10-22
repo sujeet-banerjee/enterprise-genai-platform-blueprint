@@ -148,6 +148,29 @@ class GuardrailRegistry:
     def list_providers(self) -> List[str]:
         return sorted(self._providers.keys())
 
+    def describe(self) -> Dict[str, Any]:
+        """Resolved chains for introspection (issue #86).
+
+        The chains are reported whether or not the master toggle is on, so an
+        operator can preview what enabling the feature would run; ``enabled``
+        says whether they are currently active. Errors are collected per
+        section instead of raising, so a bad entry in a disabled config cannot
+        turn a read-only endpoint into a 500.
+        """
+        result: Dict[str, Any] = {
+            "enabled": self.is_enabled(),
+            "providers": self.list_providers(),
+            "input": [],
+            "output": [],
+            "errors": [],
+        }
+        for section in ("input", "output"):
+            try:
+                result[section] = [g.describe() for g in self._build_chain(section)]
+            except Exception as exc:  # pragma: no cover - defensive
+                result["errors"].append(f"{section}: {exc}")
+        return result
+
     def is_enabled(self) -> bool:
         return bool(self.config.get("enabled", False))
 
