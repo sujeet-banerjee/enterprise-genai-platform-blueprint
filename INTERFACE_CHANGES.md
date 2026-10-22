@@ -72,3 +72,47 @@ In accordance with **Rule 1** (*Extend, do not replace the existing architecture
   * `chunk_documents(self, docs: List[Union[dict, Document, str]]) -> List[Document]` (`lines 18–39`)
   * `chunk(self, docs_or_text)` (`lines 41–44`)
   * `chunk_size(self) -> int` (`lines 46–49`), `chunk_overlap(self) -> int` (`lines 51–53`), `strategy_name(self) -> str` (`lines 55–58`)
+
+---
+
+## 3. Later additions (post-Phase 2)
+
+Sections 1–2 are a historical snapshot of the Phase-1/2 extensions; their line numbers
+refer to that revision. Later phases added the following contracts without breaking
+the ones above. The current source of truth is
+[`docs/architecture.md`](docs/architecture.md) and the README.
+
+- **Query expansion** — `core/interfaces/query_expander.py::BaseQueryExpander.expand(query) -> List[str]`
+  (original first) with `noop` / `synonym` / `llm` providers and `query_expansion` config.
+- **Retriever extensions** — optional
+  `BaseRetriever.retrieve_with_query(query, query_embedding, top_k)` hook (used by the
+  hybrid retriever, which degrades to vector-only when absent); new `hybrid` and `kg`
+  providers registered alongside `simple`/`faiss`/`dummy`.
+- **Batching** — non-abstract `BaseEmbedder.embed_batch(texts)` and
+  `BaseLLM.generate_batch(prompts, config)` defaults (loop), with real batched
+  overrides in `SimpleEmbedder`, `OpenAIEmbedder` and `LocalHFLLM`.
+- **Guardrails** — `core/interfaces/guardrail.py`: `GuardrailContext`,
+  `GuardrailResult` (`allow`/`redact`/`block` + labels/details),
+  `BaseGuardrail.check/check_input/check_output/describe`; providers `injection`,
+  `pii`, `deny_list`, `schema_validator`; `GuardrailRegistry` with profiles and
+  resolved-chain introspection.
+- **PII** — `core/interfaces/pii.py`: `PiiMatch`, `PiiDetector`, class constants and
+  mask/resolve/summarize helpers; regex backend plus an injectable NER seam.
+- **Resilience** — `core/services/resilience.py`: `RetryPolicy`, `CircuitBreaker`,
+  `ResilientLLM`/`ResilientEmbedder` (ordered failover), structured
+  `RetryExhaustedError`/`CircuitOpenError`, `pop_resilience()` metadata.
+- **Evaluation** — `BaseEvaluator.supports_ground_truth` +
+  `evaluate_with_ground_truth(...)` (non-abstract default delegates to `evaluate`) and
+  shared `normalize_references()`; `EvaluationEngine` delegates to the semantic
+  evaluator; benchmark runner adds true IR metrics.
+- **Observability & governance** — `OtelTracer`, `PrometheusCollector`,
+  `AuditLogger`, `ResponseCache`, plus app-level `RunHistory`, `IntrospectionService`,
+  `EvaluationService` and `PipelineRebuildService`.
+- **Config** — per-concern YAML files (`models`, `prompt_config`, `retrieval`,
+  `governance`, `observability`, `guardrails`, `audit`, `resilience`, `api`,
+  `access_control`) validated by strict schemas with `${VAR}`/`env:` secret
+  resolution at load time.
+
+Nothing above replaced an existing method contract; additions are optional parameters,
+new defaulted methods, or new interfaces/registries selected by configuration.
+

@@ -134,7 +134,7 @@ the lifespan startup hook (not at import). Endpoints:
 - `GET /v1/models`, `/v1/embedding-models`, `/v1/retrievers`, `/v1/rerankers`, `/v1/evaluators` - introspection
 - `GET /v1/guardrails` - resolved input/output guardrail chains (previewable while disabled)
 - `POST /v1/evaluate` - run an evaluator on a query/response
-- `POST /v1/experiments` / `GET /v1/experiments/{id}` - launch and poll experiments
+- `POST /v1/experiments` / `GET /v1/experiments/{exp_id}` - launch and poll experiments
 - `POST /v1/pipeline:rebuild` - runtime component swap via config overrides (gated by `api.allow_rebuild`)
 - `GET /v1/governance/status`, `GET /v1/traces/{request_id}`, `GET /v1/metrics` - governance & observability
 - `GET /metrics` - Prometheus exposition (requires the optional `observability` extra; 503 otherwise)

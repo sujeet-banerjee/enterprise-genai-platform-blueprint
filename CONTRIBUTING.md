@@ -111,8 +111,11 @@ era complete).
 - Work is organized into **horizons** (GitHub milestones):
   `H0 - Observability & hardening`, `H1 - Multi-tenant & governed`,
   `H2 - Product surface`, `H3 - Enterprise scale & compliance`.
-- Pick up an open issue from the active horizon; the roadmap's Horizon 0 items (#44-#47) are
-  the recommended next work since they extend existing services.
+- Pick up an open issue from the active horizon. H0 (observability, config validation,
+  resilience, deployment playbook and delivery artifacts, plus the first guardrail slices)
+  is complete; the current focus is **H1 - Multi-tenant & governed** (#48-#57), with
+  Workstream G follow-ups (#64, #68-#71) after that. The roadmap document and the GitHub
+  Project board are the source of truth for ordering.
 
 ## License
 
