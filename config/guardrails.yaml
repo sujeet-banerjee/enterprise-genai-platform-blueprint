@@ -8,7 +8,7 @@
 # ORDERED list: guardrails run top-to-bottom and a block stops the chain. A
 # guardrail that only redacts rewrites the text and lets the chain continue.
 #
-# Providers shipped: noop, deny_list, schema_validator, injection.
+# Providers shipped: noop, deny_list, schema_validator, injection, pii.
 #   deny_list        {terms: [...], regex: false, mask: "[REDACTED]", reason: ...}
 #                    (omit ``mask`` to block; set it to redact instead)
 #   schema_validator {required_keys: [...], forbidden_keys: [...], expect_json: false}
@@ -17,6 +17,11 @@
 #                    - blocks direct prompt-injection/jailbreak in the query;
 #                    - neutralizes indirect injection embedded in retrieved docs
 #                      unless ``trust_retrieved_documents: true`` (issue #53).
+#   pii              {classes: [email, phone, credit_card, national_id, ip_address],
+#                     mode: redact|block, mask: ..., ner: {enabled: false, ...}}
+#                    - detects personal data at the input/output edge (issue #54);
+#                    - ``redact`` rewrites the span, ``block`` fails the request;
+#                    - only the class and a count are reported, never the value.
 enabled: false
 
 input: []
@@ -28,6 +33,9 @@ input: []
 #   - provider: injection
 #     sensitivity: medium
 #     trust_retrieved_documents: false
+#   - provider: pii
+#     classes: [email, phone, credit_card]
+#     mode: redact
 
 output: []
 # Example:
@@ -35,3 +43,6 @@ output: []
 #   - provider: schema_validator
 #     expect_json: true
 #     required_keys: ["answer"]
+#   - provider: pii
+#     classes: [email, phone, credit_card, national_id]
+#     mode: redact

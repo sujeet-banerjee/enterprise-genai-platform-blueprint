@@ -198,12 +198,25 @@ class OtelSection(_StrictModel):
     sample_ratio: Optional[float] = None
 
 
+class PiiSection(_StrictModel):
+    """PII / DLP scrubbing policy (issue #54)."""
+
+    enabled: Optional[bool] = None
+    classes: Optional[List[str]] = None
+    mode: Optional[str] = None
+    mask: Optional[str] = None
+    ner: Optional[Dict[str, Any]] = None
+    national_id_patterns: Optional[List[str]] = None
+    extra_patterns: Optional[Dict[str, List[str]]] = None
+
+
 class ObservabilityConfig(_StrictModel):
     log_level: Optional[str] = None
     redact_sensitive_data: Optional[bool] = None
     low_retrieval_score_threshold: Optional[float] = None
     sensitive_patterns: Optional[List[str]] = None
     otel: Optional[OtelSection] = None
+    pii: Optional[PiiSection] = None
 
 
 # -- api.yaml ------------------------------------------------------------

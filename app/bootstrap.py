@@ -31,6 +31,7 @@ from core.config.validator import load_and_validate, resolve_config_file
 from core.registry.evaluator_registry import EvaluatorRegistry
 from core.registry.guardrail_registry import GuardrailRegistry
 from core.registry.model_registry import ModelRegistry
+from core.registry.pii_registry import PiiRegistry
 from core.registry.query_expander_registry import QueryExpanderRegistry
 from core.registry.reranker_registry import RerankerRegistry
 from core.registry.retriever_registry import RetrieverRegistry
@@ -118,6 +119,7 @@ class PipelineComponents:
     query_expander: Any = None
     cache: Any = None
     redactor: Optional[SensitiveDataRedactor] = None
+    trace_redactor: Optional[SensitiveDataRedactor] = None
     cost_governor: Any = None
     retrieval_policy_service: Any = None
     input_guardrails: Any = None
@@ -128,6 +130,8 @@ class PipelineComponents:
     evaluator_registry: Optional[EvaluatorRegistry] = None
     query_expander_registry: Optional[QueryExpanderRegistry] = None
     guardrail_registry: Optional[GuardrailRegistry] = None
+    pii_registry: Optional[PiiRegistry] = None
+    pii_detector: Any = None
     retrieval_config: dict = field(default_factory=dict)
     governance_config: dict = field(default_factory=dict)
     observability_config: dict = field(default_factory=dict)
@@ -164,6 +168,7 @@ class PipelineComponents:
             query_expander=self.query_expander,
             cache=self.cache,
             redactor=self.redactor,
+            trace_redactor=self.trace_redactor,
             max_query_chars=max_query_chars,
             input_guardrails=self.input_guardrails,
             output_guardrails=self.output_guardrails,
@@ -284,10 +289,44 @@ def assemble_components(
     # Input-side redaction (issue #72): strip secrets from the query and
     # retrieved docs before prompt construction. Driven by the observability
     # config (issue #16) with the legacy inline section as a fallback.
+    #
+    # PII / DLP scrubbing (issue #54) layers on top: the ``pii:`` block of the
+    # observability config decides which personal-data classes are stripped
+    # from the query, the docs, the traces and the logs.
+    pii_registry = PiiRegistry(config=observability_config)
+    pii_detector = pii_registry.build_detector()
     input_redactor = SensitiveDataRedactor(
         enabled=bool(observability_config.get("redact_sensitive_data", True)),
         patterns=observability_config.get("sensitive_patterns"),
+        pii_detector=pii_detector,
+        pii_classes=pii_registry.classes() if pii_detector is not None else None,
     )
+
+    # Traces and logs must never carry a value that a ``pii`` guardrail is
+    # protecting, even when the observability ``pii:`` block is off (defense in
+    # depth). This is a *separate* redactor: the input redaction stage must not
+    # pre-empt a guardrail ``block`` decision, so the edge still sees raw text.
+    guardrail_pii_classes: list = []
+    for _chain in (input_guardrails, output_guardrails):
+        for _guardrail in _chain or []:
+            if getattr(_guardrail, "name", None) != "pii":
+                continue
+            for _cls in getattr(_guardrail, "classes", None) or []:
+                if _cls not in guardrail_pii_classes:
+                    guardrail_pii_classes.append(_cls)
+    if guardrail_pii_classes:
+        trace_pii_classes = list(pii_registry.classes()) if pii_detector is not None else []
+        for _cls in guardrail_pii_classes:
+            if _cls not in trace_pii_classes:
+                trace_pii_classes.append(_cls)
+        trace_redactor = SensitiveDataRedactor(
+            enabled=bool(observability_config.get("redact_sensitive_data", True)),
+            patterns=observability_config.get("sensitive_patterns"),
+            pii_detector=pii_registry.build_detector(trace_pii_classes, force=True),
+            pii_classes=trace_pii_classes,
+        )
+    else:
+        trace_redactor = input_redactor
 
     # Per-model pricing from models.yaml (issue #14).
     model_pricing: dict = {}
@@ -341,6 +380,7 @@ def assemble_components(
         query_expander=query_expander,
         cache=cache,
         redactor=input_redactor,
+        trace_redactor=trace_redactor,
         cost_governor=cost_governor,
         retrieval_policy_service=retrieval_policy_service,
         input_guardrails=input_guardrails,
@@ -351,6 +391,8 @@ def assemble_components(
         evaluator_registry=evaluator_registry,
         query_expander_registry=query_expander_registry,
         guardrail_registry=guardrail_registry,
+        pii_registry=pii_registry,
+        pii_detector=pii_detector,
         retrieval_config=retrieval_config,
         governance_config=governance_config,
         observability_config=observability_config,

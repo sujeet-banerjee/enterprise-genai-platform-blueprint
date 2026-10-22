@@ -61,6 +61,7 @@ class GuardrailRegistry:
         self.register("deny_list", self._build_deny_list)
         self.register("schema_validator", self._build_schema_validator)
         self.register("injection", self._build_injection)
+        self.register("pii", self._build_pii)
 
     @staticmethod
     def _build_noop(**_options: Any) -> BaseGuardrail:
@@ -117,6 +118,27 @@ class GuardrailRegistry:
             classifier_factory=classifier_factory,
             neutralize_mode=str(options.get("neutralize_mode", "delimit")),
             mask=str(options.get("mask", "[REDACTED-INSTRUCTION]")),
+        )
+
+    @staticmethod
+    def _build_pii(**options: Any) -> BaseGuardrail:
+        from core.implementations.pii_detector import build_pii_detector
+        from core.implementations.pii_guardrail import PiiGuardrail
+
+        classes = options.get("classes")
+        detector = build_pii_detector(
+            classes=classes,
+            national_id_patterns=options.get("national_id_patterns"),
+            extra_patterns=options.get("extra_patterns"),
+            ner=options.get("ner"),
+        )
+
+        return PiiGuardrail(
+            classes=classes,
+            mode=str(options.get("mode", "redact")),
+            mask=options.get("mask"),
+            detector=detector,
+            reason=options.get("reason"),
         )
 
     def register(self, provider_name: str, factory: Callable[..., BaseGuardrail]) -> None:

@@ -513,6 +513,7 @@ keep working via a fallback (roadmap #34).
 | `redact_sensitive_data` | `PipelineObservabilityTracker` | Toggle redaction (roadmap #16) |
 | `low_retrieval_score_threshold` | pipeline | Low-score flagging |
 | `sensitive_patterns` | `PipelineObservabilityTracker` | Redaction patterns (roadmap #16) |
+| `pii` | `PiiRegistry` → redactor | PII/DLP scrubbing policy (roadmap #54) |
 | `otel` | `PipelineObservabilityTracker` | OTel trace export (roadmap #47) |
 
 The `otel` block (disabled by default) enables OTLP trace export:
@@ -536,9 +537,9 @@ path is byte-identical to before.
 | `enabled` | `GuardrailRegistry` | Master toggle (default `false`) |
 | `input` | `GuardrailRegistry` → pipeline | **Ordered** list of guardrails on the query + retrieved docs (pre-prompt) |
 | `output` | `GuardrailRegistry` → pipeline | **Ordered** list of guardrails on the generated response (pre-return) |
-| `<entry>.provider` | `GuardrailRegistry` | Provider factory (`noop` / `deny_list` / `schema_validator` / `injection`) |
+| `<entry>.provider` | `GuardrailRegistry` | Provider factory (`noop` / `deny_list` / `schema_validator` / `injection` / `pii`) |
 | `<entry>.stage` | `GuardrailRegistry` | Optional per-entry edge override (`input` / `output`) |
-| `<entry>.*` | provider | Provider-specific options (e.g. `terms`, `mask`, `regex`, `required_keys`, `expect_json`, `sensitivity`, `trust_retrieved_documents`) |
+| `<entry>.*` | provider | Provider-specific options (e.g. `terms`, `mask`, `regex`, `required_keys`, `expect_json`, `sensitivity`, `trust_retrieved_documents`, `classes`, `mode`) |
 
 Guardrails run top-to-bottom; a **block** stops the chain (governed failure
 `guardrail_input_blocked` / `guardrail_output_blocked` → HTTP **403**), while a
@@ -563,6 +564,25 @@ regexes) plus an **optional** pluggable classifier (`classifier`, default
   `neutralize_mode` (`delimit` / `strip` / `mask`) controls how indirect hits are
   rewritten. The red-team corpus in `tests/test_injection_defense.py` guards the
   block rate and holds a false-positive check over benign inputs.
+
+#### PII / DLP (`pii`, roadmap #54, B3)
+
+The `pii` provider detects personal data with deterministic regexes (email,
+phone, credit card — **Luhn validated**, national id, IPv4/IPv6) and an
+**optional** NER detector (`ner.enabled`, e.g. spaCy) for names and addresses.
+Overlaps are resolved by class priority, so a card number is never split into
+phone-like fragments.
+
+* `classes` (default: all standard classes) is a per-class toggle.
+* `mode: redact` masks each span (`[REDACTED_EMAIL]`, or a custom `mask`) and
+  continues; `mode: block` fails the request with the governed guardrail
+  failure. **Only the class and a count** ever leave the guardrail
+  (`pii:<class>`, `details.classes`) — the matched value is never recorded.
+* The `pii:` block of `config/observability.yaml` is the independent
+  **scrubbing** policy: it strips the same classes from traces, logs and the
+  query handed to the model (default `enabled: false`). When a `pii` guardrail
+  is configured, traces/logs are scrubbed for its classes too, without
+  pre-empting an input-side `block` decision.
 
 
 ---

@@ -10,6 +10,7 @@ from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 import yaml
 
+from core.interfaces.pii import PiiDetector, apply_pii_masks
 from core.services.telemetry import build_otel_tracer
 
 
@@ -105,6 +106,8 @@ class SensitiveDataRedactor:
         self,
         enabled: bool = True,
         patterns: Optional[Sequence[str]] = None,
+        pii_detector: Optional["PiiDetector"] = None,
+        pii_classes: Optional[Sequence[str]] = None,
     ):
         self.enabled = bool(enabled)
         if patterns is None:
@@ -115,6 +118,34 @@ class SensitiveDataRedactor:
             ]
         else:
             self._rules = list(self._DEFAULT_RULES)
+
+        # PII / DLP scrubbing (issue #54). Off unless a detector is injected;
+        # the detector is supplied by the composition root from the
+        # observability config's ``pii:`` block.
+        self.pii_detector = pii_detector
+        self.pii_classes: List[str] = [
+            str(c).strip().lower() for c in (pii_classes or []) if str(c).strip()
+        ]
+
+    def _redact_pii(self, text: str) -> str:
+        """Strip PII spans from ``text`` (classes + counts only are reported)."""
+        if self.pii_detector is None or not text:
+            return text
+        try:
+            matches = self.pii_detector.detect(text)
+        except Exception:
+            # A detector failure must never break the trace/log path.
+            return text
+        if not matches:
+            return text
+        selected = [
+            match
+            for match in matches
+            if not self.pii_classes or match.pii_class in self.pii_classes
+        ]
+        if not selected:
+            return text
+        return apply_pii_masks(text, selected)
 
     @staticmethod
     def _compile_config_rule(pattern: str) -> Tuple[Any, Any]:
@@ -153,7 +184,7 @@ class SensitiveDataRedactor:
         redacted = text
         for regex, repl in self._rules:
             redacted = regex.sub(repl, redacted)
-        return redacted
+        return self._redact_pii(redacted)
 
     @_HybridMethod
     def redact_obj(self, obj: Any) -> Any:
@@ -199,6 +230,7 @@ class PipelineObservabilityTracker:
         logger: Optional[logging.Logger] = None,
         observability_config_path: Optional[str] = None,
         otel: Optional[Any] = None,
+        redactor: Optional[SensitiveDataRedactor] = None,
     ):
         self.request_id = str(uuid.uuid4())
         self.start_perf = time.perf_counter()
@@ -215,7 +247,9 @@ class PipelineObservabilityTracker:
         else:
             obs_cfg = self._load_obs_config(config_path, dedicated=False)
 
-        self._redactor = SensitiveDataRedactor(
+        # Reuse the pipeline's redactor when supplied so traces and logs share
+        # its policy (secrets *and* PII), instead of rebuilding a narrower one.
+        self._redactor = redactor or SensitiveDataRedactor(
             enabled=bool(obs_cfg.get("redact_sensitive_data", True)),
             patterns=obs_cfg.get("sensitive_patterns") if isinstance(obs_cfg, dict) else None,
         )

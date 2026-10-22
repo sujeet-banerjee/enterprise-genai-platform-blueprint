@@ -20,3 +20,34 @@ otel:
   service_name: "enterprise-genai-platform"
   sample_ratio: 1.0
 
+# PII / DLP scrubbing (issue #54). Off by default: with ``enabled: false`` no
+# personal data is detected and the redaction path is byte-identical to before.
+#
+# When enabled, the listed classes are stripped from the query, the retrieved
+# docs, the traces, the logs and the config view. Only the *class* and a count
+# are ever reported - never the matched value.
+#
+# Enforcement at the input/output edges is configured separately through the
+# ``pii`` guardrail provider in ``config/guardrails.yaml`` (redact vs block).
+pii:
+  enabled: false
+  # email, phone, credit_card, national_id, ip_address
+  # (person_name and address require the optional NER detector)
+  classes:
+    - email
+    - phone
+    - credit_card
+    - national_id
+    - ip_address
+  mode: redact
+  # Optional override for the default per-class token ([REDACTED_EMAIL], ...).
+  # mask: "[REDACTED]"
+  # Optional NER detector for names/addresses (extra dependency, off by default):
+  # ner:
+  #   enabled: false
+  #   model: en_core_web_sm
+  #   classes: [person_name, address]
+  # Operator-specific national id schemes:
+  # national_id_patterns:
+  #   - "\\b\\d{3}-\\d{2}-\\d{4}\\b"
+

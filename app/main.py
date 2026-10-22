@@ -2,7 +2,7 @@ import os
 import uuid
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Callable, Optional
+from typing import Any, Callable, Optional
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
@@ -164,6 +164,37 @@ def _error_envelope(
         "failure_tags": list(failure_tags or []),
         "request_id": request_id,
     }
+
+
+def _record_pii_audit(audit: Any, request_id: str, result: dict) -> None:
+    """Record PII / DLP decisions in the audit trail (issue #54).
+
+    Only the **class** and a **count** are stored - the matched value never
+    reaches the audit trail, the trace or the response body.
+    """
+    decisions = result.get("guardrail_decisions") or []
+    for decision in decisions:
+        if not isinstance(decision, dict):
+            continue
+        if decision.get("guardrail") != "pii":
+            continue
+        outcome = str(decision.get("decision") or "")
+        if outcome not in ("redact", "block"):
+            continue
+        details = decision.get("details") or {}
+        counts = details.get("classes") if isinstance(details, dict) else None
+        counts = counts if isinstance(counts, dict) else {}
+        audit.record(
+            "pii",
+            "detect",
+            "redacted" if outcome == "redact" else "blocked",
+            details={
+                "classes": sorted(str(name) for name in counts),
+                "counts": {str(name): int(value) for name, value in counts.items()},
+                "total": int(details.get("total") or 0) if isinstance(details, dict) else 0,
+            },
+            request_id=request_id,
+        )
 
 
 def create_app(
@@ -370,10 +401,18 @@ def create_app(
         Cost-governance rejections and retrieval-policy degradation are recorded
         with their failure taxonomy; successful governance-neutral queries are
         not, to keep the trail focused on decisions rather than every request.
+
+        PII / DLP decisions (issue #54) are always recorded - both redaction and
+        block - because "personal data left the system" is exactly the kind of
+        event an auditor looks for. Only the **class** and a **count** are
+        stored; the matched value never reaches the audit trail.
         """
         audit = getattr(request.app.state, "audit", None)
         if audit is None or not getattr(audit, "enabled", False):
             return
+
+        _record_pii_audit(audit, request_id, result)
+
         failure_type = result.get("failure_type")
         failure_tags = list(result.get("failure_tags") or [])
         if not failure_type and not failure_tags:

@@ -53,6 +53,9 @@ class GuardrailResult:
     - ``reason``: human-readable explanation surfaced in traces/metrics/audit.
     - ``labels``: machine-readable tags (e.g. policy names, PII categories) that
       feed governance/HITL reporting.
+    - ``details``: optional structured context (e.g. the PII classes and counts
+      for a DLP decision). Must never carry sensitive values - issue #54
+      requires counts and classes only.
     """
 
     allowed: bool = True
@@ -60,18 +63,25 @@ class GuardrailResult:
     text: Optional[str] = None
     reason: Optional[str] = None
     labels: List[str] = field(default_factory=list)
+    details: Dict[str, Any] = field(default_factory=dict)
 
     @classmethod
     def allow(cls) -> "GuardrailResult":
         return cls(allowed=True, decision=DECISION_ALLOW)
 
     @classmethod
-    def block(cls, reason: Optional[str] = None, labels: Optional[List[str]] = None) -> "GuardrailResult":
+    def block(
+        cls,
+        reason: Optional[str] = None,
+        labels: Optional[List[str]] = None,
+        details: Optional[Dict[str, Any]] = None,
+    ) -> "GuardrailResult":
         return cls(
             allowed=False,
             decision=DECISION_BLOCK,
             reason=reason,
             labels=list(labels or []),
+            details=dict(details or {}),
         )
 
     @classmethod
@@ -80,6 +90,7 @@ class GuardrailResult:
         text: str,
         reason: Optional[str] = None,
         labels: Optional[List[str]] = None,
+        details: Optional[Dict[str, Any]] = None,
     ) -> "GuardrailResult":
         return cls(
             allowed=True,
@@ -87,6 +98,7 @@ class GuardrailResult:
             text=text,
             reason=reason,
             labels=list(labels or []),
+            details=dict(details or {}),
         )
 
 

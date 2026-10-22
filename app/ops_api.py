@@ -17,6 +17,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, Response
 
 from app.schemas import GovernanceStatusResponse, MetricsResponse
+from core.registry.pii_registry import PiiRegistry
 from core.services.failure_classifier import FailureType
 from core.services.observability import SensitiveDataRedactor
 
@@ -32,9 +33,15 @@ def _build_redactor(observability_config_path: Optional[Path]) -> SensitiveDataR
             config = loaded if isinstance(loaded, dict) else {}
         except OSError:
             config = {}
+    # PII / DLP scrubbing (issue #54): traces and metrics must not carry
+    # personal data either.
+    pii_registry = PiiRegistry(config=config)
+    pii_detector = pii_registry.build_detector()
     return SensitiveDataRedactor(
         enabled=bool(config.get("redact_sensitive_data", True)),
         patterns=config.get("sensitive_patterns"),
+        pii_detector=pii_detector,
+        pii_classes=pii_registry.classes() if pii_detector is not None else None,
     )
 
 
