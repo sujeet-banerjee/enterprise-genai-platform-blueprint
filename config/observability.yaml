@@ -16,7 +16,9 @@ sensitive_patterns:
 #   pip install -e ".[observability]"
 otel:
   enabled: false
-  endpoint: "http://localhost:4318/v1/traces"
+  # Empty => the OTel SDK default (http://localhost:4318/v1/traces locally) and
+  # OTEL_EXPORTER_OTLP_ENDPOINT in containers. Set explicitly to override.
+  endpoint: ""
   service_name: "enterprise-genai-platform"
   sample_ratio: 1.0
 

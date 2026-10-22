@@ -4,7 +4,7 @@ A modular, vendor-neutral, evaluation-aware GenAI platform reference implementat
 
 ## Architecture
 
-See [docs/architecture.md](docs/architecture.md) for the full architecture, principles, composition root, registries, and contracts.
+See [docs/architecture.md](docs/architecture.md) for the full architecture, principles, composition root, registries, and contracts. To run it (Docker Compose, Kubernetes, air-gapped, BYO-model, embedded), see the [deployment playbook](docs/deployment.md).
 
 ## Quickstart
 
@@ -327,7 +327,7 @@ config/     YAML configuration - the single source of truth for behaviour
 ui/         Streamlit console (HTTP-only client of the public API)
 tests/      pytest suite (behavioural tests drive real local models)
 data/       sample corpus (data/docs.json)
-docs/       architecture.md, ux-and-api.md, enterprise-roadmap.md
+docs/       architecture.md, deployment.md, ux-and-api.md, enterprise-roadmap.md
 ```
 
 ### How to run the backend

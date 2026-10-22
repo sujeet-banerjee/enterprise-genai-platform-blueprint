@@ -525,7 +525,7 @@ The `otel` block (disabled by default) enables OTLP trace export:
 | Sub-key | Default | Effect |
 |---------|---------|--------|
 | `enabled` | `false` | Build the tracer exporter (no-op when off → zero overhead) |
-| `endpoint` | `http://localhost:4318/v1/traces` | OTLP/HTTP collector endpoint |
+| `endpoint` | `""` (SDK default / `OTEL_EXPORTER_OTLP_ENDPOINT`) | OTLP/HTTP collector endpoint |
 | `service_name` | `enterprise-genai-platform` | `service.name` resource attribute |
 | `sample_ratio` | `1.0` | Head sampling ratio (0.0–1.0) |
 
@@ -882,6 +882,10 @@ environment, so the same `${ENV_VAR}` mechanism works unchanged.
 
 You can use the deployed stack as **active** (a gate) or **passive** (an evaluator) mode. The
 architecture supports cut-over from one mode to another.
+
+Operational packaging (Docker Compose, Kubernetes, air-gapped, BYO-model, embedded), promotion and
+rollback, probes, backups and worker topologies are covered in the
+[Deployment Playbook](deployment.md).
 
 ## Mode 1 — Shadow / Evaluation Mode
 
