@@ -81,21 +81,54 @@ TOUR_STEPS: List[TourStep] = [
         try_it="After a few queries, watch Total runs increase.",
     ),
     TourStep(
-        title="7. Traces",
+        title="7. Guardrails",
+        screen="Guardrails",
+        body=(
+            "Shows the **resolved** input/output guardrail chains, the selected `profile` "
+            "(`standard` / `strict` / `none`) and whether the feature is enabled. Run a probe "
+            "query to see per-request decisions (allow/redact/block) - a block is a governed "
+            "403 failure. The hit-rate tiles come from `/v1/metrics`."
+        ),
+        try_it="Run the default injection probe and confirm it blocks with `guardrail_input_blocked`.",
+    ),
+    TourStep(
+        title="8. Audit",
+        screen="Audit",
+        body=(
+            "Read the append-only, redacted audit trail (`GET /v1/audit`) with `limit` and "
+            "`event_type` filters. Events are written by queries (governance/PII decisions) and "
+            "pipeline rebuilds; values are never stored."
+        ),
+        try_it="Enable `config/audit.yaml`, run a query, then filter by `event_type = governance`.",
+    ),
+    TourStep(
+        title="9. Access / RBAC",
+        screen="Access / RBAC",
+        body=(
+            "Shows the calling persona's **role** and effective **capabilities** (plus `top_k_max` "
+            "and allowed models when configured). The persona is resolved from the `X-API-Key` you "
+            "set in the sidebar."
+        ),
+        try_it="Compare capabilities with and without the API key configured.",
+    ),
+    TourStep(
+        title="10. Traces",
         screen="Traces",
         body=(
             "Paste a `request_id` (from a Query Studio result) and click **Look up trace** "
-            "to see the exact redacted trace the server logged, plus a per-stage latency table."
+            "to see the exact redacted trace the server logged, guardrail decisions, the "
+            "`resilience` block (served_by/retries/failovers), OTel `trace_id`/`span_id` "
+            "correlation and a per-stage latency table."
         ),
         try_it="Look up the request_id shown after your Query Studio run.",
     ),
     TourStep(
-        title="8. Settings (read-only)",
+        title="11. Settings (read-only)",
         screen="Settings (read-only)",
         body=(
             "View the redacted **effective configuration** and expand the provider lists "
-            "(models, embedding models, retrievers, rerankers, evaluators). YAML files in "
-            "`config/` remain the source of truth."
+            "(models, embedding models, retrievers, rerankers, evaluators, guardrails). YAML files "
+            "in `config/` remain the source of truth."
         ),
         try_it="Confirm no secrets are shown (values are `[REDACTED]`).",
     ),

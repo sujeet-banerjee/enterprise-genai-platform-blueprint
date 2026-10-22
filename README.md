@@ -162,10 +162,16 @@ streamlit run ui/app.py -- --api-base http://localhost:8000
 
 Walkthrough: open **Query Studio**, enter a question with `top_k=3`, and the answer,
 retrieved docs + scores, per-stage latency, cost, failure tags and the redacted trace are
-shown. Open **Traces** with the returned `request_id` to see the same trace the server logs;
-**Governance & Cost** shows the spend window and metrics; **Compare (what-if)** rebuilds the
-pipeline with overrides when `api.allow_rebuild=true`. API failures render as the failure
-taxonomy (`failure_type` + `failure_tags`), not stack traces.
+shown - plus flags for response-cache hits, guardrails, input redaction and query expansion,
+the `guardrail_decisions` table, the provider-`resilience` block and OTel `trace_id`/`span_id`.
+Open **Traces** with the returned `request_id` to see the same trace the server logs;
+**Governance & Cost** shows the spend window, metrics, the guardrail hit-rate breakdown and a
+raw Prometheus `/metrics` panel. **Compare (what-if)** rebuilds the
+pipeline with overrides when `api.allow_rebuild=true`. **Guardrails** previews the resolved
+input/output chains (and the selected `profile`), runs a probe query to show per-request
+decisions, and reports hit-rate. **Audit** reads the redacted trail (`limit`/`event_type`
+filters) and **Access / RBAC** shows the calling persona's role/capabilities. API failures
+render as the failure taxonomy (`failure_type` + `failure_tags`), not stack traces.
 
 First-time users: click **Take the tour** in the sidebar for a guided, step-by-step
 walkthrough of every screen (Back / Next / Skip), or open the always-available
