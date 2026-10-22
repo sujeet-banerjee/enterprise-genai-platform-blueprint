@@ -536,9 +536,9 @@ path is byte-identical to before.
 | `enabled` | `GuardrailRegistry` | Master toggle (default `false`) |
 | `input` | `GuardrailRegistry` → pipeline | **Ordered** list of guardrails on the query + retrieved docs (pre-prompt) |
 | `output` | `GuardrailRegistry` → pipeline | **Ordered** list of guardrails on the generated response (pre-return) |
-| `<entry>.provider` | `GuardrailRegistry` | Provider factory (`noop` / `deny_list` / `schema_validator`) |
+| `<entry>.provider` | `GuardrailRegistry` | Provider factory (`noop` / `deny_list` / `schema_validator` / `injection`) |
 | `<entry>.stage` | `GuardrailRegistry` | Optional per-entry edge override (`input` / `output`) |
-| `<entry>.*` | provider | Provider-specific options (e.g. `terms`, `mask`, `regex`, `required_keys`, `expect_json`) |
+| `<entry>.*` | provider | Provider-specific options (e.g. `terms`, `mask`, `regex`, `required_keys`, `expect_json`, `sensitivity`, `trust_retrieved_documents`) |
 
 Guardrails run top-to-bottom; a **block** stops the chain (governed failure
 `guardrail_input_blocked` / `guardrail_output_blocked` → HTTP **403**), while a
@@ -547,6 +547,22 @@ Guardrails run top-to-bottom; a **block** stops the chain (governed failure
 (`guardrail_decisions`) and — with audit enabled — in the audit trail. Adding a
 vendor guardrail is: implement `BaseGuardrail` → register a factory → add a
 config entry; the composition root never imports a concrete guardrail.
+
+#### Prompt-injection / jailbreak defense (`injection`, roadmap #53, B2)
+
+The `injection` provider detects instruction-override, role-play/jailbreak,
+delimiter-escape and exfiltration patterns using curated heuristics (weighted
+regexes) plus an **optional** pluggable classifier (`classifier`, default
+`none` — heuristics always run, so the guardrail works offline).
+
+* **Direct injection** in the user query is **blocked** (governed input failure).
+* **Indirect injection** embedded in retrieved documents — which are untrusted by
+  default — is **neutralized** (masked + framed with provenance markers,
+  "spotlighting") rather than blocked, unless `trust_retrieved_documents: true`.
+* `sensitivity` (`low` / `medium` / `high`) sets the score threshold;
+  `neutralize_mode` (`delimit` / `strip` / `mask`) controls how indirect hits are
+  rewritten. The red-team corpus in `tests/test_injection_defense.py` guards the
+  block rate and holds a false-positive check over benign inputs.
 
 
 ---

@@ -535,6 +535,17 @@ Decisions appear on the trace (`guardrail_decisions`) and in the audit trail. Ad
 guardrail by implementing `BaseGuardrail` (`core/interfaces/guardrail.py`), registering a factory
 in `GuardrailRegistry`, and adding a config entry - no orchestration changes.
 
+Shipped providers: `noop`, `deny_list`, `schema_validator`, and **`injection`** (prompt-injection /
+jailbreak defense, #53). The `injection` provider blocks direct injections in the query and
+neutralizes indirect injections embedded in retrieved (untrusted) documents:
+
+```yaml
+input:
+  - provider: injection
+    sensitivity: medium              # low | medium | high
+    trust_retrieved_documents: false # default: treat retrieved docs as untrusted
+```
+
 **Export traces to Jaeger/Tempo/Datadog** (OTel-native, OTLP) - enable the `otel` block in
 `config/observability.yaml` and start the collector + Jaeger (same `observability` profile;
 Jaeger UI at http://localhost:16686). Disabled by default:
