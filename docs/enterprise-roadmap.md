@@ -125,16 +125,18 @@ Issue IDs are placeholders (`E-*`) — not yet created.
 > redaction, H0)** and the surrounding gaps as umbrella **#73** (injection, PII/DLP, framework,
 > query-length bounds). #72 is implemented first as the lowest-risk slice; the rest plug into B1-B3.
 >
-> **Progress (2026-10-21):** **#72 input/doc redaction (H0, PR #76)** and the **#52 `BaseGuardrail`
-> framework + registry (B1, PR #79)** are landed; the query-length bound slice of #73 is also done
-> (PR #78) and **#53 injection/jailbreak defense (B2, PR #84)** is landed. Remaining B-slice:
-> **#54 PII/DLP (B3)**, which plugs into the same `guardrail_input`/`guardrail_output` seam.
+> **Progress (2026-10-22):** the guardrail stack is complete and shipped **disabled by default**:
+> #72 input/doc redaction, the **#52** framework + registry (B1), **#53** injection/jailbreak
+> defense (B2), **#54** PII/DLP (B3), **#86** `GET /v1/guardrails` introspection, **#87** hit-rate
+> metrics (Prometheus + `/v1/metrics` + Grafana) and **#88** adoptable `standard`/`strict` profiles.
+> Adopting a policy is now a single edit: `enabled: true` in `config/guardrails.yaml`.
 
 - **B1. Guardrail framework** — pluggable pre/post stages behind a new `BaseGuardrail`
   interface + registry: input classifier, output classifier, schema/format validation.
   **Landed (#52, PR #79):** `core/interfaces/guardrail.py` + `core/registry/guardrail_registry.py`
   + `config/guardrails.yaml` (default off); ordered input/output chains; block → governed failure,
-  redact rewrites text.
+  redact rewrites text. **Profiles (#88):** `profile: standard|strict` presets declared in config;
+  a non-empty explicit `input`/`output` replaces that edge's preset chain.
 - **B2. Prompt-injection & jailbreak defense** — input sanitization + injection heuristics +
   optional classifier model; adversarial test suite (red teaming in CI).
   **Landed (#53, PR #84):** `core/implementations/injection_guardrail.py` (`injection` provider);

@@ -539,11 +539,31 @@ path is byte-identical to before.
 | Key | Consumed by | Effect |
 |-----|-------------|--------|
 | `enabled` | `GuardrailRegistry` | Master toggle (default `false`) |
+| `profile` | `GuardrailRegistry` | Named preset to adopt (`standard` / `strict` / `none`; case-insensitive) |
+| `profiles.<name>.input` | `GuardrailRegistry` | Preset's ordered input chain |
+| `profiles.<name>.output` | `GuardrailRegistry` | Preset's ordered output chain |
 | `input` | `GuardrailRegistry` → pipeline | **Ordered** list of guardrails on the query + retrieved docs (pre-prompt) |
 | `output` | `GuardrailRegistry` → pipeline | **Ordered** list of guardrails on the generated response (pre-return) |
 | `<entry>.provider` | `GuardrailRegistry` | Provider factory (`noop` / `deny_list` / `schema_validator` / `injection` / `pii`) |
 | `<entry>.stage` | `GuardrailRegistry` | Optional per-entry edge override (`input` / `output`) |
 | `<entry>.*` | provider | Provider-specific options (e.g. `terms`, `mask`, `regex`, `required_keys`, `expect_json`, `sensitivity`, `trust_retrieved_documents`, `classes`, `mode`) |
+
+#### Adoptable profiles (roadmap #88, workstream B1)
+
+Presets keep the recommended policy in **config, not code**. `profile` names a
+preset declared under `profiles`; effective chains are resolved per edge:
+
+1. a **non-empty** explicit `input` / `output` list wins (replaces the preset chain),
+2. otherwise the selected profile's chain for that edge is used,
+3. `profile: none` (or absent) means explicit chains only.
+
+The shipped file selects `profile: standard` (injection defense on input; a
+conservative instruction-leak `deny_list` that **redacts** instead of failing) and
+also carries `strict` (high injection sensitivity, PII **blocked** on input,
+instruction leakage **blocked** on output, PII **redacted** in responses) — so
+adopting a policy is a single edit: `enabled: true`. An unknown profile name
+fails fast at registry construction (config error) rather than silently
+disabling safety.
 
 Guardrails run top-to-bottom; a **block** stops the chain (governed failure
 `guardrail_input_blocked` / `guardrail_output_blocked` → HTTP **403**), while a
@@ -554,10 +574,10 @@ vendor guardrail is: implement `BaseGuardrail` → register a factory → add a
 config entry; the composition root never imports a concrete guardrail.
 
 `GET /v1/guardrails` (roadmap #86) returns the resolved chains — `enabled`,
-registered `providers`, and each entry's provider/type/edge/effective options —
-so you can preview what enabling the feature would run. Chains are reported even
-while `enabled: false`; an invalid provider in a disabled config is returned in
-`errors` instead of failing the request.
+`profile`, registered `providers`, and each entry's provider/type/edge/effective
+options — so you can preview what enabling the feature would run. Chains are
+reported even while `enabled: false`; an invalid provider in a disabled config is
+returned in `errors` instead of failing the request.
 
 #### Prompt-injection / jailbreak defense (`injection`, roadmap #53, B2)
 
