@@ -288,8 +288,12 @@ framework (§8 non-goal).
   **tools** (Helm/Kustomize, ArgoCD/Flux, KEDA/HPA, Secrets/External Secrets), and agentic/RAG
   topology seams. **Landed (#66):** [`docs/deployment.md`](deployment.md), linked from the README and
   the architecture doc.
-- **G2. Reference delivery artifacts** — a lean **Helm chart** + Kustomize overlays, a GitOps
+- **G2. Reference delivery artifacts** *Landed (#67).* — a lean **Helm chart** + Kustomize overlays, a GitOps
   example, and a CI build+`/health` smoke test so "deployable" is verified, not asserted.
+  **Landed (#67):** [`deployment/helm/genai-platform/`](../deployment/helm/genai-platform/),
+  [`deployment/kustomize/`](../deployment/kustomize/), the Argo CD example in
+  [`deployment/gitops/`](../deployment/gitops/), and the **Deploy smoke** CI job (chart render +
+  image build + `/health`/`/ready`).
 - **G3. Multi-replica / HA + autoscaling** — replication with shared state, HPA/KEDA. *Depends on
   E4 (persistence).*
 - **G4. Progressive delivery** — canary/blue-green, versioned config/prompt/model rollback, upgrade
@@ -342,7 +346,7 @@ A capability is only "done" when it is:
 | Horizon | Theme | Workstreams | Outcome |
 |---|---|---|---|
 | **H0 — Now (0–1 mo)** | Finish the foundation & make it operable | C2 (Prometheus/Grafana + dashboard pack), D1 (resilience/failover), E2 (config schema/validation), E3 (secrets), C1 (OTel), **G0 (hardened container + Compose), G1 (deployment playbook — landed #66), B3-slice #72 (input/doc redaction before prompt)** | The platform is observable, hardened, **deployable**, and no longer leaks raw secrets in the query/doc path; ops can adopt it. |
-| **H1 (1–3 mo)** | Multi-tenant & governed | A1–A4, B1–B3, B5, E1, E4, F5 (admin), **G2 (Helm + Kustomize + GitOps example + CI deploy smoke)** — *B1-B3 (#52/#53/#54) landed* | Teams can onboard safely; access and cost are attributable; guardrails + audit are real; it installs on Kubernetes. |
+| **H1 (1–3 mo)** | Multi-tenant & governed | A1–A4, B1–B3, B5, E1, E4, F5 (admin), **G2 (Helm + Kustomize + GitOps example + CI deploy smoke, landed #67)** — *B1-B3 (#52/#53/#54) landed* | Teams can onboard safely; access and cost are attributable; guardrails + audit are real; it installs on Kubernetes. |
 | **H2 (3–6 mo)** | The product surface | C3–C6, D2–D5, F1–F4 (composer, graphs, experiments, governance console), **G3 (HA/autoscale), G4 (progressive delivery)** | This becomes a *platform teams want to use*: visual, measurable, ROI-provable, safely rollout-able. |
 | **H3 (6–12 mo)** | Enterprise scale & compliance | B4, B6, D6, E5, E6, F6, F7, **G5 (GitOps at scale), G6 (multi-region/DR + cloud IaC)** | Runs at scale, in-region, GitOps-managed, compliance-evidenced, multi-team. |
 
