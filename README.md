@@ -353,6 +353,22 @@ api_key: "my-secret"
 
 Then every request must send `X-API-Key: my-secret` (except `/health`, `/ready`, `/docs`).
 
+### Deploy to Kubernetes (Helm or Kustomize)
+
+```bash
+# Helm: API Deployment/Service/PVC with probes; values per environment.
+helm upgrade --install genai deployment/helm/genai-platform \
+  -n genai-platform --create-namespace -f deployment/helm/genai-platform/values.staging.yaml
+
+# Kustomize: base + dev/staging/prod overlays; config comes from the real config/ dir.
+kubectl kustomize --load-restrictor LoadRestrictionsNone deployment/kustomize/overlays/prod \
+  | kubectl apply -f -
+```
+
+A minimal Argo CD `Application` lives in `deployment/gitops/argocd/`. CI runs `helm lint`/`template`,
+renders every Kustomize overlay, builds the image and asserts `/health` + `/ready` in the
+**Deploy smoke** job. Details, modes and tradeoffs: [docs/deployment.md](docs/deployment.md).
+
 ### How to run the frontend (Streamlit console)
 
 Install the UI-only dependencies and point the console at the backend:

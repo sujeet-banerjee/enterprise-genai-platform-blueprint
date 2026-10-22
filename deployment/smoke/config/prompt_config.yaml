@@ -1,0 +1,16 @@
+# Smoke-test prompt config (deployment/smoke/config).
+active_prompt_profile: default
+
+profiles:
+  default:
+    system_prompt: "You are a smoke-test assistant."
+    context_separator: "\n"
+    empty_context_message: "No context."
+    template: |
+      {system_prompt}
+
+      Context:
+      {context}
+
+      Question:
+      {query}

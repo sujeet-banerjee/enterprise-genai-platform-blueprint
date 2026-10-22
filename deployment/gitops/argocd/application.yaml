@@ -1,0 +1,27 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: genai-platform-prod
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/sujeet-banerjee/enterprise-genai-platform-blueprint.git
+    targetRevision: main
+    path: deployment/kustomize/overlays/prod
+    kustomize:
+      # The config generator reads the repository's real config/ directory,
+      # which sits above the overlay root.
+      buildOptions: --load-restrictor LoadRestrictionsNone
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: genai-platform
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ApplyOutOfSyncOnly=true

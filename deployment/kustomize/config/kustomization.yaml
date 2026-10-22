@@ -1,0 +1,24 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Packages the repository's real config/ directory as a ConfigMap. Shared by
+# every overlay so there is exactly one file list to maintain; kustomize's
+# nameReference rewrites the Deployment's volume to the hashed name, which
+# makes a config edit roll the pods.
+#
+# Requires loading outside the kustomization root:
+#   kubectl kustomize --load-restrictor LoadRestrictionsNone <overlay>
+# Argo CD: source.kustomize.buildOptions: --load-restrictor LoadRestrictionsNone
+configMapGenerator:
+  - name: genai-platform-config
+    files:
+      - ../../../config/access_control.yaml
+      - ../../../config/api.yaml
+      - ../../../config/audit.yaml
+      - ../../../config/governance.yaml
+      - ../../../config/guardrails.yaml
+      - ../../../config/models.yaml
+      - ../../../config/observability.yaml
+      - ../../../config/prompt_config.yaml
+      - ../../../config/resilience.yaml
+      - ../../../config/retrieval.yaml

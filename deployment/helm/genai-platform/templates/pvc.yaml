@@ -1,0 +1,17 @@
+{{- if and .Values.modelCache.enabled (not .Values.modelCache.existingClaim) }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "genai-platform.modelCacheClaim" . }}
+  labels:
+    {{- include "genai-platform.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  {{- with .Values.modelCache.storageClassName }}
+  storageClassName: {{ . | quote }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.modelCache.size }}
+{{- end }}

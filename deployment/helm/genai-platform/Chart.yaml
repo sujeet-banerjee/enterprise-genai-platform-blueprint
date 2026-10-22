@@ -1,0 +1,15 @@
+apiVersion: v2
+name: genai-platform
+description: Vendor-neutral, config-driven GenAI/RAG platform (API + optional worker seam)
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+kubeVersion: ">=1.24.0-0"
+keywords:
+  - genai
+  - rag
+  - llm
+  - evaluation
+home: https://github.com/sujeet-banerjee/enterprise-genai-platform-blueprint
+sources:
+  - https://github.com/sujeet-banerjee/enterprise-genai-platform-blueprint

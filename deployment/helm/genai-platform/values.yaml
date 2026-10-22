@@ -1,0 +1,147 @@
+# Default values for the genai-platform chart (roadmap G2).
+#
+# Config strategy: the image bakes the repo `config/` into the runtime at
+# /app/config. Point the chart at a ConfigMap when you keep config in-cluster
+# (GitOps / `kubectl create configmap`), or leave `config.existingConfigMap`
+# empty to use the baked-in defaults. Secrets are never rendered from values:
+# reference an existing Secret (keys become env vars, e.g. OPENAI_API_KEY).
+
+replicaCount: 1
+
+image:
+  repository: enterprise-genai-platform
+  tag: local
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+podLabels: {}
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 10001
+  runAsGroup: 10001
+  fsGroup: 10001
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+
+config:
+  # Optional in-cluster ConfigMap holding config/*.yaml (mounted read-only).
+  # Empty => the image's baked-in /app/config is used unchanged.
+  existingConfigMap: ""
+  mountPath: /app/config
+
+secrets:
+  # Optional existing Secret; each key is exported as an env var
+  # (OPENAI_API_KEY, HF_TOKEN, GENAI_API_KEY, ...). No secret material in values.
+  existingSecret: ""
+
+modelCache:
+  enabled: true
+  # Reuse an existing PVC (e.g. RWX or per-node) instead of creating one.
+  existingClaim: ""
+  size: 20Gi
+  storageClassName: ""
+  mountPath: /app/.cache/huggingface
+
+service:
+  type: ClusterIP
+  port: 8000
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: genai.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+resources:
+  requests:
+    cpu: 500m
+    memory: 1Gi
+  limits:
+    cpu: "2"
+    memory: 4Gi
+
+# Startup may download model weights into the cache volume; keep a generous
+# startup budget. /health is the startup+liveness probe, /ready the readiness.
+probes:
+  startup:
+    periodSeconds: 10
+    timeoutSeconds: 3
+    failureThreshold: 30
+  readiness:
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 3
+    failureThreshold: 3
+  liveness:
+    initialDelaySeconds: 15
+    periodSeconds: 20
+    timeoutSeconds: 3
+    failureThreshold: 3
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 3
+  targetCPUUtilizationPercentage: 70
+
+# Extra env vars for the API container (config seams, tuning).
+env: []
+# Extra envFrom sources (secretRef/configMapRef), e.g. platform-managed secrets.
+envFrom: []
+
+observability:
+  prometheus:
+    # Adds the standard Prometheus scrape annotations to the pod.
+    scrape: false
+    path: /metrics
+    port: "8000"
+    jobName: genai-platform
+  otel:
+    # Exported only when config/observability.yaml enables otel AND this
+    # endpoint is set (the shipped config leaves otel.endpoint empty, so this
+    # env var is what the SDK picks up).
+    enabled: false
+    endpoint: ""
+
+# Optional agentic worker seam: same image, your agent loop as the command.
+# Disabled by default on purpose - there is no built-in agent framework, and
+# worker.command is required so a misconfigured chart cannot silently run a
+# second API Deployment.
+worker:
+  enabled: false
+  replicaCount: 1
+  command: []
+  env: []
+  envFrom: []
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: "1"
+      memory: 2Gi
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
