@@ -8,10 +8,15 @@
 # ORDERED list: guardrails run top-to-bottom and a block stops the chain. A
 # guardrail that only redacts rewrites the text and lets the chain continue.
 #
-# Providers shipped: noop, deny_list, schema_validator.
+# Providers shipped: noop, deny_list, schema_validator, injection.
 #   deny_list        {terms: [...], regex: false, mask: "[REDACTED]", reason: ...}
 #                    (omit ``mask`` to block; set it to redact instead)
 #   schema_validator {required_keys: [...], forbidden_keys: [...], expect_json: false}
+#   injection        {sensitivity: low|medium|high, trust_retrieved_documents: false,
+#                     neutralize_mode: delimit|strip|mask, classifier: none, ...}
+#                    - blocks direct prompt-injection/jailbreak in the query;
+#                    - neutralizes indirect injection embedded in retrieved docs
+#                      unless ``trust_retrieved_documents: true`` (issue #53).
 enabled: false
 
 input: []
@@ -20,6 +25,9 @@ input: []
 #   - provider: deny_list
 #     terms: ["ignore previous instructions", "disregard all prior"]
 #     mask: "[REDACTED]"
+#   - provider: injection
+#     sensitivity: medium
+#     trust_retrieved_documents: false
 
 output: []
 # Example:

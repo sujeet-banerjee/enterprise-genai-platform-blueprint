@@ -60,6 +60,7 @@ class GuardrailRegistry:
         self.register("noop", self._build_noop)
         self.register("deny_list", self._build_deny_list)
         self.register("schema_validator", self._build_schema_validator)
+        self.register("injection", self._build_injection)
 
     @staticmethod
     def _build_noop(**_options: Any) -> BaseGuardrail:
@@ -88,6 +89,34 @@ class GuardrailRegistry:
             forbidden_keys=options.get("forbidden_keys"),
             expect_json=bool(options.get("expect_json", False)),
             reason=options.get("reason"),
+        )
+
+    @staticmethod
+    def _build_injection(**options: Any) -> BaseGuardrail:
+        from core.implementations.injection_guardrail import (
+            InjectionGuardrail,
+            build_injection_classifier,
+        )
+
+        classifier_kind = options.get("classifier")
+        classifier_factory = None
+        if classifier_kind not in (None, "none", "", "off"):
+            kind = classifier_kind
+            classifier_options = dict(options.get("classifier_options") or {})
+
+            def classifier_factory(_kind=kind, _opts=classifier_options):
+                built = build_injection_classifier(_kind, **_opts)
+                assert built is not None  # validated above
+                return built
+
+        return InjectionGuardrail(
+            sensitivity=str(options.get("sensitivity", "medium")),
+            trust_retrieved_documents=bool(
+                options.get("trust_retrieved_documents", False)
+            ),
+            classifier_factory=classifier_factory,
+            neutralize_mode=str(options.get("neutralize_mode", "delimit")),
+            mask=str(options.get("mask", "[REDACTED-INSTRUCTION]")),
         )
 
     def register(self, provider_name: str, factory: Callable[..., BaseGuardrail]) -> None:
