@@ -226,16 +226,60 @@ closes the evaluation thread pool, removes rebuild temp workspaces and closes th
 |---|---|---|
 | Packaging | `deployment/Dockerfile` (multi-stage, non-root, healthcheck) | shipped (#65) |
 | Local orchestration | `deployment/docker-compose.yml` + `.env.example` | shipped (#65) |
-| K8s packaging | Helm chart + Kustomize overlays (`base/`, `overlays/{dev,staging,prod}`) | **G2 #67** |
-| GitOps | Argo CD or Flux watching the config/manifests repo | G2 #67 (example), G5 #70 (scale) |
+| K8s packaging | Helm chart `deployment/helm/genai-platform/` + Kustomize `deployment/kustomize/` | shipped (#67) |
+| GitOps | Argo CD example in `deployment/gitops/argocd/` | shipped (#67); scale-out G5 #70 |
 | Autoscaling | HPA (CPU/latency/custom), KEDA for queue workers | G3 #68 |
 | Secrets | K8s `Secret` + External Secrets (or cloud secret manager) | guidance here; vault integration E3 |
 | Progressive delivery | Argo Rollouts / Flagger (canary, analysis on `/metrics`) | G4 #69 |
 | Multi-region / DR | active-passive with shared model cache; config per region | G6 #71 |
 
-**Recommended default:** a single Helm chart deployed by Argo CD, one values file per environment,
+**Recommended default:** the Helm chart deployed by Argo CD, one values file per environment,
 Secrets from External Secrets, Prometheus Operator scraping `/metrics`, OTLP to the cluster
 collector. It keeps config promotion in git, gives rollback for free and avoids bespoke scripts.
+
+### 4.1 Reference artifacts (shipped)
+
+**Helm** — API Deployment (startup `/health`, readiness `/ready`, liveness `/health`), Service,
+optional Ingress/HPA, model-cache PVC (or an existing claim), optional ConfigMap mount, existing
+Secret → env, optional Prometheus annotations/OTel endpoint, and a disabled-by-default worker
+Deployment that **requires `worker.command`** (there is no built-in agent loop).
+
+```bash
+helm lint deployment/helm/genai-platform
+helm template genai deployment/helm/genai-platform -f deployment/helm/genai-platform/values.prod.yaml
+helm upgrade --install genai deployment/helm/genai-platform \
+  -n genai-platform --create-namespace -f deployment/helm/genai-platform/values.staging.yaml
+```
+
+Config defaults to the copy baked into the image (`/app/config`); set
+`config.existingConfigMap` to mount an in-cluster ConfigMap instead. No secret material is rendered
+from values — set `secrets.existingSecret`.
+
+**Kustomize** — base manifests + `dev`/`staging`/`prod` overlays. Each overlay's
+`configMapGenerator` reads the repository's real `config/` directory (no duplicated YAML); a config
+edit changes the ConfigMap hash and rolls the pods. `config/` is above the overlay root, so render
+with the relaxed loader:
+
+```bash
+kubectl kustomize --load-restrictor LoadRestrictionsNone deployment/kustomize/overlays/prod \
+  | kubectl apply -f -
+```
+
+**GitOps** — `deployment/gitops/argocd/application.yaml` points Argo CD at the prod overlay with
+`buildOptions: --load-restrictor LoadRestrictionsNone`. See `deployment/gitops/README.md` for the
+Helm alternative and Secret creation. Promotion = merge a config/manifest PR to `main`; Argo syncs.
+
+**CI guard** — `.github/workflows/ci.yml` job **Deploy smoke (chart + image)** runs `helm lint`,
+`helm template` for every values overlay, renders all Kustomize overlays, builds the image, runs the
+container with `deployment/smoke/config` (dummy providers, no downloads) and asserts `/health` and
+`/ready`. Local equivalent:
+
+```bash
+docker build -f deployment/Dockerfile -t genai-platform:smoke .
+docker run -d --name genai-smoke -p 8000:8000 \
+  -v "$PWD/deployment/smoke/config:/app/config:ro" genai-platform:smoke
+curl -fsS http://localhost:8000/health && curl -fsS http://localhost:8000/ready
+```
 
 ---
 

@@ -1,0 +1,31 @@
+# Staging overlay: production-shaped wiring (secrets, tracing, scrape),
+# still a single replica until the persistent store lands (G3 / #56).
+image:
+  tag: staging
+
+replicaCount: 1
+
+resources:
+  requests:
+    cpu: 500m
+    memory: 1Gi
+  limits:
+    cpu: "2"
+    memory: 4Gi
+
+modelCache:
+  size: 20Gi
+
+secrets:
+  existingSecret: genai-platform-secrets
+
+observability:
+  prometheus:
+    scrape: true
+  otel:
+    enabled: true
+    endpoint: http://otel-collector.observability.svc.cluster.local:4318/v1/traces
+
+# Keep a single replica: in-process traces/metrics/spend history is per pod.
+autoscaling:
+  enabled: false

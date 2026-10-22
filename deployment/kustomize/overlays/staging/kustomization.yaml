@@ -1,0 +1,26 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Staging overlay: production-shaped wiring (Secret, tracing, scrape
+# annotations) with a single replica until persistence lands (G3 / #56).
+namespace: genai-platform
+
+resources:
+  - ../../base
+  - ../../config
+
+images:
+  - name: enterprise-genai-platform
+    newTag: staging
+
+labels:
+  - pairs:
+      app.kubernetes.io/environment: staging
+    includeSelectors: false
+
+replicas:
+  - name: genai-platform
+    count: 1
+
+patches:
+  - path: patch-runtime.yaml

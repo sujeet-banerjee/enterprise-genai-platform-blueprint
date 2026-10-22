@@ -1,0 +1,14 @@
+# Smoke-test config for the CI deploy check (deployment/smoke/config).
+# Dummy providers: no model downloads, no network, fast startup. Used by the
+# "Deploy smoke" CI job with GENAI_CONFIG_DIR=/app/config.
+active_model: dummy
+active_embedding_model: dummy
+
+models:
+  dummy:
+    provider: dummy
+    context_window: 4096
+    temperature: 0.0
+    max_tokens: 64
+
+embedding_models: {}

@@ -1,0 +1,26 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Dev overlay: same manifests, dev image tag, smaller footprint, no tracing.
+namespace: genai-platform
+
+resources:
+  - ../../base
+  - ../../config
+
+images:
+  - name: enterprise-genai-platform
+    newTag: dev
+
+labels:
+  - pairs:
+      app.kubernetes.io/environment: dev
+    includeSelectors: false
+
+replicas:
+  - name: genai-platform
+    count: 1
+
+patches:
+  - path: patch-resources.yaml
+  - path: patch-storage.yaml

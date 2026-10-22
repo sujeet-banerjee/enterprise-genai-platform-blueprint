@@ -1,0 +1,29 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Production overlay: pinned tag, Ingress, Secret, tracing, scrape annotations.
+# Still one replica: in-process traces/metrics/spend are per pod, and
+# shared-state HA is G3 (#68) after persistence (E4 / #56).
+namespace: genai-platform
+
+resources:
+  - ../../base
+  - ../../config
+  - ingress.yaml
+
+images:
+  - name: enterprise-genai-platform
+    newTag: "1.0.0"
+
+labels:
+  - pairs:
+      app.kubernetes.io/environment: prod
+    includeSelectors: false
+
+replicas:
+  - name: genai-platform
+    count: 1
+
+patches:
+  - path: patch-runtime.yaml
+  - path: patch-storage.yaml

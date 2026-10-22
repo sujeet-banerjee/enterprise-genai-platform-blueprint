@@ -1,0 +1,48 @@
+# Production overlay: pinned tag, ingress, secrets from an existing Secret
+# (External Secrets / cloud secret manager), tracing to the cluster collector.
+# Single replica on purpose: multi-replica HA is G3 (#68) and needs persistence
+# (E4 / #56) for traces/metrics/audit continuity.
+image:
+  tag: "1.0.0"
+
+replicaCount: 1
+
+resources:
+  requests:
+    cpu: "1"
+    memory: 2Gi
+  limits:
+    cpu: "4"
+    memory: 8Gi
+
+modelCache:
+  size: 50Gi
+
+secrets:
+  existingSecret: genai-platform-secrets
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: 2m
+  hosts:
+    - host: genai.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+
+observability:
+  prometheus:
+    scrape: true
+  otel:
+    enabled: true
+    endpoint: http://otel-collector.observability.svc.cluster.local:4318/v1/traces
+
+# No HPA until G3 (#68): a second replica would split the in-process stores.
+autoscaling:
+  enabled: false
+
+nodeSelector: {}
+tolerations: []
+affinity: {}

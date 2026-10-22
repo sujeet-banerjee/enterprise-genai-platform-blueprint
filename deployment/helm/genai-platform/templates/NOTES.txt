@@ -1,0 +1,16 @@
+{{- if .Values.worker.enabled }}
+Worker seam enabled with command: {{ join " " .Values.worker.command }}
+{{- end }}
+API is available inside the cluster at:
+  http://{{ include "genai-platform.fullname" . }}.{{ .Release.Namespace }}.svc:{{ .Values.service.port }}
+
+Probes: /health (startup + liveness), /ready (readiness).
+Metrics: /metrics requires the image built with INSTALL_EXTRAS=".[observability]".
+Tracing: set observability.otel.enabled=true and an endpoint (or leave
+otel.endpoint empty in config and set OTEL_EXPORTER_OTLP_ENDPOINT here).
+
+Config: {{ if .Values.config.existingConfigMap }}ConfigMap {{ .Values.config.existingConfigMap }} mounted at {{ .Values.config.mountPath }}{{ else }}baked into the image at {{ .Values.config.mountPath }} (set config.existingConfigMap to override){{ end }}.
+Secret: {{ if .Values.secrets.existingSecret }}env from Secret {{ .Values.secrets.existingSecret }}{{ else }}no secret wired (set secrets.existingSecret for provider keys){{ end }}.
+{{- if .Values.ingress.enabled }}
+Ingress: {{ (first .Values.ingress.hosts).host }}
+{{- end }}

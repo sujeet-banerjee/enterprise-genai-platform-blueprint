@@ -1,0 +1,21 @@
+# Development overlay: small footprint, no tracing, scrape metrics if the
+# image was built with the observability extra.
+image:
+  tag: dev
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 768Mi
+  limits:
+    cpu: "1"
+    memory: 2Gi
+
+modelCache:
+  size: 5Gi
+
+observability:
+  prometheus:
+    scrape: true
+  otel:
+    enabled: false

@@ -1003,9 +1003,10 @@ core/
   evaluation/        EvaluationEngine + Metrics
   config/            generation config
 data/                sample documents
-deployment/          Dockerfile + docker-compose
+deployment/          Dockerfile + docker-compose; helm/ chart, kustomize/ overlays,
+                     gitops/ Argo CD example, smoke/ CI config, observability/ pack
 tests/               unit + integration tests
-docs/                architecture.md (this document)
+docs/                architecture.md (this document), deployment.md, ...
 ```
 
 ---
