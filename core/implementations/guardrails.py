@@ -58,9 +58,18 @@ class DenyListGuardrail(BaseGuardrail):
         self.terms = [str(t) for t in (terms or []) if str(t)]
         self.regex = bool(regex)
         self.mask = mask
+        self.case_insensitive = bool(case_insensitive)
         self.reason = reason or "denied_term"
-        flags = re.IGNORECASE if case_insensitive else 0
+        flags = re.IGNORECASE if self.case_insensitive else 0
         self._patterns = [re.compile(t if self.regex else re.escape(t), flags) for t in self.terms]
+
+    def _options(self) -> dict:
+        return {
+            "terms": list(self.terms),
+            "regex": self.regex,
+            "mask": self.mask,
+            "case_insensitive": self.case_insensitive,
+        }
 
     def _first_match(self, text: str) -> Optional["re.Match[str]"]:
         for pattern in self._patterns:
@@ -75,7 +84,10 @@ class DenyListGuardrail(BaseGuardrail):
         if match is None:
             return GuardrailResult.allow()
 
-        label = f"deny_list:{match.group(0)}"
+        # The matched span is deliberately not echoed: a deny list can target
+        # personal data or a credential, and labels/reasons feed traces, the
+        # governed failure envelope and the audit trail (issue #54 policy).
+        label = "deny_list:match"
         if self.mask is not None:
             masked = haystack
             for pattern in self._patterns:
@@ -87,7 +99,7 @@ class DenyListGuardrail(BaseGuardrail):
             return GuardrailResult.allow()
 
         return GuardrailResult.block(
-            reason=f"{self.reason}: matched '{match.group(0)}'",
+            reason=f"{self.reason}: denied term matched",
             labels=[label],
         )
 
@@ -115,6 +127,13 @@ class SchemaValidatorGuardrail(BaseGuardrail):
         self.forbidden_keys = [str(k) for k in (forbidden_keys or [])]
         self.expect_json = bool(expect_json)
         self.reason = reason or "schema_violation"
+
+    def _options(self) -> dict:
+        return {
+            "required_keys": list(self.required_keys),
+            "forbidden_keys": list(self.forbidden_keys),
+            "expect_json": self.expect_json,
+        }
 
     def check(self, text: str, context: GuardrailContext) -> GuardrailResult:
         payload: Any = text
