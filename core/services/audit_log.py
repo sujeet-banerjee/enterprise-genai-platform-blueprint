@@ -58,11 +58,13 @@ class AuditLogger:
         outcome: str,
         details: Optional[Dict[str, Any]] = None,
         request_id: Optional[str] = None,
+        tenant: Optional[str] = None,
     ) -> Optional[Dict[str, Any]]:
         """Append one audit event; returns the stored (redacted) event.
 
         Returns ``None`` when auditing is disabled or the logger is closed, so
-        callers can invoke it unconditionally.
+        callers can invoke it unconditionally. ``tenant`` (issue #48) attributes
+        the event to a tenant/workspace without touching the event payload.
         """
         if not self.enabled or self._closed:
             return None
@@ -73,6 +75,7 @@ class AuditLogger:
             "action": str(action),
             "outcome": str(outcome),
             "request_id": request_id,
+            "tenant": str(tenant) if tenant is not None else None,
             "details": self._redactor.redact_obj(dict(details or {})),
         }
         with self._lock:
@@ -89,12 +92,17 @@ class AuditLogger:
     # -- reads ------------------------------------------------------------
 
     def events(
-        self, limit: Optional[int] = None, event_type: Optional[str] = None
+        self,
+        limit: Optional[int] = None,
+        event_type: Optional[str] = None,
+        tenant: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
         with self._lock:
             items = list(self._events)
         if event_type is not None:
             items = [item for item in items if item["event_type"] == event_type]
+        if tenant is not None:
+            items = [item for item in items if item.get("tenant") == str(tenant)]
         if limit is not None:
             items = items[-int(limit):]
         return items

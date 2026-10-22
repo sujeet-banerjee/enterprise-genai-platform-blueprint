@@ -257,6 +257,25 @@ class AccessControlConfig(_StrictModel):
     api_keys: Dict[str, str] = Field(default_factory=dict)
 
 
+# -- tenants.yaml --------------------------------------------------------
+
+
+class TenantEntry(_OpenModel):
+    workspace: Optional[str] = None
+    app: Optional[str] = None
+    budget_cap_usd: Optional[float] = None
+    top_k_max: Optional[int] = None
+    allowed_models: Optional[List[str]] = None
+    overrides: Dict[str, Any] = Field(default_factory=dict)
+
+
+class TenantsConfig(_StrictModel):
+    enabled: Optional[bool] = None
+    default_tenant: Optional[str] = None
+    tenants: Dict[str, TenantEntry] = Field(default_factory=dict)
+    api_keys: Dict[str, str] = Field(default_factory=dict)
+
+
 # -- resilience.yaml -----------------------------------------------------
 
 
@@ -308,4 +327,5 @@ SCHEMAS: Dict[str, Any] = {
     "access_control": AccessControlConfig,
     "resilience": ResilienceConfig,
     "guardrails": GuardrailsConfig,
+    "tenants": TenantsConfig,
 }

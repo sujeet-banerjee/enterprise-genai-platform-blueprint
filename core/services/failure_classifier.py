@@ -31,6 +31,7 @@ class FailureType(str, Enum):
     UNAUTHORIZED = "unauthorized"
     BATCH_TOO_LARGE = "batch_too_large"
     FORBIDDEN = "forbidden"
+    UNKNOWN_TENANT = "unknown_tenant"
     # Input guardrail category (issue #73): the query exceeded the configured
     # character bound before it could be token-budgeted.
     QUERY_TOO_LONG = "query_too_long"

@@ -1,0 +1,43 @@
+# Tenant / workspace model (issue #48, workstream A1).
+#
+# Off by default: when ``enabled: false`` every request resolves to one implicit
+# ``default`` tenant, so existing single-tenant deployments are unaffected.
+#
+# Enable it to serve multiple teams/apps from one deployment with isolated cache
+# namespaces, spend history and audit attribution, plus per-tenant policy.
+#
+# Resolution order for a request: ``X-Tenant-ID`` header -> ``api_keys`` mapping
+# -> ``default_tenant``. An unknown explicit tenant is rejected with a 400
+# ``unknown_tenant`` envelope (never a silent fallback).
+enabled: false
+
+default_tenant: default
+
+tenants:
+  default:
+    workspace: default
+    app: platform
+
+  # Example tenant showing the full policy surface. Remove or adapt locally.
+  example:
+    workspace: example-prod
+    app: support-copilot
+    # Hard cap on window spend (sum of RunHistory costs). Requests are rejected
+    # with a 402 ``cost_limit_exceeded`` / ``tenant_budget_exceeded`` envelope
+    # once the cap is reached.
+    budget_cap_usd: 5.0
+    # Retrieval depth cap applied on top of role/persona caps.
+    top_k_max: 3
+    # Models this tenant may use (declared for policy/introspection and future
+    # model-selection enforcement).
+    allowed_models:
+      - local-qwen
+    # Tenant overlay on top of global config/*.yaml (unspecified keys fall back
+    # to global). Applied at request time where a value is request-scoped.
+    overrides:
+      retrieval:
+        top_k: 2
+
+# Optional API-key -> tenant mapping. Keys are never stored in the repo; this is
+# a placeholder that operators fill in locally.
+api_keys: {}

@@ -46,6 +46,7 @@ EXPECTED_PATHS = {
     "/v1/metrics",
     "/v1/audit",
     "/v1/access",
+    "/v1/tenants",
 }
 
 ENVELOPE_KEYS = {"error", "failure_type", "failure_tags", "request_id"}

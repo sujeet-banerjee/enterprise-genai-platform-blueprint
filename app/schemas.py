@@ -150,6 +150,7 @@ class ExperimentLaunchResponse(BaseModel):
     id: str
     kind: str
     status: str
+    tenant: Optional[str] = None
     request_id: Optional[str] = None
 
 
@@ -157,6 +158,7 @@ class ExperimentStatusResponse(BaseModel):
     id: str
     kind: str
     status: str
+    tenant: Optional[str] = None
     created_at: float
     finished_at: Optional[float] = None
     result: Optional[Dict[str, Any]] = None
@@ -216,6 +218,7 @@ class GovernanceStatusResponse(BaseModel):
     safety_margin_tokens: Optional[int] = None
     avg_chunk_tokens: Optional[int] = None
     window: Dict[str, Any] = {}
+    tenant: Optional[str] = None
     request_id: Optional[str] = None
 
 
@@ -230,6 +233,7 @@ class MetricsResponse(BaseModel):
     failures_by_tag: Dict[str, int] = {}
     cost: Dict[str, Any] = {}
     guardrails: Dict[str, Any] = {}
+    tenant: Optional[str] = None
     request_id: Optional[str] = None
 
 
@@ -241,10 +245,31 @@ class AuditEventsResponse(BaseModel):
     request_id: Optional[str] = None
 
 
+class TenantInfo(BaseModel):
+    """Tenant identity plus per-tenant policy (issue #48)."""
+
+    id: str
+    workspace: str = "default"
+    app: str = "default"
+    budget_cap_usd: Optional[float] = None
+    top_k_max: Optional[int] = None
+    allowed_models: Optional[List[str]] = None
+    overrides: Dict[str, Any] = {}
+
+
+class TenantsResponse(BaseModel):
+    enabled: bool = False
+    default_tenant: str = "default"
+    current: TenantInfo
+    tenants: List[TenantInfo] = []
+    request_id: Optional[str] = None
+
+
 class AccessResponse(BaseModel):
     enabled: bool = False
     role: str = "admin"
     capabilities: List[str] = []
     top_k_max: Optional[int] = None
     allowed_models: Optional[List[str]] = None
+    tenant: Optional[TenantInfo] = None
     request_id: Optional[str] = None

@@ -237,6 +237,10 @@ class PipelineObservabilityTracker:
         self.stage_latencies_ms: Dict[str, float] = {stage: 0.0 for stage in self.REQUIRED_STAGES}
         self.failure_tags: List[str] = []
         self.metadata: Dict[str, Any] = {}
+        # Tenant attribution (issue #48): set by the pipeline before any stage.
+        self.tenant: Optional[str] = None
+        self.workspace: Optional[str] = None
+        self.app: Optional[str] = None
         self.config_path = config_path
         self.observability_config_path = observability_config_path
 
