@@ -683,10 +683,7 @@ Each request produces a structured trace via `PipelineObservabilityTracker`, inc
 * `evaluation_scores` (`metrics`)
 * `failure_tags` and overall `status` (`success` / `degraded` / `failed`)
 
-`SensitiveDataRedactor` scrubs secrets (API keys, tokens, passwords) from traces before they
-are logged. Redaction patterns and the enable flag are intended to be config-driven
-(`observability.sensitive_patterns`, `observability.redact_sensitive_data`) — currently
-hardcoded (roadmap #16).
+`SensitiveDataRedactor` scrubs secrets (API keys, tokens, passwords) from traces, logs, audit events and API responses before they leave the process. Patterns and the enable flag are config-driven (`observability.sensitive_patterns`, `observability.redact_sensitive_data`, PII classes under `observability.pii`); a separate trace/log redactor keeps guardrail PII decisions intact (see 5.4). Inputs can additionally be redacted before the prompt (#72, `input_redaction` stage).
 
 ## 9.1 Prometheus metrics (`GET /metrics`)
 
