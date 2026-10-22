@@ -99,6 +99,7 @@ class GuardrailInfo(BaseModel):
 
 class GuardrailsResponse(BaseModel):
     enabled: bool = False
+    profile: str = "none"
     providers: List[str] = []
     input: List[GuardrailInfo] = []
     output: List[GuardrailInfo] = []

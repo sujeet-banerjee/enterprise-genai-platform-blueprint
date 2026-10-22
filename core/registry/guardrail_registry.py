@@ -4,18 +4,27 @@ Mirrors ``RerankerRegistry`` / ``EvaluatorRegistry``. Reads a dedicated
 ``config/guardrails.yaml``:
 
     enabled: false
-    input:
-      - provider: deny_list
-        terms: ["ignore previous instructions"]
-        mask: "[REDACTED]"
-    output:
-      - provider: schema_validator
-        expect_json: true
-        required_keys: ["answer"]
+    profile: standard
+    profiles:
+      standard:
+        input:
+          - provider: injection
+            sensitivity: medium
+        output:
+          - provider: deny_list
+            terms: ["ignore previous instructions"]
+            mask: "[REDACTED-POLICY]"
+    input: []
+    output: []
 
 ``input`` and ``output`` are **ordered** lists: guardrails run in the configured
 order and a block stops the chain. Each entry's ``provider`` selects a factory;
 the remaining keys are the guardrail's options.
+
+``profile`` names an adoptable preset declared under ``profiles`` (issue #88).
+A section with an explicit, **non-empty** entry list replaces the profile chain
+for that edge; an absent/empty section inherits the profile's chain. The feature
+stays disabled until ``enabled: true``.
 
 The registry is the *only* thing the composition root depends on, so backends
 swap by config and ``app/main.py`` never imports a concrete guardrail.
@@ -34,6 +43,9 @@ from core.interfaces.guardrail import BaseGuardrail
 class GuardrailRegistry:
     """Resolve ordered input/output guardrail chains from configuration."""
 
+    #: Sentinel profile meaning "no preset" (explicit chains only).
+    NO_PROFILE = "none"
+
     def __init__(self, config_path: Optional[str] = None):
         if config_path is None:
             default_path = Path(__file__).resolve().parent.parent.parent / "config" / "guardrails.yaml"
@@ -41,9 +53,41 @@ class GuardrailRegistry:
 
         self.config_path = config_path
         self.config = self._load(config_path)
+        self.profile_name = self._resolve_profile_name()
+        self._profiles = self._load_profiles()
 
         self._providers: Dict[str, Callable[..., BaseGuardrail]] = {}
         self._register_default_providers()
+
+    def _resolve_profile_name(self) -> str:
+        raw = self.config.get("profile")
+        name = str(raw).strip().lower() if raw else ""
+        return name or self.NO_PROFILE
+
+    def _load_profiles(self) -> Dict[str, Any]:
+        raw = self.config.get("profiles")
+        profiles = (
+            {str(key).strip().lower(): value for key, value in raw.items()}
+            if isinstance(raw, dict)
+            else {}
+        )
+        if self.profile_name != self.NO_PROFILE and self.profile_name not in profiles:
+            raise ValueError(
+                f"Unknown guardrail profile: '{self.profile_name}'. "
+                f"Defined profiles: {sorted(profiles) or 'none'}"
+            )
+        return profiles
+
+    def _section_entries(self, section: str) -> list:
+        """Explicit entries for ``section``, else the selected profile's chain."""
+        explicit = self.config.get(section)
+        if isinstance(explicit, list) and explicit:
+            return explicit
+        profile = self._profiles.get(self.profile_name)
+        if not isinstance(profile, dict):
+            return []
+        entries = profile.get(section)
+        return entries if isinstance(entries, list) else []
 
     @staticmethod
     def _load(config_path: Optional[str]) -> dict:
@@ -159,6 +203,7 @@ class GuardrailRegistry:
         """
         result: Dict[str, Any] = {
             "enabled": self.is_enabled(),
+            "profile": self.profile_name,
             "providers": self.list_providers(),
             "input": [],
             "output": [],
@@ -175,7 +220,7 @@ class GuardrailRegistry:
         return bool(self.config.get("enabled", False))
 
     def _build_chain(self, section: str) -> List[BaseGuardrail]:
-        entries = self.config.get(section) or []
+        entries = self._section_entries(section)
         if not isinstance(entries, list):
             return []
 

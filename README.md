@@ -273,7 +273,7 @@ All behaviour is driven by YAML in config/:
 - config/audit.yaml - append-only audit trail (disabled by default; optional JSONL `path`)
 - config/access_control.yaml - RBAC roles/personas, capabilities and request caps (disabled by default)
 - config/resilience.yaml - provider retries, circuit breaker and LLM failover (disabled by default)
-- config/guardrails.yaml - pluggable input/output guardrail chains, incl. `injection` and `pii` providers (disabled by default)
+- config/guardrails.yaml - pluggable input/output guardrail chains, incl. `injection` and `pii` providers, plus adoptable `standard`/`strict` profiles (disabled by default)
 
 The composition root (`app/main.py::build_pipeline()`) reads these configs and wires
 components via registries:
@@ -518,13 +518,29 @@ resilience:
 The wrapper is transparent (`model_name`/cost still reflect the primary); the request trace
 gains a `resilience` block with `served_by`, `retries` and `failovers`.
 
-**Add input/output guardrails** (pluggable safety/policy checks) - edit `config/guardrails.yaml`.
-Disabled by default; `input` runs on the query + retrieved docs before prompt construction,
-`output` runs on the generated response before it is returned. Each is an **ordered** list and a
-block stops the chain:
+**Adopt the recommended guardrail profile** - the shipped `config/guardrails.yaml` already selects
+`profile: standard` (prompt-injection defense on input, instruction-leak scrubbing on output), so a
+meaningful policy is one edit away:
 
 ```yaml
-enabled: true
+enabled: true          # ships as false
+```
+
+Leave `input`/`output` empty to inherit the profile. A **non-empty** explicit list replaces that
+profile chain for the edge, and `profile: none` runs only explicit chains - the preset lives in
+config, not code. The same file ships a tighter `strict` preset (higher injection sensitivity, PII
+blocked on input and masked on output):
+
+```yaml
+profile: strict        # or standard (default), none
+```
+
+**Custom input/output guardrails** - edit the same file. `input` runs on the query + retrieved docs
+before prompt construction, `output` runs on the generated response before it is returned. Each is
+an **ordered** list and a block stops the chain:
+
+```yaml
+profile: none
 input:
   - provider: deny_list                 # block obvious injection phrases
     terms: ["ignore previous instructions", "disregard all prior"]
@@ -536,7 +552,8 @@ output:
 
 A **block** returns a governed failure (`guardrail_input_blocked` / `guardrail_output_blocked`,
 HTTP 403); a **redact** (when `mask` is set) rewrites the text and lets the chain continue.
-Decisions appear on the trace (`guardrail_decisions`) and in the audit trail. Add a custom
+Decisions appear on the trace (`guardrail_decisions`) and in the audit trail. `GET /v1/guardrails`
+shows the resolved chains and the selected `profile` (previewable while disabled). Add a custom
 guardrail by implementing `BaseGuardrail` (`core/interfaces/guardrail.py`), registering a factory
 in `GuardrailRegistry`, and adding a config entry - no orchestration changes.
 

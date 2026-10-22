@@ -1,4 +1,4 @@
-# Guardrail framework (Workstream B1, issue #52).
+# Guardrail framework (Workstream B1, issue #52) + adoptable profiles (issue #88).
 #
 # Off by default: when ``enabled: false`` no guardrail runs and the data path is
 # byte-identical to before, so existing deployments are unaffected.
@@ -24,25 +24,55 @@
 #                    - only the class and a count are reported, never the value.
 enabled: false
 
-input: []
-# Example (enable the feature first):
-# input:
-#   - provider: deny_list
-#     terms: ["ignore previous instructions", "disregard all prior"]
-#     mask: "[REDACTED]"
-#   - provider: injection
-#     sensitivity: medium
-#     trust_retrieved_documents: false
-#   - provider: pii
-#     classes: [email, phone, credit_card]
-#     mode: redact
+# -- adoptable profiles ----------------------------------------------------
+# ``profile`` selects a preset declared under ``profiles``. To adopt the
+# recommended policy, set ``enabled: true`` above - nothing else. A section with
+# an explicit, NON-EMPTY list below replaces that profile chain for the edge;
+# leave ``input``/``output`` empty to inherit from the profile. ``profile: none``
+# runs only the explicit chains. See /v1/guardrails to preview the resolved set.
+profile: standard
 
+profiles:
+  # Recommended starting point: block direct prompt injection, neutralize
+  # indirect injection in retrieved documents, and scrub instruction-leak
+  # phrases from responses instead of failing the request.
+  standard:
+    input:
+      - provider: injection
+        sensitivity: medium
+        trust_retrieved_documents: false
+    output:
+      - provider: deny_list
+        terms:
+          - "ignore previous instructions"
+          - "ignore all previous instructions"
+          - "disregard all prior instructions"
+          - "reveal your system prompt"
+          - "print your system prompt"
+        mask: "[REDACTED-POLICY]"
+
+  # Tighter policy for regulated / customer-facing deployments: higher injection
+  # sensitivity, PII blocked at the input edge, instruction leakage blocked on
+  # output, and PII masked in responses (the value never leaves the process).
+  strict:
+    input:
+      - provider: injection
+        sensitivity: high
+      - provider: pii
+        classes: [email, phone, credit_card, national_id]
+        mode: block
+    output:
+      - provider: deny_list
+        terms:
+          - "ignore previous instructions"
+          - "ignore all previous instructions"
+          - "disregard all prior instructions"
+          - "reveal your system prompt"
+          - "print your system prompt"
+      - provider: pii
+        classes: [email, phone, credit_card, national_id]
+        mode: redact
+
+# Explicit chains (empty = inherit the selected profile; non-empty = replace it).
+input: []
 output: []
-# Example:
-# output:
-#   - provider: schema_validator
-#     expect_json: true
-#     required_keys: ["answer"]
-#   - provider: pii
-#     classes: [email, phone, credit_card, national_id]
-#     mode: redact

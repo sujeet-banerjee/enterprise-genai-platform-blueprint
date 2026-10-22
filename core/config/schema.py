@@ -287,6 +287,9 @@ class GuardrailEntry(_OpenModel):
 
 class GuardrailsConfig(_StrictModel):
     enabled: Optional[bool] = None
+    #: Named preset declared under ``profiles`` (issue #88); ``none`` = explicit chains only.
+    profile: Optional[str] = None
+    profiles: Dict[str, Any] = Field(default_factory=dict)
     input: List[Union[GuardrailEntry, str]] = Field(default_factory=list)
     output: List[Union[GuardrailEntry, str]] = Field(default_factory=list)
 
