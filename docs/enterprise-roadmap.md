@@ -127,8 +127,8 @@ Issue IDs are placeholders (`E-*`) — not yet created.
 >
 > **Progress (2026-10-21):** **#72 input/doc redaction (H0, PR #76)** and the **#52 `BaseGuardrail`
 > framework + registry (B1, PR #79)** are landed; the query-length bound slice of #73 is also done
-> (PR #78). Remaining B-slices: **#53 injection/jailbreak defense (B2)** and **#54 PII/DLP (B3)**,
-> which plug into the same `guardrail_input`/`guardrail_output` seam.
+> (PR #78) and **#53 injection/jailbreak defense (B2, PR #84)** is landed. Remaining B-slice:
+> **#54 PII/DLP (B3)**, which plugs into the same `guardrail_input`/`guardrail_output` seam.
 
 - **B1. Guardrail framework** — pluggable pre/post stages behind a new `BaseGuardrail`
   interface + registry: input classifier, output classifier, schema/format validation.
@@ -137,6 +137,9 @@ Issue IDs are placeholders (`E-*`) — not yet created.
   redact rewrites text.
 - **B2. Prompt-injection & jailbreak defense** — input sanitization + injection heuristics +
   optional classifier model; adversarial test suite (red teaming in CI).
+  **Landed (#53, PR #84):** `core/implementations/injection_guardrail.py` (`injection` provider);
+  blocks direct injection, neutralizes indirect injection in untrusted retrieved docs; red-team
+  corpus in `tests/test_injection_defense.py`.
 - **B3. Data privacy / DLP** — PII detection & redaction at ingress/egress (extend the existing
   `SensitiveDataRedactor` from regex to NER-based detection); configurable per-tenant policy.
   **#72 (input/doc redaction before prompt construction) is the first slice of this.**
