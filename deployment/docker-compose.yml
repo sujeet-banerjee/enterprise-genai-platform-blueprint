@@ -14,9 +14,11 @@ services:
     environment:
       # Config directory seam (issue #65). Mounts override the baked-in config.
       GENAI_CONFIG_DIR: /app/config
-      # Enables the Prometheus /metrics endpoint (issue #44).
-      GENAI_OBSERVABILITY: "1"
-      # OTLP endpoint for OTel trace export (issue #47) when tracing is enabled.
+      # /metrics requires the Prometheus client: build with
+      # INSTALL_EXTRAS=".[observability]" (issue #44). There is no env toggle.
+      # OTel export target (issue #47). The shipped observability.yaml leaves
+      # ``otel.endpoint`` empty, so the SDK reads this variable. Set endpoint
+      # explicitly in YAML to override it.
       OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4318/v1/traces"
       HF_HOME: /app/.cache/huggingface
     # Secrets (OPENAI_API_KEY, HF_TOKEN, GENAI_API_KEY, ...) - never baked in.
@@ -75,8 +77,8 @@ services:
       - prometheus
 
   # OTel collector + Jaeger trace backend (issue #47). Part of the same
-  # ``observability`` profile: enable tracing (observability.yaml otel.enabled
-  # or GENAI_OBSERVABILITY) then browse traces at http://localhost:16686.
+  # ``observability`` profile: enable tracing in observability.yaml
+  # (``otel.enabled: true``) then browse traces at http://localhost:16686.
   otel-collector:
     image: otel/opentelemetry-collector-contrib:latest
     profiles: ["observability"]
