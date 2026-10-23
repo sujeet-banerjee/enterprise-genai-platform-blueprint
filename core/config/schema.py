@@ -315,6 +315,41 @@ class GuardrailsConfig(_StrictModel):
 
 RetrievalConfig.model_rebuild()
 
+
+# -- identity.yaml -------------------------------------------------------
+
+
+class IdentityScimSection(_StrictModel):
+    enabled: Optional[bool] = None
+    tokens: List[str] = Field(default_factory=list)
+
+
+class IdentitySamlSection(_StrictModel):
+    enabled: Optional[bool] = None
+    entity_id: Optional[str] = None
+    metadata_url: Optional[str] = None
+
+
+class IdentityConfig(_StrictModel):
+    enabled: Optional[bool] = None
+    issuer: Optional[str] = None
+    jwks_uri: Optional[str] = None
+    audience: Optional[str] = None
+    algorithms: List[str] = Field(default_factory=list)
+    secret: Optional[str] = None
+    leeway_seconds: Optional[int] = None
+    group_claim: Optional[str] = None
+    role_claim: Optional[str] = None
+    tenant_claim: Optional[str] = None
+    group_role_map: Dict[str, str] = Field(default_factory=dict)
+    default_role: Optional[str] = None
+    allow_anonymous: Optional[bool] = None
+    allow_api_keys: Optional[bool] = None
+    scim: Optional[IdentityScimSection] = None
+    saml: Optional[IdentitySamlSection] = None
+
+
+
 #: Map of config file stem -> (schema, human label).
 SCHEMAS: Dict[str, Any] = {
     "models": ModelsConfig,
@@ -328,4 +363,5 @@ SCHEMAS: Dict[str, Any] = {
     "resilience": ResilienceConfig,
     "guardrails": GuardrailsConfig,
     "tenants": TenantsConfig,
+    "identity": IdentityConfig,
 }

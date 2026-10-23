@@ -108,10 +108,14 @@ the ones above. The current source of truth is
 - **Observability & governance** — `OtelTracer`, `PrometheusCollector`,
   `AuditLogger`, `ResponseCache`, plus app-level `RunHistory`, `IntrospectionService`,
   `EvaluationService` and `PipelineRebuildService`.
+- **Identity & tenancy** — `core/services/identity.py`: `JwtVerifier` (OIDC/OAuth2),
+  `Principal`, `IdentityResolver` (IdP group → RBAC role, service accounts) and
+  `ScimDirectory`; `/scim/v2/Users` + `/scim/v2/Groups`; `TenantResolver` plus
+  tenant-scoped cache/audit/spend/trace attribution.
 - **Config** — per-concern YAML files (`models`, `prompt_config`, `retrieval`,
   `governance`, `observability`, `guardrails`, `audit`, `resilience`, `api`,
-  `access_control`) validated by strict schemas with `${VAR}`/`env:` secret
-  resolution at load time.
+  `access_control`, `tenants`, `identity`) validated by strict schemas with
+  `${VAR}`/`env:` secret resolution at load time.
 
 Nothing above replaced an existing method contract; additions are optional parameters,
 new defaulted methods, or new interfaces/registries selected by configuration.

@@ -47,6 +47,10 @@ EXPECTED_PATHS = {
     "/v1/audit",
     "/v1/access",
     "/v1/tenants",
+    "/scim/v2/Users",
+    "/scim/v2/Users/{user_id}",
+    "/scim/v2/Groups",
+    "/scim/v2/Groups/{group_id}",
 }
 
 ENVELOPE_KEYS = {"error", "failure_type", "failure_tags", "request_id"}

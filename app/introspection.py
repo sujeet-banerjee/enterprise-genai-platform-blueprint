@@ -41,6 +41,7 @@ class IntrospectionService:
         api_config_path: Optional[Path] = None,
         guardrails_config_path: Optional[Path] = None,
         tenants_config_path: Optional[Path] = None,
+        identity_config_path: Optional[Path] = None,
     ):
         self.models_config_path = Path(models_config_path)
         self.retrieval_config_path = Path(retrieval_config_path)
@@ -55,6 +56,9 @@ class IntrospectionService:
         )
         self.tenants_config_path = (
             Path(tenants_config_path) if tenants_config_path else None
+        )
+        self.identity_config_path = (
+            Path(identity_config_path) if identity_config_path else None
         )
 
         self.model_registry = ModelRegistry(str(self.models_config_path))
@@ -85,6 +89,13 @@ class IntrospectionService:
     # -- effective config -------------------------------------------------
 
     def effective_config(self) -> Dict[str, Any]:
+        identity_view = _read_yaml(self.identity_config_path)
+        if isinstance(identity_view, dict):
+            # Never expose provisioning/validation secrets, even resolved.
+            identity_view.pop("secret", None)
+            scim = identity_view.get("scim")
+            if isinstance(scim, dict):
+                scim.pop("tokens", None)
         merged = {
             "models": self.model_registry.config,
             "retrieval": self.retriever_registry.config,
@@ -94,6 +105,7 @@ class IntrospectionService:
             "api": _read_yaml(self.api_config_path),
             "guardrails": _read_yaml(self.guardrails_config_path),
             "tenants": _read_yaml(self.tenants_config_path),
+            "identity": identity_view,
         }
         redacted = self._redactor.redact_obj(merged)
         return redacted if isinstance(redacted, dict) else merged
