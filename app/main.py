@@ -35,6 +35,12 @@ from app.scim_api import register_scim_routes
 from app.whatif_api import PipelineRebuildService, describe_pipeline, register_whatif_routes
 from core.config.generation_config import GenerationConfig
 from core.services.access_control import AccessController
+from core.services.attribution import (
+    AttributionContext,
+    AttributionSettings,
+    reset_attribution,
+    set_attribution,
+)
 from core.services.audit_log import AuditLogger
 from core.services.failure_classifier import FailureType
 from core.services.identity import (
@@ -74,6 +80,7 @@ RESILIENCE_CONFIG_PATH = CONFIG_DIR / "resilience.yaml"
 GUARDRAILS_CONFIG_PATH = CONFIG_DIR / "guardrails.yaml"
 TENANTS_CONFIG_PATH = CONFIG_DIR / "tenants.yaml"
 IDENTITY_CONFIG_PATH = CONFIG_DIR / "identity.yaml"
+ATTRIBUTION_CONFIG_PATH = CONFIG_DIR / "attribution.yaml"
 
 # Endpoints that never require an API key (liveness/readiness + OpenAPI docs).
 _PUBLIC_PATHS = {"/health", "/ready", "/metrics", "/docs", "/redoc", "/openapi.json"}
@@ -180,7 +187,11 @@ def _error_envelope(
 
 
 def _record_pii_audit(
-    audit: Any, request_id: str, result: dict, tenant: Optional[str] = None
+    audit: Any,
+    request_id: str,
+    result: dict,
+    tenant: Optional[str] = None,
+    attribution: Optional[dict] = None,
 ) -> None:
     """Record PII / DLP decisions in the audit trail (issue #54).
 
@@ -210,6 +221,7 @@ def _record_pii_audit(
             },
             request_id=request_id,
             tenant=tenant,
+            attribution=attribution,
         )
 
 
@@ -226,6 +238,7 @@ def create_app(
     guardrails_config_path: Path = GUARDRAILS_CONFIG_PATH,
     tenants_config_path: Path = TENANTS_CONFIG_PATH,
     identity_config_path: Path = IDENTITY_CONFIG_PATH,
+    attribution_config_path: Path = ATTRIBUTION_CONFIG_PATH,
     pipeline_builder: Callable[..., RAGPipeline] = build_pipeline,
 ) -> FastAPI:
     """
@@ -254,6 +267,11 @@ def create_app(
         access=access_controller,
         directory=scim_directory,
     )
+    # Attribution (issue #50): dimensions always present; per-user/cost-center
+    # dimensions are opt-in via config/attribution.yaml.
+    attribution_settings = AttributionSettings.from_config(
+        _load_config(attribution_config_path) or {}
+    )
 
     @asynccontextmanager
     async def lifespan(application: FastAPI):
@@ -276,6 +294,7 @@ def create_app(
             guardrails_config_path=guardrails_config_path,
             tenants_config_path=tenants_config_path,
             identity_config_path=identity_config_path,
+            attribution_config_path=attribution_config_path,
         )
         application.state.evaluate = EvaluationService(
             models_config_path=models_config_path,
@@ -365,6 +384,7 @@ def create_app(
         if path in (
             "/v1/governance/status",
             "/v1/metrics",
+            "/v1/attribution",
         ) or path.startswith("/v1/traces/"):
             return "governance"
         if path in (
@@ -488,6 +508,19 @@ def create_app(
             )
         request.state.tenant = tenant
         request.state.tenant_id = tenant.id
+        tenancy_on = bool(getattr(tenant_resolver, "enabled", False))
+        attribution = attribution_settings.build(
+            tenant=tenant.id if tenancy_on else None,
+            workspace=tenant.workspace if tenancy_on else None,
+            app=tenant.app if tenancy_on else None,
+            user=principal.subject if principal is not None else None,
+            cost_center=(
+                (tenant.cost_center if tenancy_on else None)
+                or (principal.cost_center if principal is not None else None)
+            ),
+        )
+        request.state.attribution = attribution
+        request.state.subject = principal.subject if principal else None
 
         required = _path_capability(request.url.path)
         if required is not None and not access_controller.has_capability(role, required):
@@ -502,12 +535,20 @@ def create_app(
                 headers={"X-Request-ID": request_id},
             )
 
-        response = await call_next(request)
+        token = set_attribution(attribution)
+        try:
+            response = await call_next(request)
+        finally:
+            reset_attribution(token)
         response.headers["X-Request-ID"] = request_id
         return response
 
     def _record_query_audit(
-        request: Request, request_id: str, result: dict, tenant: Optional[str] = None
+        request: Request,
+        request_id: str,
+        result: dict,
+        tenant: Optional[str] = None,
+        attribution: Optional[dict] = None,
     ) -> None:
         """Emit governance/policy audit events for a completed query (issue #28).
 
@@ -524,7 +565,9 @@ def create_app(
         if audit is None or not getattr(audit, "enabled", False):
             return
 
-        _record_pii_audit(audit, request_id, result, tenant=tenant)
+        _record_pii_audit(
+            audit, request_id, result, tenant=tenant, attribution=attribution
+        )
 
         failure_type = result.get("failure_type")
         failure_tags = list(result.get("failure_tags") or [])
@@ -542,6 +585,7 @@ def create_app(
             },
             request_id=request_id,
             tenant=tenant,
+            attribution=attribution,
         )
 
     def _execute_query(
@@ -568,6 +612,9 @@ def create_app(
         tenant = getattr(request.state, "tenant", None)
         tenancy_enabled = bool(getattr(tenant_resolver, "enabled", False))
         tenant_id = getattr(tenant, "id", None) if tenancy_enabled else None
+        attribution = getattr(request.state, "attribution", None)
+        if not isinstance(attribution, AttributionContext):
+            attribution = AttributionContext()
         effective_top_k = payload.top_k
         if effective_top_k is None and tenant_id is not None:
             overlay_top_k = tenant_resolver.overlay(tenant_id, "retrieval").get("top_k")
@@ -598,18 +645,30 @@ def create_app(
                         "tenant": tenant_id,
                         "workspace": getattr(tenant, "workspace", None),
                         "app": getattr(tenant, "app", None),
+                        "attribution": attribution.dimensions(),
                     }
                 )
-                _record_query_audit(request, request_id, envelope, tenant=tenant_id)
+                _record_query_audit(
+                    request,
+                    request_id,
+                    envelope,
+                    tenant=tenant_id,
+                    attribution=attribution.dimensions(),
+                )
                 return envelope, 402
 
+        # Attribution is request-scoped (set by the middleware via the context
+        # variable) so the pipeline picks it up without every builder having to
+        # accept a new keyword argument. Keeps legacy pipeline surfaces working.
         pipeline_kwargs: dict = {}
         if tenancy_enabled:
-            pipeline_kwargs = {
-                "tenant": tenant_id,
-                "workspace": getattr(tenant, "workspace", None),
-                "app": getattr(tenant, "app", None),
-            }
+            pipeline_kwargs.update(
+                {
+                    "tenant": tenant_id,
+                    "workspace": getattr(tenant, "workspace", None),
+                    "app": getattr(tenant, "app", None),
+                }
+            )
         try:
             result = pipeline.run(
                 payload.query,
@@ -624,14 +683,29 @@ def create_app(
                 500,
             )
 
+        # Every response carries the attribution dimensions (default when a
+        # lightweight/legacy pipeline does not populate them).
+        result.setdefault("attribution", attribution.dimensions())
+
         if history is not None:
-            history.record(request_id, result, tenant=tenant_id)
+            history.record(
+                request_id,
+                result,
+                tenant=tenant_id,
+                attribution=attribution.dimensions(),
+            )
 
         telemetry = getattr(request.app.state, "telemetry", None)
         if telemetry is not None:
             telemetry.record(result)
 
-        _record_query_audit(request, request_id, result, tenant=tenant_id)
+        _record_query_audit(
+            request,
+            request_id,
+            result,
+            tenant=tenant_id,
+            attribution=attribution.dimensions(),
+        )
 
         payload_dict = dict(result)
         payload_dict.setdefault("error", None)

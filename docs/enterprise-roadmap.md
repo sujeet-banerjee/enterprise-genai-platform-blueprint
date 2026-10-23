@@ -116,6 +116,10 @@ Issue IDs are placeholders (`E-*`) — not yet created.
   mapping, SCIM 2.0 users/groups feeding roles, service-account keys; SAML via OIDC bridge.
 - **A3. Attribution pipeline** — propagate `tenant/app/user/cost-center` via request context
   into every trace, audit event, and metric from call one (the InfoQ "team dimension" rule).
+  *Landed (#50):* `config/attribution.yaml` + `AttributionContext` (sanitised, bounded
+  dimensions), request-scoped context variable, attribution on traces/cost records/resilience
+  blocks/audit events, `genai_attributed_*` Prometheus counters and `GET /v1/attribution`
+  reports; per-user/cost-center dimensions opt-in (privacy-preserving default).
 - **A4. Permission-aware retrieval (document-level ACL)** — carry caller identity into
   retrieval; filter chunks by ACL at query time; per-tenant index isolation; leak tests.
 
@@ -350,7 +354,7 @@ A capability is only "done" when it is:
 | Horizon | Theme | Workstreams | Outcome |
 |---|---|---|---|
 | **H0 — Now (0–1 mo)** | Finish the foundation & make it operable | C2 (Prometheus/Grafana + dashboard pack), D1 (resilience/failover), E2 (config schema/validation), E3 (secrets), C1 (OTel), **G0 (hardened container + Compose), G1 (deployment playbook — landed #66), B3-slice #72 (input/doc redaction before prompt)** | The platform is observable, hardened, **deployable**, and no longer leaks raw secrets in the query/doc path; ops can adopt it. |
-| **H1 (1–3 mo)** | Multi-tenant & governed | **A1 (tenant model — landed #48)**, **A2 (OIDC + SCIM — landed #49)**, A3–A4, B1–B3, B5, E1, E4, F5 (admin), **G2 (Helm + Kustomize + GitOps example + CI deploy smoke, landed #67)** — *B1-B3 (#52/#53/#54) landed* | Teams can onboard safely; access and cost are attributable; guardrails + audit are real; it installs on Kubernetes. |
+| **H1 (1–3 mo)** | Multi-tenant & governed | **A1 (tenant model — landed #48)**, **A2 (OIDC + SCIM — landed #49)**, **A3 (attribution - landed #50)**, A4, B1–B3, B5, E1, E4, F5 (admin), **G2 (Helm + Kustomize + GitOps example + CI deploy smoke, landed #67)** — *B1-B3 (#52/#53/#54) landed* | Teams can onboard safely; access and cost are attributable; guardrails + audit are real; it installs on Kubernetes. |
 | **H2 (3–6 mo)** | The product surface | C3–C6, D2–D5, F1–F4 (composer, graphs, experiments, governance console), **G3 (HA/autoscale), G4 (progressive delivery)** | This becomes a *platform teams want to use*: visual, measurable, ROI-provable, safely rollout-able. |
 | **H3 (6–12 mo)** | Enterprise scale & compliance | B4, B6, D6, E5, E6, F6, F7, **G5 (GitOps at scale), G6 (multi-region/DR + cloud IaC)** | Runs at scale, in-region, GitOps-managed, compliance-evidenced, multi-team. |
 

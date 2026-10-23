@@ -22,6 +22,8 @@ tenants:
   example:
     workspace: example-prod
     app: support-copilot
+    # Cost-center label used by the attribution reports (issue #50).
+    cost_center: cc-1234
     # Hard cap on window spend (sum of RunHistory costs). Requests are rejected
     # with a 402 ``cost_limit_exceeded`` / ``tenant_budget_exceeded`` envelope
     # once the cap is reached.

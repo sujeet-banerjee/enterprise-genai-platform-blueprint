@@ -50,6 +50,7 @@ class Tenant:
     id: str = DEFAULT_TENANT_ID
     workspace: str = DEFAULT_TENANT_ID
     app: str = DEFAULT_TENANT_ID
+    cost_center: str = DEFAULT_TENANT_ID
     budget_cap_usd: Optional[float] = None
     top_k_max: Optional[int] = None
     allowed_models: Optional[List[str]] = None
@@ -60,6 +61,7 @@ class Tenant:
             "id": self.id,
             "workspace": self.workspace,
             "app": self.app,
+            "cost_center": self.cost_center,
             "budget_cap_usd": self.budget_cap_usd,
             "top_k_max": self.top_k_max,
             "allowed_models": (
@@ -121,6 +123,7 @@ class TenantResolver:
             id=tenant_id,
             workspace=str(cfg.get("workspace") or tenant_id),
             app=str(cfg.get("app") or tenant_id),
+            cost_center=str(cfg.get("cost_center") or tenant_id),
             budget_cap_usd=float(budget) if isinstance(budget, (int, float)) else None,
             top_k_max=int(top_k_max) if isinstance(top_k_max, int) else None,
             allowed_models=(

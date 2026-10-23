@@ -112,9 +112,14 @@ the ones above. The current source of truth is
   `Principal`, `IdentityResolver` (IdP group → RBAC role, service accounts) and
   `ScimDirectory`; `/scim/v2/Users` + `/scim/v2/Groups`; `TenantResolver` plus
   tenant-scoped cache/audit/spend/trace attribution.
+- **Attribution** - `core/services/attribution.py`: `AttributionContext`,
+  `AttributionSettings`, `safe_identifier`, and request-scoped
+  `set_attribution`/`current_attribution`/`ensure_attribution`; dimensions on traces,
+  cost records, audit events, `RunHistory` and `genai_attributed_*` metrics;
+  `GET /v1/attribution` report.
 - **Config** — per-concern YAML files (`models`, `prompt_config`, `retrieval`,
   `governance`, `observability`, `guardrails`, `audit`, `resilience`, `api`,
-  `access_control`, `tenants`, `identity`) validated by strict schemas with
+  `access_control`, `tenants`, `identity`, `attribution`) validated by strict schemas with
   `${VAR}`/`env:` secret resolution at load time.
 
 Nothing above replaced an existing method contract; additions are optional parameters,

@@ -245,12 +245,35 @@ class AuditEventsResponse(BaseModel):
     request_id: Optional[str] = None
 
 
+class AttributionStats(BaseModel):
+    """Spend/request counters for one attribution dimension value (#50)."""
+
+    requests: int = 0
+    failures: int = 0
+    cost_usd: float = 0.0
+
+
+class AttributionReportResponse(BaseModel):
+    window_seconds: Optional[float] = None
+    since: Optional[float] = None
+    total_requests: int = 0
+    total_cost_usd: float = 0.0
+    by_tenant: Dict[str, AttributionStats] = {}
+    by_workspace: Dict[str, AttributionStats] = {}
+    by_app: Dict[str, AttributionStats] = {}
+    by_user: Dict[str, AttributionStats] = {}
+    by_cost_center: Dict[str, AttributionStats] = {}
+    tenant: Optional[str] = None
+    request_id: Optional[str] = None
+
+
 class TenantInfo(BaseModel):
     """Tenant identity plus per-tenant policy (issue #48)."""
 
     id: str
     workspace: str = "default"
     app: str = "default"
+    cost_center: Optional[str] = None
     budget_cap_usd: Optional[float] = None
     top_k_max: Optional[int] = None
     allowed_models: Optional[List[str]] = None

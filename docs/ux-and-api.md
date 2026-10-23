@@ -109,6 +109,7 @@ Legend: **[E]**xisting. Every row is asserted by `tests/test_api_contract.py`
 | 10 | `GET /v1/access` | Introspection | RBAC roles/personas, capabilities, request caps (config-driven, disabled by default); includes the caller's resolved tenant |
 | 10b | `GET /v1/tenants` | Introspection | tenant/workspace/app identity + per-tenant policy (budget cap, retrieval depth, model allow-list, overlays); caller's resolved tenant + all configured tenants (#48) |
 | 10c | `GET/POST/DELETE /scim/v2/Users` (`/scim/v2/Users/{user_id}`), `/scim/v2/Groups` (`/scim/v2/Groups/{group_id}`) | Provisioning | SCIM 2.0 user/group lifecycle; dedicated SCIM bearer token; group membership feeds IdP-group -> RBAC role mapping (#49) |
+| 10d | `GET /v1/attribution` | Governance | request/spend totals grouped by tenant/workspace/app/user/cost_center over a rolling window (`tenant`, `window_seconds` filters) (#50) |
 | 11 | `POST /v1/evaluate` | Evaluation | active or named evaluator; auto-retrieval; ground truth only when supported |
 | 12 | `POST /v1/experiments` | Evaluation | 202; single run or `compare_embedding_models` / `compare_chunking_strategies` |
 | 13 | `GET /v1/experiments/{exp_id}` | Evaluation | status/result from the bounded experiment store |

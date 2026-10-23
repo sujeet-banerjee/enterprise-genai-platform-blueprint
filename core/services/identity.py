@@ -38,6 +38,7 @@ from core.services.access_control import AccessController
 GROUP_CLAIM_DEFAULT = "groups"
 ROLE_CLAIM_DEFAULT = "role"
 TENANT_CLAIM_DEFAULT = "tenant"
+COST_CENTER_CLAIM_DEFAULT = "cost_center"
 DEFAULT_ROLE = "viewer"
 
 
@@ -66,6 +67,7 @@ class Principal:
     role: str
     groups: List[str] = field(default_factory=list)
     tenant: Optional[str] = None
+    cost_center: Optional[str] = None
     email: Optional[str] = None
     claims: Dict[str, Any] = field(default_factory=dict)
     auth_method: str = "oidc"
@@ -77,6 +79,7 @@ class Principal:
             "role": self.role,
             "groups": list(self.groups),
             "tenant": self.tenant,
+            "cost_center": self.cost_center,
             "auth_method": self.auth_method,
         }
 
@@ -288,6 +291,7 @@ class IdentityResolver:
         group_claim: str = GROUP_CLAIM_DEFAULT,
         role_claim: str = ROLE_CLAIM_DEFAULT,
         tenant_claim: str = TENANT_CLAIM_DEFAULT,
+        cost_center_claim: str = COST_CENTER_CLAIM_DEFAULT,
         group_role_map: Optional[Dict[str, str]] = None,
         default_role: str = DEFAULT_ROLE,
         allow_anonymous: bool = False,
@@ -302,6 +306,7 @@ class IdentityResolver:
         self.group_claim = group_claim or GROUP_CLAIM_DEFAULT
         self.role_claim = role_claim or ROLE_CLAIM_DEFAULT
         self.tenant_claim = tenant_claim or TENANT_CLAIM_DEFAULT
+        self.cost_center_claim = cost_center_claim or COST_CENTER_CLAIM_DEFAULT
         self.group_role_map = {
             str(group): str(role) for group, role in (group_role_map or {}).items()
         }
@@ -352,12 +357,14 @@ class IdentityResolver:
         claimed_role = claims.get(self.role_claim)
         role = self.role_for(groups, str(claimed_role) if claimed_role else None)
         tenant = claims.get(self.tenant_claim)
+        cost_center = claims.get(self.cost_center_claim)
         email = claims.get("email") or claims.get("preferred_username")
         return Principal(
             subject=subject,
             role=role,
             groups=groups,
             tenant=str(tenant) if tenant else None,
+            cost_center=str(cost_center) if cost_center else None,
             email=str(email) if email else None,
             claims=dict(claims),
             auth_method="oidc",
@@ -453,6 +460,9 @@ class IdentityResolver:
             group_claim=str(config.get("group_claim", GROUP_CLAIM_DEFAULT)),
             role_claim=str(config.get("role_claim", ROLE_CLAIM_DEFAULT)),
             tenant_claim=str(config.get("tenant_claim", TENANT_CLAIM_DEFAULT)),
+            cost_center_claim=str(
+                config.get("cost_center_claim", COST_CENTER_CLAIM_DEFAULT)
+            ),
             group_role_map=config.get("group_role_map") or {},
             default_role=str(config.get("default_role", DEFAULT_ROLE)),
             allow_anonymous=bool(config.get("allow_anonymous", False)),
