@@ -1,0 +1,31 @@
+# Permission-aware retrieval (issue #51).
+#
+# Retrieval was previously identity-blind: after authentication every indexed
+# chunk was eligible for ranking and prompt construction. When enabled, the
+# pipeline evaluates per-document ACL metadata against the caller's identity
+# *before* reranking, guardrails, prompt construction and generation.
+#
+# Document ACL metadata (metadata mapping or top-level loader fields):
+#   allowed_tenants / tenant_id      -> caller tenant must match
+#   allowed_users                    -> caller subject must match
+#   allowed_groups                   -> caller must be in at least one group
+#   allowed_roles                    -> caller role must match
+#   acl: {tenants, users, groups, roles}  (nested form)
+#
+# Constraints on a document are AND-ed. A document with no ACL metadata is
+# governed by ``default_policy`` (open => visible to everyone).
+#
+# Off by default: existing corpora and deployments are unaffected.
+enabled: false
+
+# Policy for documents that carry no ACL metadata. ``open`` keeps current
+# behaviour; ``deny`` makes ACLs mandatory (restricted corpus).
+default_policy: open
+
+# When filtering, fetch this many times the requested top_k so denied chunks
+# cannot crowd allowed ones out of the truncated result.
+overfetch_factor: 4
+
+# Roles that bypass ACL filtering (break-glass/admin). Empty by default so an
+# admin role must be opted in explicitly.
+bypass_roles: []

@@ -117,9 +117,14 @@ the ones above. The current source of truth is
   `set_attribution`/`current_attribution`/`ensure_attribution`; dimensions on traces,
   cost records, audit events, `RunHistory` and `genai_attributed_*` metrics;
   `GET /v1/attribution` report.
+- **Permission-aware retrieval** - `core/services/acl.py`: `AccessContext`,
+  `AclSettings`, `AclRecord`, `normalize_document`/`normalize_acl_metadata`,
+  `is_document_allowed` and `filter_documents`; pipeline `run`/`run_batch` accept
+  `role`/`groups`, over-fetch then filter, and report
+  `access_control.enabled`/`filtered_documents` on traces and results.
 - **Config** — per-concern YAML files (`models`, `prompt_config`, `retrieval`,
   `governance`, `observability`, `guardrails`, `audit`, `resilience`, `api`,
-  `access_control`, `tenants`, `identity`, `attribution`) validated by strict schemas with
+  `access_control`, `tenants`, `identity`, `attribution`, `acl`) validated by strict schemas with
   `${VAR}`/`env:` secret resolution at load time.
 
 Nothing above replaced an existing method contract; additions are optional parameters,

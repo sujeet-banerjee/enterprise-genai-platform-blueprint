@@ -35,6 +35,7 @@ from core.registry.pii_registry import PiiRegistry
 from core.registry.query_expander_registry import QueryExpanderRegistry
 from core.registry.reranker_registry import RerankerRegistry
 from core.registry.retriever_registry import RetrieverRegistry
+from core.services.acl import AclSettings
 from core.services.cost_governor import CostGovernor
 from core.services.cost_tracker import CostTracker
 from core.services.observability import SensitiveDataRedactor
@@ -136,6 +137,7 @@ class PipelineComponents:
     governance_config: dict = field(default_factory=dict)
     observability_config: dict = field(default_factory=dict)
     max_query_chars: Optional[int] = None
+    acl: AclSettings = field(default_factory=AclSettings)
 
     def build_pipeline(
         self,
@@ -172,6 +174,7 @@ class PipelineComponents:
             max_query_chars=max_query_chars,
             input_guardrails=self.input_guardrails,
             output_guardrails=self.output_guardrails,
+            acl=self.acl,
         )
 
 
@@ -184,6 +187,7 @@ def assemble_components(
     observability_config_path: Optional[Path] = None,
     resilience_config_path: Optional[Path] = None,
     guardrails_config_path: Optional[Path] = None,
+    acl_config_path: Optional[Path] = None,
     validate: bool = True,
     # Overrides used by experiments (issue #75). ``None`` -> resolved from config.
     embedding_model: Optional[str] = None,
@@ -212,6 +216,7 @@ def assemble_components(
             observability_config_path,
             resilience_config_path,
             guardrails_config_path,
+            acl_config_path,
         )
 
     model_registry = ModelRegistry(str(models_config_path))
@@ -230,6 +235,10 @@ def assemble_components(
     observability_config = (
         (load_config(observability_config_path) if observability_config_path else {})
         or (retrieval_config.get("observability") or {})
+    )
+    # Permission-aware retrieval (issue #51): off by default (open ACLs).
+    acl_settings = AclSettings.from_config(
+        load_config(acl_config_path) if acl_config_path else {}
     )
 
     active_llm = model_registry.get_active_model()
@@ -397,4 +406,5 @@ def assemble_components(
         governance_config=governance_config,
         observability_config=observability_config,
         max_query_chars=max_query_chars,
+        acl=acl_settings,
     )

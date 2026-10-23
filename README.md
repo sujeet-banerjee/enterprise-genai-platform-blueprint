@@ -284,7 +284,8 @@ All behaviour is driven by YAML in config/:
 - config/guardrails.yaml - pluggable input/output guardrail chains, incl. `injection` and `pii` providers, plus adoptable `standard`/`strict` profiles (disabled by default)
 - config/tenants.yaml - tenant/workspace model: identity, per-tenant budget caps/retrieval depth/model allow-lists, config overlays (disabled by default => implicit `default` tenant)
 - config/identity.yaml - OIDC/OAuth2 JWT bearer auth, IdP-group -> RBAC role mapping, SCIM provisioning; SAML via OIDC bridge (disabled by default => API-key stub)
-- config/attribution.yaml - request attribution dimensions (tenant/workspace/app/user/cost_center) on traces, metrics and cost records; per-user/cost-center reporting is opt-in (disabled by default => privacy-preserving default)
+  - config/attribution.yaml - request attribution dimensions (tenant/workspace/app/user/cost_center) on traces, metrics and cost records; per-user/cost-center reporting is opt-in (disabled by default => privacy-preserving default)
+  - config/acl.yaml - permission-aware retrieval: per-document tenant/group/user/role ACLs filtered before reranking and prompting, with open-ACL default and over-fetch (disabled by default)
 
 The composition root (`app/main.py::build_pipeline()`) reads these configs and wires
 components via registries:
@@ -530,6 +531,22 @@ still supply the other dimensions. `GET /v1/attribution` returns request and
 spend totals grouped by each dimension over a rolling window
 (`?window_seconds=`), and `/metrics` exposes `genai_attributed_requests_total`
 and `genai_attributed_cost_usd_total` labelled by tenant/app/user.
+
+**Filter retrieval by document ACLs** - edit `config/acl.yaml` and tag documents:
+
+```yaml
+enabled: true
+default_policy: open      # 'deny' hides documents until they carry an ACL
+overfetch_factor: 4       # candidates fetched before filtering
+bypass_roles: []          # no implicit admin bypass
+```
+
+Documents accept `allowed_tenants`, `allowed_users`, `allowed_groups` and
+`allowed_roles` (top-level fields or an `acl:` mapping). Filtering happens right
+after retrieval and before reranking/prompting, covering vector, hybrid,
+query-expansion and KG-expansion results; traces/results expose
+`access_control.filtered_documents`. With `enabled: false` (the default)
+behaviour is unchanged.
 
 **Toggle governed retrieval / cost caps** - edit `config/governance.yaml`:
 

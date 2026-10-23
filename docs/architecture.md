@@ -507,6 +507,10 @@ This is what makes the "add a component, change config, done" workflow possible.
 | `attribution.enabled` | composition root -> `AttributionSettings` | Per-user / cost-center attribution in telemetry (roadmap #50; default off -> privacy-preserving `default`) |
 | `attribution.include_user` / `include_cost_center` | `AttributionSettings` | Independently gate the personal dimensions even when enabled |
 | `attribution.default_dimension` | `AttributionSettings` | Placeholder for an absent dimension (default `default`) |
+| `acl.enabled` | composition root -> `AclSettings` | Enables document-level ACL filtering after retrieval (roadmap #51; default off -> every chunk visible) |
+| `acl.default_policy` | `RAGPipeline` | `open` keeps documents without ACL metadata visible; `deny` hides them until an ACL is attached |
+| `acl.overfetch_factor` | `RAGPipeline` | Retrieve `top_k x factor` candidates before filtering so allowed chunks are not starved |
+| `acl.bypass_roles` | `AclSettings` | RBAC roles that skip ACL filtering (default empty: no implicit admin bypass) |
 
 Each concern has its own file (like `models.yaml` / `prompt_config.yaml`); the
 composition root loads them by explicit path. Legacy deployments that still
@@ -550,6 +554,24 @@ reportable per user and cost center via `GET /v1/attribution`, and the
 `genai_attributed_*` counters carry the same labels. Dimension values are
 sanitised and bounded (`safe_identifier`) before they reach a metric label,
 trace field or audit file.
+
+**Permission-aware retrieval (roadmap #51).** `config/acl.yaml` drives
+`core/services/acl.py`. Documents may carry `allowed_tenants`, `allowed_users`,
+`allowed_groups` and `allowed_roles` metadata (top-level fields or an `acl:`
+mapping are normalized at load time by `normalize_document`, so vector, hybrid
+and knowledge-graph backends all honour the same keys). When enabled, the
+pipeline builds an `AccessContext` from the caller's tenant, user, IdP groups and
+RBAC role, retrieves `top_k x overfetch_factor` candidates, filters them with
+`filter_documents` and only then truncates to the requested `top_k`. Filtering
+happens immediately after retrieval, so denied chunks never reach the reranker,
+token budget, prompt, LLM, evaluator, response or trace; this covers the
+verbatim path plus query-expansion and KG-expansion results. `default_policy:
+open` keeps legacy corpora working (no metadata means visible), while `deny`
+makes ACLs mandatory; `bypass_roles` is empty by default so no role silently
+sees everything. Traces and results gain `access_control
+{enabled, filtered_documents}`, the response-cache key includes identity
+(tenant/groups/roles) to prevent cross-caller reuse, and the API forwards
+`role`/`groups` to the pipeline only when ACLs are enabled.
 
 ### `config/governance.yaml`
 
@@ -1043,7 +1065,7 @@ The same recipe applies to every capability:
 app/                 API + orchestration (main.py, pipeline.py, bootstrap.py)
 config/              models.yaml, prompt_config.yaml, retrieval.yaml,
                      governance.yaml, observability.yaml, guardrails.yaml,
-                     tenants.yaml, identity.yaml, attribution.yaml, ...
+                     tenants.yaml, identity.yaml, attribution.yaml, acl.yaml, ...
 core/
   interfaces/        contracts (embedder, retriever, llm, evaluator, reranker, chunker, guardrail)
   implementations/   vendor/backend implementations

@@ -28,6 +28,7 @@ from typing import Any, Dict, List, Optional, Sequence
 
 from core.implementations.simple_retriever import SimpleRetriever
 from core.interfaces.retriever import BaseRetriever, Document, ScoredDocument
+from core.services.acl import normalize_acl_metadata
 
 
 def _triple_to_document(triple: Dict[str, Any], doc_id: int) -> Document:
@@ -35,15 +36,28 @@ def _triple_to_document(triple: Dict[str, Any], doc_id: int) -> Document:
     predicate = str(triple.get("predicate", "")).strip()
     obj = str(triple.get("object", "")).strip()
     content = f"{subject} {predicate} {obj}".strip()
+    metadata: Dict[str, Any] = {
+        "doc_id": doc_id,
+        "subject": subject,
+        "predicate": predicate,
+        "object": obj,
+        "source": "knowledge_graph",
+    }
+    # Carry ACL fields attached to a triple (issue #51).
+    for key in (
+        "allowed_tenants",
+        "allowed_users",
+        "allowed_groups",
+        "allowed_roles",
+        "tenant_id",
+        "tenant",
+        "acl",
+    ):
+        if key in triple:
+            metadata[key] = triple[key]
     return Document(
         content=content,
-        metadata={
-            "doc_id": doc_id,
-            "subject": subject,
-            "predicate": predicate,
-            "object": obj,
-            "source": "knowledge_graph",
-        },
+        metadata=normalize_acl_metadata(metadata),
     )
 
 

@@ -361,6 +361,16 @@ class AttributionConfig(_StrictModel):
     default_dimension: Optional[str] = None
 
 
+# -- acl.yaml ------------------------------------------------------------
+
+
+class AclConfig(_StrictModel):
+    enabled: Optional[bool] = None
+    default_policy: Optional[str] = None
+    overfetch_factor: Optional[int] = None
+    bypass_roles: List[str] = Field(default_factory=list)
+
+
 
 #: Map of config file stem -> (schema, human label).
 SCHEMAS: Dict[str, Any] = {
@@ -377,4 +387,5 @@ SCHEMAS: Dict[str, Any] = {
     "tenants": TenantsConfig,
     "identity": IdentityConfig,
     "attribution": AttributionConfig,
+    "acl": AclConfig,
 }

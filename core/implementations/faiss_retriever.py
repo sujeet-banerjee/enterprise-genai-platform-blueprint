@@ -4,6 +4,7 @@ import faiss
 import numpy as np
 
 from core.interfaces.retriever import BaseRetriever, Document, ScoredDocument
+from core.services.acl import normalize_acl_metadata
 
 
 class FAISSRetriever(BaseRetriever):
@@ -57,14 +58,14 @@ class FAISSRetriever(BaseRetriever):
         if isinstance(doc, Document):
             meta = dict(doc.metadata) if doc.metadata else {}
             meta.setdefault("doc_id", doc_id)
-            return Document(content=doc.content, metadata=meta, score=doc.score)
+            return Document(content=doc.content, metadata=normalize_acl_metadata(meta), score=doc.score)
         if isinstance(doc, dict):
             meta = dict(doc.get("metadata") or {})
             for k, v in doc.items():
                 if k not in ("content", "metadata"):
                     meta.setdefault(k, v)
             meta.setdefault("doc_id", doc_id)
-            return Document(content=doc["content"], metadata=meta)
+            return Document(content=doc["content"], metadata=normalize_acl_metadata(meta))
         return Document(content=str(doc), metadata={"doc_id": doc_id})
 
     def add_documents(
