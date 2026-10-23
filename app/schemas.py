@@ -272,4 +272,7 @@ class AccessResponse(BaseModel):
     top_k_max: Optional[int] = None
     allowed_models: Optional[List[str]] = None
     tenant: Optional[TenantInfo] = None
+    identity_enabled: bool = False
+    subject: Optional[str] = None
+    groups: List[str] = []
     request_id: Optional[str] = None

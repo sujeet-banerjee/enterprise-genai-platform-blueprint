@@ -43,6 +43,8 @@ store lands (roadmap E4 / #56).
 | `HF_HOME` | Hugging Face libraries | Weight cache location (mount it) |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | OTel SDK | Collector target when `observability.otel.endpoint` is empty (the shipped default); setting `otel.endpoint` explicitly wins |
 | `GENAI_API_KEY` | — (not read directly) | Convenience name: reference it from config as `api_key: env:GENAI_API_KEY` (API key) or in `config/access_control.yaml` `api_keys` |
+| `JWT_SECRET` | `core/config/secrets.py` | Example name for `identity.secret: env:JWT_SECRET` (HS256 local/testing only; production uses `jwks_uri`) |
+| `SCIM_BEARER_TOKEN` | `core/config/secrets.py` | Example name for `identity.scim.tokens` (IdP provisioning token; never logged) |
 
 Use `${VAR}` (braces, substituted by the loader, also inside larger strings) or `env:VAR` (scheme,
 whole value). A missing variable raises `SecretResolutionError` at load time — deployments fail fast

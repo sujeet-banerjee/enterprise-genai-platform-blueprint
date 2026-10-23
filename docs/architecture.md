@@ -498,6 +498,11 @@ This is what makes the "add a component, change config, done" workflow possible.
 | `tenants.default_tenant` | `TenantResolver` | Tenant assumed when no `X-Tenant-ID` header / key mapping applies |
 | `tenants.tenants.<id>` | `TenantResolver` | Workspace/app identity + per-tenant `budget_cap_usd`, `top_k_max`, `allowed_models`, `overrides` |
 | `tenants.api_keys` | `TenantResolver` | API-key → tenant mapping (header still wins) |
+| `identity.enabled` | `IdentityResolver` | Enables OIDC bearer auth + SCIM (roadmap #49; default off ⇒ API-key stub) |
+| `identity.issuer` / `audience` / `jwks_uri` / `secret` | `JwtVerifier` | Token signature/issuer/audience/expiry validation (JWKS, or HS256 secret for local use) |
+| `identity.group_claim` / `group_role_map` | `IdentityResolver` | IdP groups → RBAC roles (first match wins; fallback `default_role`) |
+| `identity.tenant_claim` | `TenantResolver` | Tenant fallback when no `X-Tenant-ID` header |
+| `identity.scim.tokens` | SCIM middleware | Dedicated provisioning bearer tokens (env-referenced) |
 
 Each concern has its own file (like `models.yaml` / `prompt_config.yaml`); the
 composition root loads them by explicit path. Legacy deployments that still
@@ -514,6 +519,19 @@ run-history/spend windows and experiments, and enforces per-tenant
 `budget_cap_usd`, `top_k_max`, `allowed_models` and request-scoped `overrides`
 (unspecified keys fall back to global config). Ops reads (`/v1/governance/status`,
 `/v1/metrics`, `/v1/traces/{id}`) are scoped to the caller's tenant.
+
+**Identity (roadmap #49).** `config/identity.yaml` drives
+`core/services/identity.py`. When enabled, callers present an OIDC/OAuth2 bearer
+JWT validated against `issuer`/`audience` and a JWKS (or a shared secret for
+local use). IdP group claims (merged with the `ScimDirectory` projection) are
+mapped to RBAC roles through `group_role_map`, and a `tenant` claim supplies the
+tenant when no `X-Tenant-ID` header is present. Scoped service-account keys from
+`access_control.api_keys` keep working for machine callers. SCIM 2.0 Users/Groups
+are exposed at `/scim/v2/*` behind a dedicated bearer token; group changes take
+effect on the next request (deactivated users are rejected). Direct SAML SP is
+intentionally unsupported - terminate SAML at an OIDC bridge. Tokens are never
+logged; the redactor scrubs `authorization`/`bearer` values and the effective
+config view strips identity secrets.
 
 ### `config/governance.yaml`
 
@@ -1007,7 +1025,7 @@ The same recipe applies to every capability:
 app/                 API + orchestration (main.py, pipeline.py, bootstrap.py)
 config/              models.yaml, prompt_config.yaml, retrieval.yaml,
                      governance.yaml, observability.yaml, guardrails.yaml,
-                     tenants.yaml, ...
+                     tenants.yaml, identity.yaml, ...
 core/
   interfaces/        contracts (embedder, retriever, llm, evaluator, reranker, chunker, guardrail)
   implementations/   vendor/backend implementations

@@ -31,11 +31,17 @@ from app.schemas import (
     TenantInfo,
     TenantsResponse,
 )
+from app.scim_api import register_scim_routes
 from app.whatif_api import PipelineRebuildService, describe_pipeline, register_whatif_routes
 from core.config.generation_config import GenerationConfig
 from core.services.access_control import AccessController
 from core.services.audit_log import AuditLogger
 from core.services.failure_classifier import FailureType
+from core.services.identity import (
+    IdentityAuthError,
+    IdentityResolver,
+    ScimDirectory,
+)
 from core.services.telemetry import PrometheusCollector
 from core.services.tenancy import TenantResolver, UnknownTenantError
 
@@ -67,9 +73,11 @@ ACCESS_CONTROL_CONFIG_PATH = CONFIG_DIR / "access_control.yaml"
 RESILIENCE_CONFIG_PATH = CONFIG_DIR / "resilience.yaml"
 GUARDRAILS_CONFIG_PATH = CONFIG_DIR / "guardrails.yaml"
 TENANTS_CONFIG_PATH = CONFIG_DIR / "tenants.yaml"
+IDENTITY_CONFIG_PATH = CONFIG_DIR / "identity.yaml"
 
 # Endpoints that never require an API key (liveness/readiness + OpenAPI docs).
 _PUBLIC_PATHS = {"/health", "/ready", "/metrics", "/docs", "/redoc", "/openapi.json"}
+_SCIM_PREFIX = "/scim/v2/"
 
 
 def _load_config(config_path: Optional[Path], *, validate: bool = True) -> dict:
@@ -217,6 +225,7 @@ def create_app(
     resilience_config_path: Path = RESILIENCE_CONFIG_PATH,
     guardrails_config_path: Path = GUARDRAILS_CONFIG_PATH,
     tenants_config_path: Path = TENANTS_CONFIG_PATH,
+    identity_config_path: Path = IDENTITY_CONFIG_PATH,
     pipeline_builder: Callable[..., RAGPipeline] = build_pipeline,
 ) -> FastAPI:
     """
@@ -238,6 +247,13 @@ def create_app(
     access_controller = AccessController.from_config(access_config)
     # Tenant / workspace model (issue #48): off by default -> implicit default.
     tenant_resolver = TenantResolver.from_config(_load_config(tenants_config_path) or {})
+    # Identity (issue #49): OIDC bearer tokens + SCIM, off by default.
+    scim_directory = ScimDirectory()
+    identity_resolver = IdentityResolver.from_config(
+        _load_config(identity_config_path) or {},
+        access=access_controller,
+        directory=scim_directory,
+    )
 
     @asynccontextmanager
     async def lifespan(application: FastAPI):
@@ -259,6 +275,7 @@ def create_app(
             api_config_path=api_config_path,
             guardrails_config_path=guardrails_config_path,
             tenants_config_path=tenants_config_path,
+            identity_config_path=identity_config_path,
         )
         application.state.evaluate = EvaluationService(
             models_config_path=models_config_path,
@@ -323,6 +340,7 @@ def create_app(
         lifespan=lifespan,
     )
     application.state.tenants = tenant_resolver
+    application.state.identity = identity_resolver
     application.state.access = access_controller
 
     def _path_capability(path: str) -> Optional[str]:
@@ -369,37 +387,92 @@ def create_app(
         request.state.request_id = request_id
 
         provided_key = request.headers.get("X-API-Key")
+        authorization = request.headers.get("Authorization")
 
-        if (
-            require_api_key
-            and expected_api_key
-            and request.url.path not in _PUBLIC_PATHS
-            and provided_key != expected_api_key
-        ):
-            return JSONResponse(
-                status_code=401,
-                content=_error_envelope(
-                    "Missing or invalid API key.",
-                    FailureType.UNAUTHORIZED.value,
-                    [],
-                    request_id,
-                ),
-                headers={"X-Request-ID": request_id},
-            )
+        # SCIM provisioning (issue #49) uses a dedicated bearer token instead of
+        # end-user identity. It is never public: disabled -> 404, bad token -> 401.
+        if request.url.path.startswith(_SCIM_PREFIX):
+            if not identity_resolver.scim_enabled:
+                return JSONResponse(
+                    status_code=404,
+                    content=_error_envelope(
+                        "SCIM provisioning is not enabled.",
+                        FailureType.NOT_READY.value,
+                        ["scim_disabled"],
+                        request_id,
+                    ),
+                    headers={"X-Request-ID": request_id},
+                )
+            if not identity_resolver.scim_authorized(authorization):
+                return JSONResponse(
+                    status_code=401,
+                    content=_error_envelope(
+                        "Missing or invalid SCIM bearer token.",
+                        FailureType.UNAUTHORIZED.value,
+                        ["identity_scim_unauthorized"],
+                        request_id,
+                    ),
+                    headers={"X-Request-ID": request_id},
+                )
+            response = await call_next(request)
+            response.headers["X-Request-ID"] = request_id
+            return response
 
-        # RBAC / persona resolution (issue #29).
-        role = access_controller.resolve_role(provided_key)
+        principal = None
+        if identity_resolver.enabled and request.url.path not in _PUBLIC_PATHS:
+            try:
+                principal = identity_resolver.authenticate(authorization, provided_key)
+            except IdentityAuthError as exc:
+                return JSONResponse(
+                    status_code=401,
+                    content=_error_envelope(
+                        str(exc),
+                        FailureType.UNAUTHORIZED.value,
+                        list(exc.failure_tags),
+                        request_id,
+                    ),
+                    headers={"X-Request-ID": request_id},
+                )
+            request.state.principal = principal
+            request.state.subject = principal.subject if principal else None
+            request.state.groups = list(principal.groups) if principal else []
+            role = principal.role if principal else access_controller.default_role
+        else:
+            if (
+                require_api_key
+                and expected_api_key
+                and request.url.path not in _PUBLIC_PATHS
+                and provided_key != expected_api_key
+            ):
+                return JSONResponse(
+                    status_code=401,
+                    content=_error_envelope(
+                        "Missing or invalid API key.",
+                        FailureType.UNAUTHORIZED.value,
+                        [],
+                        request_id,
+                    ),
+                    headers={"X-Request-ID": request_id},
+                )
+
+            # RBAC / persona resolution (issue #29).
+            role = access_controller.resolve_role(provided_key)
+
         request.state.role = role
         request.state.capabilities = access_controller.capabilities(role)
         request.state.top_k_max = access_controller.top_k_max(role)
         request.state.allowed_models = access_controller.allowed_models(role)
 
-        # Tenant resolution (issue #48): header wins over the API-key mapping.
-        # An unknown explicit tenant is rejected rather than silently falling
-        # back, so a caller can never read another tenant's cached/history data.
+        # Tenant resolution (issue #48): header wins over the API-key mapping
+        # and over a tenant claim in a JWT. An unknown explicit tenant is
+        # rejected rather than silently falling back, so a caller can never
+        # read another tenant's cached/history data.
+        tenant_header = request.headers.get("X-Tenant-ID")
+        if not tenant_header and principal is not None:
+            tenant_header = principal.tenant
         try:
             tenant = tenant_resolver.resolve(
-                tenant_header=request.headers.get("X-Tenant-ID"),
+                tenant_header=tenant_header,
                 api_key=provided_key,
             )
         except UnknownTenantError as exc:
@@ -604,13 +677,16 @@ def create_app(
             capabilities=info["capabilities"],
             top_k_max=info["top_k_max"],
             allowed_models=info["allowed_models"],
-            tenant=(
-                TenantInfo(**tenant_resolver.describe(tenant.id))
-                if tenant is not None
-                else None
-            ),
-            request_id=getattr(request.state, "request_id", None),
-        )
+        tenant=(
+            TenantInfo(**tenant_resolver.describe(tenant.id))
+            if tenant is not None
+            else None
+        ),
+        identity_enabled=identity_resolver.enabled,
+        subject=getattr(request.state, "subject", None),
+        groups=getattr(request.state, "groups", []),
+        request_id=getattr(request.state, "request_id", None),
+    )
 
     @application.get("/v1/tenants", response_model=TenantsResponse)
     def tenants_endpoint(request: Request):
@@ -809,6 +885,7 @@ def create_app(
     register_whatif_routes(application, _error_envelope)
     register_ops_routes(application, _error_envelope)
     register_audit_routes(application, _error_envelope)
+    register_scim_routes(application, _error_envelope)
 
     return application
 

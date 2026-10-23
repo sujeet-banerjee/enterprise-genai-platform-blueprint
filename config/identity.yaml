@@ -1,0 +1,60 @@
+# Standards-based identity (issue #49, workstream A2).
+#
+# Off by default. With ``enabled: false`` the API keeps the existing API-key
+# stub (``config/api.yaml``) + RBAC (``config/access_control.yaml``) behaviour.
+#
+# When enabled, callers authenticate with an OIDC/OAuth2 **bearer JWT**
+# (``Authorization: Bearer <token>``). Tokens are validated against the
+# configured issuer/JWKS, then groups are mapped to an RBAC role. Service
+# accounts may still use a scoped ``X-API-Key`` from access_control.api_keys.
+#
+# SAML: direct SAML SP support is not built in. Terminate SAML at an OIDC
+# bridge (IdP or broker) and point ``issuer``/``jwks_uri`` at the OIDC side.
+# Setting ``saml.enabled: true`` fails fast with that guidance.
+enabled: false
+
+# OIDC validation. Either configure ``jwks_uri`` (production) or ``secret``
+# (HS256, local/testing only - reference it via `env:JWT_SECRET`).
+issuer: ""
+jwks_uri: ""
+audience: ""
+algorithms: [RS256]
+secret: ""
+leeway_seconds: 30
+
+# Claims used to build the principal.
+group_claim: groups
+role_claim: role
+tenant_claim: tenant
+
+# IdP group -> RBAC role (roles live in config/access_control.yaml).
+# First matching group wins; unmapped groups fall through to ``default_role``.
+group_role_map:
+  platform-admins: admin
+  genai-analysts: analyst
+  genai-viewers: viewer
+
+# Role for authenticated callers that map to no known group. Keep this
+# least-privilege; ``viewer`` can query + introspect only.
+default_role: viewer
+
+# Missing credentials: false -> 401. true -> anonymous principal with
+# ``default_role`` (useful only for public/demo deployments).
+allow_anonymous: false
+
+# Accept scoped service-account keys from config/access_control.yaml.
+allow_api_keys: true
+
+# SCIM 2.0 provisioning (users/groups -> role mapping at request time).
+# Tokens are placement secrets: reference env vars, never commit values.
+scim:
+  enabled: false
+  tokens: []
+  # tokens:
+  #   - env:SCIM_BEARER_TOKEN
+
+# Documented as unsupported; use an OIDC bridge (see header).
+saml:
+  enabled: false
+  entity_id: ""
+  metadata_url: ""

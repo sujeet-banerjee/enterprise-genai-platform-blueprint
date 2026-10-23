@@ -281,6 +281,7 @@ All behaviour is driven by YAML in config/:
 - config/resilience.yaml - provider retries, circuit breaker and LLM failover (disabled by default)
 - config/guardrails.yaml - pluggable input/output guardrail chains, incl. `injection` and `pii` providers, plus adoptable `standard`/`strict` profiles (disabled by default)
 - config/tenants.yaml - tenant/workspace model: identity, per-tenant budget caps/retrieval depth/model allow-lists, config overlays (disabled by default => implicit `default` tenant)
+- config/identity.yaml - OIDC/OAuth2 JWT bearer auth, IdP-group -> RBAC role mapping, SCIM provisioning; SAML via OIDC bridge (disabled by default => API-key stub)
 
 The composition root (`app/main.py::build_pipeline()`) reads these configs and wires
 components via registries:
@@ -483,6 +484,30 @@ Each request resolves its API key to a role; capabilities gate endpoints
 (e.g. `rebuild`, `audit`, `governance`), `top_k_max` caps retrieval depth for a
 persona, and `GET /v1/access` reports the caller's effective permissions. Off by
 default (all callers get every capability).
+
+**Enable SSO (OIDC) + SCIM provisioning** - edit `config/identity.yaml`:
+
+```yaml
+enabled: true
+issuer: https://idp.example.com/
+audience: genai-platform
+jwks_uri: https://idp.example.com/.well-known/jwks.json
+group_claim: groups
+group_role_map:
+  platform-admins: admin
+  genai-analysts: analyst
+default_role: viewer
+scim:
+  enabled: true
+  tokens: ["env:SCIM_BEARER_TOKEN"]
+```
+
+Callers send `Authorization: Bearer <JWT>`; groups map to roles from
+`config/access_control.yaml`, and SCIM user/group pushes change capabilities on
+the next request. A `tenant` claim supplies the tenant when no `X-Tenant-ID`
+header is present. Service-account keys from `access_control.api_keys` still
+work for machine callers. SAML is supported via an OIDC bridge (direct SAML SP
+is deliberately not built in). Off by default (API-key stub unchanged).
 
 **Toggle governed retrieval / cost caps** - edit `config/governance.yaml`:
 
