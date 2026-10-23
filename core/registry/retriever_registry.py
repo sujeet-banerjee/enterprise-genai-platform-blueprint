@@ -6,6 +6,7 @@ import yaml
 
 from core.interfaces.chunker import BaseChunker
 from core.interfaces.retriever import BaseRetriever, Document
+from core.services.acl import normalize_document
 
 DocsInput = Optional[Sequence[Union[dict, Document, str]]]
 
@@ -212,6 +213,11 @@ class RetrieverRegistry:
         _key, provider, entry = self.resolve(name)
         if docs is None and entry.get("documents_path"):
             docs = self._load_documents(str(entry["documents_path"]))
+
+        if docs:
+            # Normalize ACL fields (issue #51) so top-level loader keys such as
+            # ``allowed_groups`` become canonical metadata for every backend.
+            docs = [normalize_document(doc) for doc in docs]
 
         docs = self._maybe_chunk(docs, enabled=chunk, chunker=chunker)
 

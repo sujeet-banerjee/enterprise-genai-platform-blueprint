@@ -155,6 +155,8 @@ class PipelineRebuildService:
             kwargs["resilience_config_path"] = paths["resilience_config_path"]
         if "guardrails_config_path" in paths:
             kwargs["guardrails_config_path"] = paths["guardrails_config_path"]
+        if "acl_config_path" in paths:
+            kwargs["acl_config_path"] = paths["acl_config_path"]
         return kwargs
 
     # -- rebuild ----------------------------------------------------------

@@ -35,6 +35,7 @@ from app.scim_api import register_scim_routes
 from app.whatif_api import PipelineRebuildService, describe_pipeline, register_whatif_routes
 from core.config.generation_config import GenerationConfig
 from core.services.access_control import AccessController
+from core.services.acl import AclSettings
 from core.services.attribution import (
     AttributionContext,
     AttributionSettings,
@@ -81,6 +82,7 @@ GUARDRAILS_CONFIG_PATH = CONFIG_DIR / "guardrails.yaml"
 TENANTS_CONFIG_PATH = CONFIG_DIR / "tenants.yaml"
 IDENTITY_CONFIG_PATH = CONFIG_DIR / "identity.yaml"
 ATTRIBUTION_CONFIG_PATH = CONFIG_DIR / "attribution.yaml"
+ACL_CONFIG_PATH = CONFIG_DIR / "acl.yaml"
 
 # Endpoints that never require an API key (liveness/readiness + OpenAPI docs).
 _PUBLIC_PATHS = {"/health", "/ready", "/metrics", "/docs", "/redoc", "/openapi.json"}
@@ -114,6 +116,7 @@ def build_pipeline(
     observability_config_path: Optional[Path] = None,
     resilience_config_path: Optional[Path] = None,
     guardrails_config_path: Optional[Path] = None,
+    acl_config_path: Optional[Path] = None,
 ) -> RAGPipeline:
     """
     Composition root: assemble the RAG pipeline by resolving every pluggable
@@ -131,6 +134,7 @@ def build_pipeline(
         observability_config_path=observability_config_path,
         resilience_config_path=resilience_config_path,
         guardrails_config_path=guardrails_config_path,
+        acl_config_path=acl_config_path,
     )
     return components.build_pipeline(
         config_path=str(retrieval_config_path),
@@ -239,6 +243,7 @@ def create_app(
     tenants_config_path: Path = TENANTS_CONFIG_PATH,
     identity_config_path: Path = IDENTITY_CONFIG_PATH,
     attribution_config_path: Path = ATTRIBUTION_CONFIG_PATH,
+    acl_config_path: Path = ACL_CONFIG_PATH,
     pipeline_builder: Callable[..., RAGPipeline] = build_pipeline,
 ) -> FastAPI:
     """
@@ -272,9 +277,14 @@ def create_app(
     attribution_settings = AttributionSettings.from_config(
         _load_config(attribution_config_path) or {}
     )
+    # Permission-aware retrieval (issue #51): off by default. The resolved
+    # settings are stored on the app so request handling can decide whether to
+    # pass caller identity into the pipeline.
+    acl_settings = AclSettings.from_config(_load_config(acl_config_path) or {})
 
     @asynccontextmanager
     async def lifespan(application: FastAPI):
+        application.state.acl = acl_settings
         application.state.pipeline = pipeline_builder(
             models_config_path=models_config_path,
             prompt_config_path=prompt_config_path,
@@ -283,6 +293,7 @@ def create_app(
             observability_config_path=observability_config_path,
             resilience_config_path=resilience_config_path,
             guardrails_config_path=guardrails_config_path,
+            acl_config_path=acl_config_path,
         )
         application.state.introspect = IntrospectionService(
             models_config_path=models_config_path,
@@ -295,6 +306,7 @@ def create_app(
             tenants_config_path=tenants_config_path,
             identity_config_path=identity_config_path,
             attribution_config_path=attribution_config_path,
+            acl_config_path=acl_config_path,
         )
         application.state.evaluate = EvaluationService(
             models_config_path=models_config_path,
@@ -304,6 +316,7 @@ def create_app(
             observability_config_path=observability_config_path,
             resilience_config_path=resilience_config_path,
             guardrails_config_path=guardrails_config_path,
+            acl_config_path=acl_config_path,
         )
         application.state.history = RunHistory(
             max_runs=int(api_config.get("history_max_runs", 1000)),
@@ -335,6 +348,7 @@ def create_app(
                 "api_config_path": api_config_path,
                 "resilience_config_path": resilience_config_path,
                 "guardrails_config_path": guardrails_config_path,
+                "acl_config_path": acl_config_path,
             },
             allow_rebuild=allow_rebuild,
         )
@@ -667,6 +681,17 @@ def create_app(
                     "tenant": tenant_id,
                     "workspace": getattr(tenant, "workspace", None),
                     "app": getattr(tenant, "app", None),
+                }
+            )
+        acl_settings = getattr(request.app.state, "acl", None)
+        if acl_settings is not None and acl_settings.enabled:
+            # Permission-aware retrieval (issue #51): the caller's resolved role
+            # and directory groups travel with the request; the pipeline filters
+            # retrieved candidates before prompt construction.
+            pipeline_kwargs.update(
+                {
+                    "role": getattr(request.state, "role", None),
+                    "groups": list(getattr(request.state, "groups", None) or []),
                 }
             )
         try:

@@ -141,9 +141,10 @@ class EvaluationService:
         retrieval_config_path: Path,
         max_workers: int = 1,
         governance_config_path: Optional[Path] = None,
-        observability_config_path: Optional[Path] = None,
-        resilience_config_path: Optional[Path] = None,
-        guardrails_config_path: Optional[Path] = None,
+    observability_config_path: Optional[Path] = None,
+    resilience_config_path: Optional[Path] = None,
+    guardrails_config_path: Optional[Path] = None,
+    acl_config_path: Optional[Path] = None,
     ):
         self.models_config_path = Path(models_config_path)
         self.prompt_config_path = Path(prompt_config_path)
@@ -165,6 +166,7 @@ class EvaluationService:
             guardrails_config_path=(
                 str(guardrails_config_path) if guardrails_config_path else None
             ),
+            acl_config_path=(str(acl_config_path) if acl_config_path else None),
         )
         self.store = _ExperimentStore()
         self._executor = ThreadPoolExecutor(

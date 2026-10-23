@@ -7,6 +7,7 @@ import yaml
 
 from core.interfaces.reranker import BaseReranker
 from core.interfaces.retriever import Document
+from core.services.acl import AccessContext, AclSettings, filter_documents
 from core.services.attribution import AttributionContext, ensure_attribution
 from core.services.failure_classifier import FailureClassifier, FailureType
 from core.services.guardrails import GuardrailBlockedError, validate_query_length
@@ -40,6 +41,7 @@ class RAGPipeline:
         max_query_chars: Optional[int] = None,
         input_guardrails: Optional[List[Any]] = None,
         output_guardrails: Optional[List[Any]] = None,
+        acl: Optional[AclSettings] = None,
     ):
         self.embedder = embedder
         self.prompt_builder = prompt_builder
@@ -102,6 +104,12 @@ class RAGPipeline:
         # when the feature is disabled, so the stages are no-ops by default.
         self.input_guardrails: List[Any] = list(input_guardrails or [])
         self.output_guardrails: List[Any] = list(output_guardrails or [])
+
+        # Permission-aware retrieval (issue #51): when enabled, retrieved
+        # candidates are filtered by the caller's tenant/user/groups/roles
+        # before reranking, prompt construction and generation. Disabled by
+        # default so the data path is unchanged.
+        self.acl: AclSettings = acl or AclSettings()
 
         self.top_k = int(top_k if top_k is not None else ret_cfg.get("top_k", 3))
         self.avg_chunk_tokens = int(gov_cfg.get("avg_chunk_tokens", ret_cfg.get("avg_chunk_tokens", 128)))
@@ -432,6 +440,8 @@ class RAGPipeline:
         user: Optional[str] = None,
         cost_center: Optional[str] = None,
         attribution: Optional[AttributionContext] = None,
+        role: Optional[str] = None,
+        groups: Optional[List[str]] = None,
     ) -> dict:
         start_time = time.time()
         effective_top_k = int(top_k if top_k is not None else self.top_k)
@@ -447,6 +457,16 @@ class RAGPipeline:
             user=user,
             cost_center=cost_center,
         )
+        # Caller identity for ACL evaluation (issue #51). Retrieval happens
+        # before prompt construction, so the filter must be applied here.
+        acl_context = AccessContext.from_mapping(
+            tenant=tenant,
+            user=user,
+            groups=groups,
+            role=role,
+        )
+        acl_active = bool(self.acl.enabled)
+        acl_bypass = acl_active and self.acl.is_bypass_role(acl_context)
         tracker = PipelineObservabilityTracker(
             config_path=self.config_path,
             observability_config_path=self.observability_config_path,
@@ -482,6 +502,14 @@ class RAGPipeline:
             cache_query = (
                 f"{dims['tenant']}\x00{dims['app']}\x00{dims['user']}\x00{query}"
             )
+            # ACL-scoped answers must never be served to a different identity
+            # (issue #51): include the effective role/groups in the key.
+            if acl_active:
+                cache_query += (
+                    f"\x00{acl_context.normalized_tenant or ''}"
+                    f"\x00{','.join(sorted(acl_context.groups))}"
+                    f"\x00{','.join(sorted(acl_context.roles))}"
+                )
             cache_key = cache.make_key(cache_query, effective_top_k)
             cached = cache.get(cache_key)
             if cached is not None:
@@ -536,17 +564,35 @@ class RAGPipeline:
         tracker.set_trace_attribute("llm_model", getattr(self.llm, "model_name", None))
 
         # 2. Retrieval stage (multi-query expansion when configured, else verbatim)
+        retrieval_k = effective_top_k
+        if acl_active and not acl_bypass:
+            # Over-fetch so denied chunks cannot crowd allowed ones out of the
+            # truncated top-k result (issue #51).
+            retrieval_k = effective_top_k * self.acl.fetch_factor
+        acl_filtered = 0
         try:
             with tracker.measure_stage("retrieval"):
                 if self.query_expander is None:
-                    raw_retrieved = self._retrieve_for_embedding(embedding, effective_top_k, query)
+                    raw_retrieved = self._retrieve_for_embedding(embedding, retrieval_k, query)
                     docs, initial_scores = self._extract_docs_and_scores(raw_retrieved)
                     queries_used = [query]
                     expanded = False
                 else:
                     docs, initial_scores, queries_used, expanded = self._retrieve_expanded(
-                        query, effective_top_k
+                        query, retrieval_k
                     )
+
+                # 2b. Permission-aware filtering (issue #51): deny-by-default
+                # would be unsafe to defer, so disallowed chunks are removed
+                # before reranking, guardrails, prompting and generation.
+                if acl_active:
+                    docs, initial_scores, acl_filtered = filter_documents(
+                        docs, initial_scores, acl_context, self.acl
+                    )
+                    docs = docs[:effective_top_k]
+                    initial_scores = initial_scores[:effective_top_k]
+                    tracker.set_trace_attribute("acl_enabled", True)
+                    tracker.set_trace_attribute("acl_filtered_documents", acl_filtered)
 
                 initial_docs_summary = tracker.summarize_documents(docs)
 
@@ -776,6 +822,10 @@ class RAGPipeline:
             "guardrails_enabled": bool(self.input_guardrails or self.output_guardrails),
             "guardrail_decisions": input_guardrail_decisions + output_guardrail_decisions,
             "attribution": attribution.dimensions(),
+            "access_control": {
+                "enabled": acl_active,
+                "filtered_documents": acl_filtered,
+            },
         }
         if tenant is not None:
             trace["tenant"] = tenant
@@ -816,6 +866,10 @@ class RAGPipeline:
             "cache_hit": False,
             "guardrail_decisions": input_guardrail_decisions + output_guardrail_decisions,
             "attribution": attribution.dimensions(),
+            "access_control": {
+                "enabled": acl_active,
+                "filtered_documents": acl_filtered,
+            },
         }
         if tenant is not None:
             result["tenant"] = tenant
@@ -843,6 +897,8 @@ class RAGPipeline:
         user: Optional[str] = None,
         cost_center: Optional[str] = None,
         attribution: Optional[AttributionContext] = None,
+        role: Optional[str] = None,
+        groups: Optional[List[str]] = None,
     ) -> List[dict]:
         """
         Run several queries, reusing ``run`` per query (issue #27).
@@ -881,6 +937,8 @@ class RAGPipeline:
                 user=user,
                 cost_center=cost_center,
                 attribution=attribution,
+                role=role,
+                groups=groups,
             )
 
         workers = int(max_workers or 1)

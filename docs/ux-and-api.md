@@ -170,6 +170,7 @@ The sidebar also exposes the API base URL and the optional API key, and
 | (added during delivery) | audit trail `GET /v1/audit` | #28 `6b3cb1c` |
 | (added during delivery) | guardrail introspection, profiles, hit-rate metrics | #86 `4986daa`, #88 `2b762ae`, #87 `5ab41ee` |
 | (added during delivery) | docs reconciliation (this document) | #81 |
+| (added during delivery) | permission-aware retrieval (ACL metadata filtered before reranking/prompting) | #51 |
 
 The forward roadmap (H0-H3, workstreams A-G) is tracked in
 [enterprise-roadmap.md](enterprise-roadmap.md) and the GitHub Project board; API/UX

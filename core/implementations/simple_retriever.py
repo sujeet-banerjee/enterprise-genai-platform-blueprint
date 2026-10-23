@@ -3,6 +3,7 @@ from typing import List, Optional, Sequence, Union
 import numpy as np
 
 from core.interfaces.retriever import BaseRetriever, Document, ScoredDocument
+from core.services.acl import normalize_acl_metadata
 
 
 class SimpleRetriever(BaseRetriever):
@@ -14,11 +15,14 @@ class SimpleRetriever(BaseRetriever):
             if isinstance(doc, Document):
                 meta = dict(doc.metadata) if doc.metadata else {}
                 meta.setdefault("doc_id", idx)
-                self.docs.append(Document(content=doc.content, metadata=meta, score=doc.score))
+                self.docs.append(Document(content=doc.content, metadata=normalize_acl_metadata(meta), score=doc.score))
             elif isinstance(doc, dict):
                 meta = dict(doc.get("metadata") or {})
+                for key, value in doc.items():
+                    if key not in ("content", "metadata"):
+                        meta.setdefault(key, value)
                 meta.setdefault("doc_id", idx)
-                self.docs.append(Document(content=doc["content"], metadata=meta))
+                self.docs.append(Document(content=doc["content"], metadata=normalize_acl_metadata(meta)))
             else:
                 self.docs.append(Document(content=str(doc), metadata={"doc_id": idx}))
 

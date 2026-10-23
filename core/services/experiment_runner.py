@@ -32,6 +32,7 @@ class ExperimentRunner:
         observability_config_path: Optional[str] = None,
         resilience_config_path: Optional[str] = None,
         guardrails_config_path: Optional[str] = None,
+        acl_config_path: Optional[str] = None,
     ):
         base_dir = Path(__file__).resolve().parent.parent.parent
         self.models_config_path = models_config_path or str(base_dir / "config" / "models.yaml")
@@ -48,6 +49,7 @@ class ExperimentRunner:
         self.observability_config_path = observability_config_path
         self.resilience_config_path = resilience_config_path
         self.guardrails_config_path = guardrails_config_path
+        self.acl_config_path = acl_config_path
 
     def run_single_experiment(
         self,
@@ -88,6 +90,9 @@ class ExperimentRunner:
             ),
             guardrails_config_path=(
                 Path(self.guardrails_config_path) if self.guardrails_config_path else None
+            ),
+            acl_config_path=(
+                Path(self.acl_config_path) if self.acl_config_path else None
             ),
             embedding_model=embedding_model,
             retriever_backend=retriever_backend,
