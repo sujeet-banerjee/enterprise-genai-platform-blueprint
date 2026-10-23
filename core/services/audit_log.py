@@ -24,6 +24,7 @@ from collections import deque
 from pathlib import Path
 from typing import Any, Callable, Deque, Dict, List, Optional
 
+from core.services.attribution import AttributionContext, current_attribution
 from core.services.observability import SensitiveDataRedactor
 
 
@@ -59,15 +60,20 @@ class AuditLogger:
         details: Optional[Dict[str, Any]] = None,
         request_id: Optional[str] = None,
         tenant: Optional[str] = None,
+        attribution: Optional[Dict[str, Any]] = None,
     ) -> Optional[Dict[str, Any]]:
         """Append one audit event; returns the stored (redacted) event.
 
         Returns ``None`` when auditing is disabled or the logger is closed, so
         callers can invoke it unconditionally. ``tenant`` (issue #48) attributes
         the event to a tenant/workspace without touching the event payload.
+        ``attribution`` (issue #50) carries tenant/workspace/app/user/cost center;
+        it defaults to the request-scoped context, or the default dimensions.
         """
         if not self.enabled or self._closed:
             return None
+        context = current_attribution() or AttributionContext()
+        dimensions = dict(attribution) if isinstance(attribution, dict) else context.dimensions()
         event = {
             "event_id": str(uuid.uuid4()),
             "timestamp": round(float(self._clock()), 6),
@@ -76,6 +82,7 @@ class AuditLogger:
             "outcome": str(outcome),
             "request_id": request_id,
             "tenant": str(tenant) if tenant is not None else None,
+            "attribution": self._redactor.redact_obj(dimensions),
             "details": self._redactor.redact_obj(dict(details or {})),
         }
         with self._lock:

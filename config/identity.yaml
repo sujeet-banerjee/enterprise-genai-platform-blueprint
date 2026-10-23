@@ -26,6 +26,8 @@ leeway_seconds: 30
 group_claim: groups
 role_claim: role
 tenant_claim: tenant
+# Used for cost attribution (issue #50) when attribution is enabled.
+cost_center_claim: cost_center
 
 # IdP group -> RBAC role (roles live in config/access_control.yaml).
 # First matching group wins; unmapped groups fall through to ``default_role``.

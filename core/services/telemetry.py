@@ -127,6 +127,22 @@ class PrometheusCollector:
             "Pipeline requests currently being processed.",
             registry=self._registry,
         )
+        # Attribution (issue #50): a dimension-labelled companion series so spend
+        # and volume can be reported by tenant/app/user without renaming the
+        # existing (unlabelled) metrics. Dimension values are bounded/sanitised
+        # by ``core.services.attribution`` before they reach here.
+        self._attributed_cost = Counter(
+            "genai_attributed_cost_usd_total",
+            "Cumulative estimated cost in USD by attribution dimension.",
+            labelnames=("tenant", "app", "user"),
+            registry=self._registry,
+        )
+        self._attributed_requests = Counter(
+            "genai_attributed_requests_total",
+            "Pipeline requests by attribution dimension and status.",
+            labelnames=("tenant", "app", "user", "status"),
+            registry=self._registry,
+        )
 
     def is_available(self) -> bool:
         return self.available
@@ -171,6 +187,18 @@ class PrometheusCollector:
             model_name = cost.get("model") or cost.get("model_name")
             if model_name:
                 self._per_model_cost().labels(model=str(model_name)).inc(float(amount))
+
+        # Attribution labels (issue #50). ``status`` mirrors genai_requests_total.
+        attribution = result.get("attribution")
+        if isinstance(attribution, dict):
+            labels = {
+                "tenant": str(attribution.get("tenant") or "default"),
+                "app": str(attribution.get("app") or "default"),
+                "user": str(attribution.get("user") or "default"),
+            }
+            self._attributed_requests.labels(status=status, **labels).inc()
+            if isinstance(amount, (int, float)) and amount > 0:
+                self._attributed_cost.labels(**labels).inc(float(amount))
 
         cache_hit = result.get("cache_hit")
         if cache_hit is True:

@@ -7,6 +7,7 @@ redacted traces and aggregate latency/failure/cost metrics.
 
 import math
 import threading
+import time
 import uuid
 from collections import Counter, OrderedDict, deque
 from pathlib import Path
@@ -16,8 +17,13 @@ import yaml
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, Response
 
-from app.schemas import GovernanceStatusResponse, MetricsResponse
+from app.schemas import (
+    AttributionReportResponse,
+    GovernanceStatusResponse,
+    MetricsResponse,
+)
 from core.registry.pii_registry import PiiRegistry
+from core.services.attribution import AttributionContext, current_attribution
 from core.services.failure_classifier import FailureType
 from core.services.observability import SensitiveDataRedactor
 
@@ -94,7 +100,11 @@ class RunHistory:
     # -- ingestion --------------------------------------------------------
 
     def record(
-        self, request_id: str, result: Dict[str, Any], tenant: Optional[str] = None
+        self,
+        request_id: str,
+        result: Dict[str, Any],
+        tenant: Optional[str] = None,
+        attribution: Optional[Dict[str, Any]] = None,
     ) -> None:
         cost = result.get("cost") or {}
         latency = {
@@ -118,9 +128,25 @@ class RunHistory:
                         "stage": str(decision.get("stage") or ""),
                     }
                 )
+        raw_attribution = attribution
+        if raw_attribution is None:
+            raw_attribution = result.get("attribution")
+        if isinstance(raw_attribution, dict):
+            dimensions = AttributionContext.from_values(
+                tenant=raw_attribution.get("tenant"),
+                workspace=raw_attribution.get("workspace"),
+                app=raw_attribution.get("app"),
+                user=raw_attribution.get("user"),
+                cost_center=raw_attribution.get("cost_center"),
+            ).dimensions()
+        else:
+            context = current_attribution() or AttributionContext()
+            dimensions = context.dimensions()
         entry = {
             "request_id": request_id,
+            "timestamp": round(float(time.time()), 6),
             "tenant": tenant if tenant is not None else result.get("tenant"),
+            "attribution": dimensions,
             "success": not result.get("error") and not failure_type,
             "failure_type": failure_type,
             "failure_tags": failure_tags,
@@ -175,6 +201,72 @@ class RunHistory:
             "requests": len(runs),
             "total_cost_usd": round(total, 6),
             "mean_cost_usd": round(total / len(runs), 6) if runs else 0.0,
+        }
+        if tenant is not None:
+            payload["tenant"] = str(tenant)
+        return payload
+
+    def attribution_report(
+        self,
+        window_seconds: Optional[float] = None,
+        tenant: Optional[str] = None,
+        now: Optional[float] = None,
+    ) -> Dict[str, Any]:
+        """Aggregate spend + request counts by attribution dimension (#50).
+
+        ``window_seconds`` filters on the recorded timestamp; omitted means the
+        whole retained history. Dimensions are always present, defaulting to
+        ``default`` so single-tenant deployments still produce a report.
+        """
+        runs = self._runs_for(tenant)
+        cutoff: Optional[float] = None
+        if window_seconds is not None:
+            cutoff = float(now if now is not None else time.time()) - max(
+                0.0, float(window_seconds)
+            )
+            runs = [entry for entry in runs if float(entry.get("timestamp", 0.0)) >= cutoff]
+
+        groups: Dict[str, Dict[str, Dict[str, Any]]] = {
+            "by_tenant": {},
+            "by_workspace": {},
+            "by_app": {},
+            "by_user": {},
+            "by_cost_center": {},
+        }
+        keys = {
+            "by_tenant": "tenant",
+            "by_workspace": "workspace",
+            "by_app": "app",
+            "by_user": "user",
+            "by_cost_center": "cost_center",
+        }
+
+        def _bump(bucket: Dict[str, Dict[str, Any]], name: str, entry: Dict[str, Any]) -> None:
+            stats = bucket.setdefault(
+                name, {"requests": 0, "failures": 0, "cost_usd": 0.0}
+            )
+            stats["requests"] += 1
+            if not entry.get("success", True):
+                stats["failures"] += 1
+            stats["cost_usd"] += float(entry.get("cost_usd") or 0.0)
+
+        for entry in runs:
+            dimensions = entry.get("attribution") or {}
+            for group_name, dimension in keys.items():
+                value = str(dimensions.get(dimension) or "default")
+                _bump(groups[group_name], value, entry)
+
+        for bucket in groups.values():
+            for stats in bucket.values():
+                stats["cost_usd"] = round(stats["cost_usd"], 6)
+
+        total_cost = round(sum(float(entry.get("cost_usd") or 0.0) for entry in runs), 6)
+        payload: Dict[str, Any] = {
+            "window_seconds": float(window_seconds) if window_seconds is not None else None,
+            "since": round(cutoff, 6) if cutoff is not None else None,
+            "total_requests": len(runs),
+            "total_cost_usd": total_cost,
+            **groups,
         }
         if tenant is not None:
             payload["tenant"] = str(tenant)
@@ -344,6 +436,25 @@ def register_ops_routes(
                 ),
             )
         return JSONResponse(status_code=200, content=trace)
+
+    @application.get("/v1/attribution", response_model=AttributionReportResponse)
+    def attribution_endpoint(
+        request: Request,
+        tenant: Optional[str] = None,
+        window_seconds: Optional[float] = None,
+    ):
+        """Spend + request counts grouped by tenant/app/user over a window (#50)."""
+        history, error = _history(request)
+        if error is not None:
+            return error
+        scope, scope_error = _tenant_scope(request, tenant)
+        if scope_error is not None:
+            return scope_error
+        payload = history.attribution_report(
+            window_seconds=window_seconds, tenant=scope
+        )
+        payload["request_id"] = _request_id(request)
+        return AttributionReportResponse(**payload)
 
     @application.get("/v1/metrics", response_model=MetricsResponse)
     def metrics_endpoint(request: Request, tenant: Optional[str] = None):

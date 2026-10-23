@@ -42,6 +42,7 @@ class IntrospectionService:
         guardrails_config_path: Optional[Path] = None,
         tenants_config_path: Optional[Path] = None,
         identity_config_path: Optional[Path] = None,
+        attribution_config_path: Optional[Path] = None,
     ):
         self.models_config_path = Path(models_config_path)
         self.retrieval_config_path = Path(retrieval_config_path)
@@ -59,6 +60,9 @@ class IntrospectionService:
         )
         self.identity_config_path = (
             Path(identity_config_path) if identity_config_path else None
+        )
+        self.attribution_config_path = (
+            Path(attribution_config_path) if attribution_config_path else None
         )
 
         self.model_registry = ModelRegistry(str(self.models_config_path))
@@ -106,6 +110,7 @@ class IntrospectionService:
             "guardrails": _read_yaml(self.guardrails_config_path),
             "tenants": _read_yaml(self.tenants_config_path),
             "identity": identity_view,
+            "attribution": _read_yaml(self.attribution_config_path),
         }
         redacted = self._redactor.redact_obj(merged)
         return redacted if isinstance(redacted, dict) else merged

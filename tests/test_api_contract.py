@@ -47,6 +47,7 @@ EXPECTED_PATHS = {
     "/v1/audit",
     "/v1/access",
     "/v1/tenants",
+    "/v1/attribution",
     "/scim/v2/Users",
     "/scim/v2/Users/{user_id}",
     "/scim/v2/Groups",

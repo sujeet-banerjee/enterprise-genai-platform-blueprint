@@ -241,6 +241,9 @@ class PipelineObservabilityTracker:
         self.tenant: Optional[str] = None
         self.workspace: Optional[str] = None
         self.app: Optional[str] = None
+        # Full attribution dimensions (issue #50): tenant/workspace/app/user/
+        # cost_center, resolved once at ingress and set by the pipeline.
+        self.attribution: Dict[str, str] = {}
         self.config_path = config_path
         self.observability_config_path = observability_config_path
 

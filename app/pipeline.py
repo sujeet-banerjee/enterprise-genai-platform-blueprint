@@ -7,6 +7,7 @@ import yaml
 
 from core.interfaces.reranker import BaseReranker
 from core.interfaces.retriever import Document
+from core.services.attribution import AttributionContext, ensure_attribution
 from core.services.failure_classifier import FailureClassifier, FailureType
 from core.services.guardrails import GuardrailBlockedError, validate_query_length
 from core.services.observability import PipelineObservabilityTracker
@@ -372,6 +373,7 @@ class RAGPipeline:
             "reranking_enabled": self.reranker is not None,
             "llm_model": getattr(self.llm, "model_name", self.llm.__class__.__name__),
             "latency": latency_report,
+            "attribution": dict(getattr(tracker, "attribution", {}) or {}),
         }
         if getattr(tracker, "tenant", None) is not None:
             trace["tenant"] = tracker.tenant
@@ -388,7 +390,7 @@ class RAGPipeline:
         if should_raise:
             raise exc
 
-        envelope = {
+        envelope: Dict[str, Any] = {
             "response": None,
             "error": str(exc),
             "failure_type": failure_tag,
@@ -400,7 +402,11 @@ class RAGPipeline:
             "token_budget": getattr(exc, "budget_details", {}),
             "latency": latency_report,
             "observability": self.last_observability,
+            "attribution": dict(getattr(tracker, "attribution", {}) or {}),
         }
+        dimensions = dict(getattr(tracker, "attribution", {}) or {})
+        if isinstance(envelope["cost"], dict):
+            envelope["cost"].setdefault("attribution", dimensions)
         if getattr(tracker, "tenant", None) is not None:
             envelope["tenant"] = tracker.tenant
             envelope["workspace"] = tracker.workspace
@@ -423,10 +429,24 @@ class RAGPipeline:
         tenant: Optional[str] = None,
         workspace: Optional[str] = None,
         app: Optional[str] = None,
+        user: Optional[str] = None,
+        cost_center: Optional[str] = None,
+        attribution: Optional[AttributionContext] = None,
     ) -> dict:
         start_time = time.time()
         effective_top_k = int(top_k if top_k is not None else self.top_k)
         should_raise = self.raise_on_failure if raise_on_failure is None else bool(raise_on_failure)
+        # Attribution (issue #50): resolved once at ingress and carried into
+        # traces, cost records, metrics and the audit trail. A caller may pass
+        # an explicit context; otherwise the request-scoped one (set by the API
+        # middleware) is used, merged with any legacy tenant kwargs.
+        attribution = attribution or ensure_attribution(
+            tenant=tenant,
+            workspace=workspace,
+            app=app,
+            user=user,
+            cost_center=cost_center,
+        )
         tracker = PipelineObservabilityTracker(
             config_path=self.config_path,
             observability_config_path=self.observability_config_path,
@@ -440,21 +460,28 @@ class RAGPipeline:
         tracker.tenant = tenant
         tracker.workspace = workspace
         tracker.app = app
+        tracker.attribution = attribution.dimensions()
         if tenant is not None:
             tracker.set_trace_attribute("tenant", tenant)
         if workspace is not None:
             tracker.set_trace_attribute("workspace", workspace)
         if app is not None:
             tracker.set_trace_attribute("app", app)
+        for key, value in attribution.labels().items():
+            tracker.set_trace_attribute(f"attribution.{key}", value)
 
         # -1. Response cache lookup (optional; off by default). A hit returns the
         # stored result immediately, skipping embedding/retrieval/generation and
         # surfacing a cache_hit flag in observability (issue #26). The tenant id
-        # is part of the cache key so two tenants never share an entry (#48).
+        # is part of the cache key so two tenants never share an entry (#48);
+        # the other attribution dimensions join the key for the same reason (#50).
         cache = getattr(self, "cache", None)
         cache_key = None
         if cache is not None and getattr(cache, "enabled", False):
-            cache_query = f"{tenant}\x00{query}" if tenant else query
+            dims = attribution.labels()
+            cache_query = (
+                f"{dims['tenant']}\x00{dims['app']}\x00{dims['user']}\x00{query}"
+            )
             cache_key = cache.make_key(cache_query, effective_top_k)
             cached = cache.get(cache_key)
             if cached is not None:
@@ -706,6 +733,7 @@ class RAGPipeline:
             input_tokens=input_tokens,
             output_tokens=output_tokens,
         )
+        cost["attribution"] = attribution.dimensions()
 
         # 8. Cost governance stage
         if self.cost_governor is not None:
@@ -747,6 +775,7 @@ class RAGPipeline:
             "redaction_enabled": redaction_applied,
             "guardrails_enabled": bool(self.input_guardrails or self.output_guardrails),
             "guardrail_decisions": input_guardrail_decisions + output_guardrail_decisions,
+            "attribution": attribution.dimensions(),
         }
         if tenant is not None:
             trace["tenant"] = tenant
@@ -786,6 +815,7 @@ class RAGPipeline:
             "observability": self.last_observability,
             "cache_hit": False,
             "guardrail_decisions": input_guardrail_decisions + output_guardrail_decisions,
+            "attribution": attribution.dimensions(),
         }
         if tenant is not None:
             result["tenant"] = tenant
@@ -810,6 +840,9 @@ class RAGPipeline:
         tenant: Optional[str] = None,
         workspace: Optional[str] = None,
         app: Optional[str] = None,
+        user: Optional[str] = None,
+        cost_center: Optional[str] = None,
+        attribution: Optional[AttributionContext] = None,
     ) -> List[dict]:
         """
         Run several queries, reusing ``run`` per query (issue #27).
@@ -826,6 +859,16 @@ class RAGPipeline:
         if not queries:
             return []
 
+        # Resolve once so concurrent workers inherit the ingress context even
+        # though contextvars do not propagate into a thread pool by default.
+        attribution = attribution or ensure_attribution(
+            tenant=tenant,
+            workspace=workspace,
+            app=app,
+            user=user,
+            cost_center=cost_center,
+        )
+
         def _one(index: int, query: str) -> dict:
             return self.run(
                 query,
@@ -835,6 +878,9 @@ class RAGPipeline:
                 tenant=tenant,
                 workspace=workspace,
                 app=app,
+                user=user,
+                cost_center=cost_center,
+                attribution=attribution,
             )
 
         workers = int(max_workers or 1)

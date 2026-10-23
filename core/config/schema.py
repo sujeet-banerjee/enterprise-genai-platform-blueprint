@@ -263,6 +263,7 @@ class AccessControlConfig(_StrictModel):
 class TenantEntry(_OpenModel):
     workspace: Optional[str] = None
     app: Optional[str] = None
+    cost_center: Optional[str] = None
     budget_cap_usd: Optional[float] = None
     top_k_max: Optional[int] = None
     allowed_models: Optional[List[str]] = None
@@ -341,12 +342,23 @@ class IdentityConfig(_StrictModel):
     group_claim: Optional[str] = None
     role_claim: Optional[str] = None
     tenant_claim: Optional[str] = None
+    cost_center_claim: Optional[str] = None
     group_role_map: Dict[str, str] = Field(default_factory=dict)
     default_role: Optional[str] = None
     allow_anonymous: Optional[bool] = None
     allow_api_keys: Optional[bool] = None
     scim: Optional[IdentityScimSection] = None
     saml: Optional[IdentitySamlSection] = None
+
+
+# -- attribution.yaml ----------------------------------------------------
+
+
+class AttributionConfig(_StrictModel):
+    enabled: Optional[bool] = None
+    include_user: Optional[bool] = None
+    include_cost_center: Optional[bool] = None
+    default_dimension: Optional[str] = None
 
 
 
@@ -364,4 +376,5 @@ SCHEMAS: Dict[str, Any] = {
     "guardrails": GuardrailsConfig,
     "tenants": TenantsConfig,
     "identity": IdentityConfig,
+    "attribution": AttributionConfig,
 }

@@ -496,13 +496,17 @@ This is what makes the "add a component, change config, done" workflow possible.
 | `access_control.api_keys` | `AccessController` | API-key → role mapping |
 | `tenants.enabled` | composition root → `TenantResolver` | Enables tenant/workspace isolation (roadmap #48; default off ⇒ implicit `default`) |
 | `tenants.default_tenant` | `TenantResolver` | Tenant assumed when no `X-Tenant-ID` header / key mapping applies |
-| `tenants.tenants.<id>` | `TenantResolver` | Workspace/app identity + per-tenant `budget_cap_usd`, `top_k_max`, `allowed_models`, `overrides` |
+| `tenants.tenants.<id>` | `TenantResolver` | Workspace/app identity + `cost_center` + per-tenant `budget_cap_usd`, `top_k_max`, `allowed_models`, `overrides` |
 | `tenants.api_keys` | `TenantResolver` | API-key → tenant mapping (header still wins) |
 | `identity.enabled` | `IdentityResolver` | Enables OIDC bearer auth + SCIM (roadmap #49; default off ⇒ API-key stub) |
 | `identity.issuer` / `audience` / `jwks_uri` / `secret` | `JwtVerifier` | Token signature/issuer/audience/expiry validation (JWKS, or HS256 secret for local use) |
 | `identity.group_claim` / `group_role_map` | `IdentityResolver` | IdP groups → RBAC roles (first match wins; fallback `default_role`) |
 | `identity.tenant_claim` | `TenantResolver` | Tenant fallback when no `X-Tenant-ID` header |
+| `identity.cost_center_claim` | `IdentityResolver` | Claim carrying the caller's cost center for attribution (roadmap #50) |
 | `identity.scim.tokens` | SCIM middleware | Dedicated provisioning bearer tokens (env-referenced) |
+| `attribution.enabled` | composition root -> `AttributionSettings` | Per-user / cost-center attribution in telemetry (roadmap #50; default off -> privacy-preserving `default`) |
+| `attribution.include_user` / `include_cost_center` | `AttributionSettings` | Independently gate the personal dimensions even when enabled |
+| `attribution.default_dimension` | `AttributionSettings` | Placeholder for an absent dimension (default `default`) |
 
 Each concern has its own file (like `models.yaml` / `prompt_config.yaml`); the
 composition root loads them by explicit path. Legacy deployments that still
@@ -532,6 +536,20 @@ effect on the next request (deactivated users are rejected). Direct SAML SP is
 intentionally unsupported - terminate SAML at an OIDC bridge. Tokens are never
 logged; the redactor scrubs `authorization`/`bearer` values and the effective
 config view strips identity secrets.
+
+**Request attribution (roadmap #50).** `config/attribution.yaml` drives
+`core/services/attribution.py`. The API middleware resolves one
+`AttributionContext` per request (tenant/workspace/app from the tenant, user and
+cost center from the authenticated principal) and stores it in a context
+variable for the duration of the request, so every trace, cost record, audit
+event and Prometheus sample carries the same dimensions without changing the
+pipeline call signature. `enabled: false` (the default) is privacy-preserving:
+the tenant/workspace/app dimensions are still reported but the user and
+cost-center dimensions collapse to `default`. When enabled, spend and volume are
+reportable per user and cost center via `GET /v1/attribution`, and the
+`genai_attributed_*` counters carry the same labels. Dimension values are
+sanitised and bounded (`safe_identifier`) before they reach a metric label,
+trace field or audit file.
 
 ### `config/governance.yaml`
 
@@ -1025,7 +1043,7 @@ The same recipe applies to every capability:
 app/                 API + orchestration (main.py, pipeline.py, bootstrap.py)
 config/              models.yaml, prompt_config.yaml, retrieval.yaml,
                      governance.yaml, observability.yaml, guardrails.yaml,
-                     tenants.yaml, identity.yaml, ...
+                     tenants.yaml, identity.yaml, attribution.yaml, ...
 core/
   interfaces/        contracts (embedder, retriever, llm, evaluator, reranker, chunker, guardrail)
   implementations/   vendor/backend implementations

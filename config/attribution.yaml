@@ -1,0 +1,16 @@
+# Request attribution (issue #50, workstream A3)
+#
+# Every trace, metric, audit event and cost record always carries the
+# attribution dimensions tenant/workspace/app/user/cost_center. Tenant,
+# workspace and app come from the tenancy model (issue #48); user comes from
+# the authenticated principal (issue #49) and cost_center from the tenant
+# config or the identity claim.
+#
+# enabled: false keeps the per-user dimension out of telemetry (single-tenant,
+# privacy-preserving default) while still reporting tenant/workspace/app.
+# Set enabled: true to report spend per user / cost center. Dimension values
+# are sanitised and bounded before they reach metrics, traces or audit files.
+enabled: false
+include_user: true
+include_cost_center: true
+default_dimension: default

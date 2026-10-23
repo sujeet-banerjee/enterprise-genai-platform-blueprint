@@ -140,6 +140,8 @@ the lifespan startup hook (not at import). Endpoints:
 - `GET /metrics` - Prometheus exposition (requires the optional `observability` extra; 503 otherwise)
 - `GET /v1/audit` - read the redacted append-only audit trail (`event_type`/`limit` filters)
 - `GET /v1/access` - report the calling persona's role and effective permissions
+- `GET /v1/tenants` - resolved tenant/workspace/app identity and per-tenant policy
+- `GET /v1/attribution` - request/spend totals grouped by tenant/workspace/app/user/cost_center (`tenant`, `window_seconds` filters)
 - Interactive docs at `/docs`
 
 Every response carries `request_id`, `error`, `failure_type` and `failure_tags`, and the
@@ -282,6 +284,7 @@ All behaviour is driven by YAML in config/:
 - config/guardrails.yaml - pluggable input/output guardrail chains, incl. `injection` and `pii` providers, plus adoptable `standard`/`strict` profiles (disabled by default)
 - config/tenants.yaml - tenant/workspace model: identity, per-tenant budget caps/retrieval depth/model allow-lists, config overlays (disabled by default => implicit `default` tenant)
 - config/identity.yaml - OIDC/OAuth2 JWT bearer auth, IdP-group -> RBAC role mapping, SCIM provisioning; SAML via OIDC bridge (disabled by default => API-key stub)
+- config/attribution.yaml - request attribution dimensions (tenant/workspace/app/user/cost_center) on traces, metrics and cost records; per-user/cost-center reporting is opt-in (disabled by default => privacy-preserving default)
 
 The composition root (`app/main.py::build_pipeline()`) reads these configs and wires
 components via registries:
@@ -497,6 +500,7 @@ group_role_map:
   platform-admins: admin
   genai-analysts: analyst
 default_role: viewer
+cost_center_claim: cost_center
 scim:
   enabled: true
   tokens: ["env:SCIM_BEARER_TOKEN"]
@@ -508,6 +512,24 @@ the next request. A `tenant` claim supplies the tenant when no `X-Tenant-ID`
 header is present. Service-account keys from `access_control.api_keys` still
 work for machine callers. SAML is supported via an OIDC bridge (direct SAML SP
 is deliberately not built in). Off by default (API-key stub unchanged).
+
+**Report spend per user / cost center (attribution)** - edit
+`config/attribution.yaml`:
+
+```yaml
+enabled: true
+include_user: true
+include_cost_center: true
+```
+
+Every trace, metric, audit event and cost record always carries the
+`tenant`/`workspace`/`app`/`user`/`cost_center` dimensions. With `enabled:
+false` (the default) the user and cost-center dimensions collapse to `default`
+so no personal identifiers land in telemetry; tenancy and the identity claim
+still supply the other dimensions. `GET /v1/attribution` returns request and
+spend totals grouped by each dimension over a rolling window
+(`?window_seconds=`), and `/metrics` exposes `genai_attributed_requests_total`
+and `genai_attributed_cost_usd_total` labelled by tenant/app/user.
 
 **Toggle governed retrieval / cost caps** - edit `config/governance.yaml`:
 
