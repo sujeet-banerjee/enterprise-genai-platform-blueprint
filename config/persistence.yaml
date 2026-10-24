@@ -1,0 +1,5 @@
+backend: memory
+# path: data/store.db  # for sqlite
+# dsn: postgresql://user:pass@host:5432/db  # for postgres
+# max_entries: 1000
+# retention_seconds: null
