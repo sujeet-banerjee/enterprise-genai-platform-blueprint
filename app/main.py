@@ -393,7 +393,9 @@ def create_app(
             return "experiment"
         if path == "/v1/pipeline:rebuild":
             return "rebuild"
-        if path == "/v1/audit":
+        if path == "/v1/audit/purge":
+            return "governance"
+        if path == "/v1/audit" or path.startswith("/v1/audit/"):
             return "audit"
         if path in (
             "/v1/governance/status",

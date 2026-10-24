@@ -15,3 +15,30 @@ path: ""
 
 # Bounded in-memory ring size (backs GET /v1/audit).
 max_entries: 1000
+# Immutable, hash-chained sink (issue #55). Opt-in; the in-memory ring above is
+# still populated for the read API, while durable records go to this store.
+# Every record carries sequence/prev_hash/hash so tampering is detectable.
+immutable:
+  enabled: false
+  # Single-region fallback path (used when ``regions`` is empty).
+  path: "audit/immutable.jsonl"
+  default_region: "default"
+  # Data-residency routing: one sink per region, selected per tenant.
+  regions: {}
+  # tenant id -> region name; unmapped tenants use default_region.
+  tenant_regions: {}
+  # To enable multiple regions, for example:
+  # regions:
+  #   us: {path: "audit/us.jsonl"}
+  #   eu: {path: "audit/eu.jsonl"}
+  # default_region: us
+  # tenant_regions:
+  #   acme-eu: eu
+
+# Retention in days; ``0`` keeps events forever. Purge exports expired records
+# (into this directory) before deleting them and leaves a hash-chained marker.
+retention:
+  default_days: 90
+  event_types: {}
+  tenants: {}
+  export_dir: "audit/evidence"

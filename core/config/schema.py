@@ -235,10 +235,26 @@ class ApiConfig(_StrictModel):
 # -- audit.yaml ----------------------------------------------------------
 
 
+class AuditImmutableSection(_OpenModel):
+    enabled: Optional[bool] = None
+    path: Optional[str] = None
+    default_region: Optional[str] = None
+    regions: Optional[Dict[str, Any]] = None
+    tenant_regions: Optional[Dict[str, str]] = None
+
+
+class AuditRetentionSection(_OpenModel):
+    default_days: Optional[int] = None
+    event_types: Optional[Dict[str, int]] = None
+    tenants: Optional[Dict[str, int]] = None
+
+
 class AuditConfig(_StrictModel):
     enabled: Optional[bool] = None
     path: Optional[str] = None
     max_entries: Optional[int] = None
+    immutable: Optional[AuditImmutableSection] = None
+    retention: Optional[AuditRetentionSection] = None
 
 
 # -- access_control.yaml -------------------------------------------------

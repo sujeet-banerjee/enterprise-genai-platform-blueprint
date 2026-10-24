@@ -245,6 +245,14 @@ class AuditEventsResponse(BaseModel):
     request_id: Optional[str] = None
 
 
+class AuditPurgeRequest(BaseModel):
+    """Retention purge trigger (issue #55); ``now`` is epoch or ISO-8601."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    now: Optional[Union[float, str]] = None
+
+
 class AttributionStats(BaseModel):
     """Spend/request counters for one attribution dimension value (#50)."""
 

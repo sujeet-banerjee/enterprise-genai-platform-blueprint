@@ -35,6 +35,9 @@ class FailureType(str, Enum):
     # Input guardrail category (issue #73): the query exceeded the configured
     # character bound before it could be token-budgeted.
     QUERY_TOO_LONG = "query_too_long"
+    # Audit/compliance API categories (issue #55).
+    INVALID_REQUEST = "invalid_request"
+    IMMUTABLE_AUDIT_DISABLED = "immutable_audit_disabled"
     # Guardrail framework categories (issue #52): a configured input/output
     # guardrail blocked the request/response.
     GUARDRAIL_INPUT_BLOCKED = "guardrail_input_blocked"
