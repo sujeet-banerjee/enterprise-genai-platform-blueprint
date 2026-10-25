@@ -249,6 +249,17 @@ class AuditRetentionSection(_OpenModel):
     tenants: Optional[Dict[str, int]] = None
 
 
+class PersistenceConfig(_StrictModel):
+    model_config = ConfigDict(extra="allow")
+    backend: str = "memory"
+    dsn: Optional[str] = None
+    path: Optional[str] = None
+    sqlite_path: Optional[str] = None
+    database_url: Optional[str] = None
+    max_entries: int = 1000
+    retention_seconds: Optional[int] = None
+
+
 class AuditConfig(_StrictModel):
     enabled: Optional[bool] = None
     path: Optional[str] = None
