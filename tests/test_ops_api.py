@@ -106,6 +106,7 @@ history_max_runs: {history_max_runs}
 trace_store_max: {trace_store_max}
 """,
         ),
+        "persistence_config_path": _write(tmp_path / "persistence.yaml", "backend: memory\n"),
     }
 
 

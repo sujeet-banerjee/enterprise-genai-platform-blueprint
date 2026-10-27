@@ -245,6 +245,7 @@ def create_app(
     identity_config_path: Path = IDENTITY_CONFIG_PATH,
     attribution_config_path: Path = ATTRIBUTION_CONFIG_PATH,
     acl_config_path: Path = ACL_CONFIG_PATH,
+    persistence_config_path: Path = PERSISTENCE_CONFIG_PATH,
     pipeline_builder: Callable[..., RAGPipeline] = build_pipeline,
 ) -> FastAPI:
     """
@@ -312,7 +313,7 @@ def create_app(
         try:
             from core.services.base_store import build_store
 
-            _exp_store = build_store(config_path=PERSISTENCE_CONFIG_PATH)
+            _exp_store = build_store(config_path=persistence_config_path)
         except Exception:
             _exp_store = None
         application.state.evaluate = EvaluationService(
@@ -329,7 +330,7 @@ def create_app(
         try:
             from core.services.base_store import build_store
 
-            _store = build_store(config_path=PERSISTENCE_CONFIG_PATH)
+            _store = build_store(config_path=persistence_config_path)
         except Exception:
             _store = None
         application.state.history = RunHistory(
@@ -347,7 +348,7 @@ def create_app(
         try:
             from core.services.base_store import build_store
 
-            _audit_store = build_store(config_path=PERSISTENCE_CONFIG_PATH)
+            _audit_store = build_store(config_path=persistence_config_path)
         except Exception:
             _audit_store = None
         application.state.audit = AuditLogger.from_config(
