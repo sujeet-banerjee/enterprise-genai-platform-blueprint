@@ -112,7 +112,16 @@ TOUR_STEPS: List[TourStep] = [
         try_it="Compare capabilities with and without the API key configured.",
     ),
     TourStep(
-        title="10. Traces",
+        title="10. Admin",
+        screen="Admin",
+        body=(
+            "Tenant list and users (identity directory) plus a proposal form to update tenant budgets. "
+            "Gated by admin/rebuild capability; updates are proposals (GitOps remains source of truth)."
+        ),
+        try_it="List tenants/users if your role has admin capability.",
+    ),
+    TourStep(
+        title="11. Traces",
         screen="Traces",
         body=(
             "Paste a `request_id` (from a Query Studio result) and click **Look up trace** "
@@ -123,7 +132,7 @@ TOUR_STEPS: List[TourStep] = [
         try_it="Look up the request_id shown after your Query Studio run.",
     ),
     TourStep(
-        title="11. Settings (read-only)",
+        title="12. Settings (read-only)",
         screen="Settings (read-only)",
         body=(
             "View the redacted **effective configuration** and expand the provider lists "

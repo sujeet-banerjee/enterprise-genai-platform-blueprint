@@ -541,6 +541,49 @@ def screen_access() -> None:
     )
 
 
+def screen_admin() -> None:
+    st.header("Admin")
+    api = client()
+
+    access = api.access()
+    if not require_ok(access):
+        return
+    caps = access.data.get("capabilities") or []
+    if "admin" not in caps and "rebuild" not in caps:
+        st.warning("Admin capability required.")
+        return
+
+    st.subheader("Tenants")
+    t_res = api.admin_list_tenants()
+    if require_ok(t_res):
+        tenants = t_res.data.get("tenants") or []
+        if tenants:
+            st.dataframe(tenants, use_container_width=True)
+        else:
+            st.info("No tenants returned")
+
+    st.subheader("Users (identity directory)")
+    u_res = api.admin_list_users()
+    if require_ok(u_res):
+        users = u_res.data.get("users") or []
+        if users:
+            st.dataframe(users, use_container_width=True)
+        else:
+            st.info("No users returned or identity disabled")
+
+    st.subheader("Tenant updates (proposal)")
+    tenant_id = st.text_input("Tenant ID")
+    budget = st.number_input("Budget cap USD (optional)", value=0.0, step=0.01)
+    if st.button("Update tenant") and tenant_id:
+        payload = {}
+        if budget > 0:
+            payload["budget_cap_usd"] = float(budget)
+        r = api.admin_update_tenant(tenant_id, payload)
+        if require_ok(r):
+            st.success("Update submitted")
+            st.rerun()
+
+
 def screen_traces() -> None:
     st.header("Traces")
     api = client()
@@ -605,6 +648,7 @@ SCREENS = {
     "Guardrails": screen_guardrails,
     "Audit": screen_audit,
     "Access / RBAC": screen_access,
+    "Admin": screen_admin,
     "Traces": screen_traces,
     "Settings (read-only)": screen_settings,
 }

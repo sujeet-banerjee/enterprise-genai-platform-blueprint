@@ -307,3 +307,27 @@ class AccessResponse(BaseModel):
     subject: Optional[str] = None
     groups: List[str] = []
     request_id: Optional[str] = None
+
+
+class TenantUpdateRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    budget_cap_usd: Optional[float] = None
+    top_k_max: Optional[int] = None
+    allowed_models: Optional[List[str]] = None
+    overrides: Optional[Dict[str, Any]] = None
+    workspace: Optional[str] = None
+    app: Optional[str] = None
+    cost_center: Optional[str] = None
+
+
+class AdminTenantListResponse(BaseModel):
+    enabled: bool = False
+    tenants: List[Dict[str, Any]] = []
+    request_id: Optional[str] = None
+
+
+class AdminUserListResponse(BaseModel):
+    enabled: bool = False
+    users: List[Dict[str, Any]] = []
+    request_id: Optional[str] = None

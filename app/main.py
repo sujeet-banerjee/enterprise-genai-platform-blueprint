@@ -20,7 +20,7 @@ from app.introspection import IntrospectionService
 from app.ops_api import RunHistory, register_ops_routes
 from app.pipeline import RAGPipeline
 from app.schemas import (
-    AccessResponse,
+    AccessResponse, AdminTenantListResponse, AdminUserListResponse, TenantUpdateRequest,
     EffectiveConfigResponse,
     EmbeddingModelsResponse,
     EvaluatorsResponse,
@@ -823,6 +823,89 @@ def create_app(
             default_tenant=tenant_resolver.default_tenant,
             current=current,
             tenants=[TenantInfo(**item) for item in tenant_resolver.describe_all()],
+            request_id=getattr(request.state, "request_id", None),
+        )
+
+    @application.get("/v1/admin/tenants", response_model=AdminTenantListResponse)
+    def admin_tenants_list(request: Request):
+        role = getattr(request.state, "role", access_controller.default_role)
+        if not access_controller.has_capability(role, "admin") and not access_controller.has_capability(role, "rebuild"):
+            return _error_envelope(
+                request,
+                status_code=403,
+                failure_type=FailureType.UNKNOWN_FAILURE,
+                message="admin capability required",
+                failure_tags=["forbidden", "admin_required"],
+            )
+        redactor = getattr(request.app.state, "redactor", None)
+        tenants = []
+        for item in tenant_resolver.describe_all():
+            t = dict(item)
+            if redactor is not None:
+                t = redactor.redact_obj(t)
+            tenants.append(t)
+        return AdminTenantListResponse(
+            enabled=tenant_resolver.enabled,
+            tenants=tenants,
+            request_id=getattr(request.state, "request_id", None),
+        )
+
+    @application.post("/v1/admin/tenants/{tenant_id}", response_model=AdminTenantListResponse)
+    def admin_tenants_update(tenant_id: str, payload: TenantUpdateRequest, request: Request):
+        role = getattr(request.state, "role", access_controller.default_role)
+        if not access_controller.has_capability(role, "admin") and not access_controller.has_capability(role, "rebuild"):
+            return _error_envelope(
+                request,
+                status_code=403,
+                failure_type=FailureType.UNKNOWN_FAILURE,
+                message="admin capability required",
+                failure_tags=["forbidden", "admin_required"],
+            )
+        redactor = getattr(request.app.state, "redactor", None)
+        updated = []
+        for item in tenant_resolver.describe_all():
+            t = dict(item)
+            if t.get("id") == tenant_id:
+                data = payload.model_dump(exclude_none=True)
+                t.update(data)
+            if redactor is not None:
+                t = redactor.redact_obj(t)
+            updated.append(t)
+        return AdminTenantListResponse(
+            enabled=tenant_resolver.enabled,
+            tenants=updated,
+            request_id=getattr(request.state, "request_id", None),
+        )
+
+    @application.get("/v1/admin/users", response_model=AdminUserListResponse)
+    def admin_users_list(request: Request):
+        role = getattr(request.state, "role", access_controller.default_role)
+        if not access_controller.has_capability(role, "admin") and not access_controller.has_capability(role, "rebuild"):
+            return _error_envelope(
+                request,
+                status_code=403,
+                failure_type=FailureType.UNKNOWN_FAILURE,
+                message="admin capability required",
+                failure_tags=["forbidden", "admin_required"],
+            )
+        redactor = getattr(request.app.state, "redactor", None)
+        users = []
+        if identity_resolver is not None and getattr(identity_resolver, "directory", None) is not None:
+            directory = identity_resolver.directory
+            for user in getattr(directory, "_users", {}).values():
+                u = {
+                    "id": getattr(user, "id", None),
+                    "userName": getattr(user, "userName", None),
+                    "active": getattr(user, "active", True),
+                    "groups": list(getattr(user, "groups", []) or []),
+                    "role": getattr(user, "role", None),
+                }
+                if redactor is not None:
+                    u = redactor.redact_obj(u)
+                users.append(u)
+        return AdminUserListResponse(
+            enabled=identity_resolver.enabled if identity_resolver is not None else False,
+            users=users,
             request_id=getattr(request.state, "request_id", None),
         )
 

@@ -187,6 +187,15 @@ class ApiClient:
             params["event_type"] = event_type
         return self.get("/v1/audit", params=params or None)
 
+    def admin_list_tenants(self) -> ApiResult:
+        return self.get("/v1/admin/tenants")
+
+    def admin_update_tenant(self, tenant_id: str, payload: Dict[str, Any]) -> ApiResult:
+        return self.post(f"/v1/admin/tenants/{tenant_id}", payload)
+
+    def admin_list_users(self) -> ApiResult:
+        return self.get("/v1/admin/users")
+
     def prometheus_metrics(self) -> ApiResult:
         """Scrape ``/metrics``; the text exposition lands in ``data["raw"]``."""
         return self.get("/metrics")
