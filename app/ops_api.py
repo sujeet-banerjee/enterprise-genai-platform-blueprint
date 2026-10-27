@@ -168,7 +168,9 @@ class RunHistory:
             if self._store is not None:
                 try:
                     self._store.set(f"{self._store_prefix}:run:{request_id}", entry)
-                    self._store.set(f"{self._store_prefix}:trace:{request_id}", self._traces.get(request_id))
+                    tr = self._traces.get(request_id)
+                    if tr is not None:
+                        self._store.set(f"{self._store_prefix}:trace:{request_id}", tr)
                 except Exception:
                     pass
 

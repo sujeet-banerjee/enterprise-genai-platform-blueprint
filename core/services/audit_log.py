@@ -101,7 +101,7 @@ class AuditLogger:
                     self._store.set(f"audit:{event.get('event_id')}", event)
                 except Exception:
                     pass
-            if self._sink is None and self._store is None and self.path is not None:
+            if self._sink is None and self.path is not None:
                 try:
                     with open(self.path, "a", encoding="utf-8") as handle:
                         handle.write(json.dumps(event, sort_keys=True) + "\n")

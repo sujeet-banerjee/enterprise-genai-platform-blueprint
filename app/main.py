@@ -313,7 +313,7 @@ def create_app(
         try:
             from core.services.base_store import build_store
 
-            _exp_store = build_store(config_path=persistence_config_path)
+            _exp_store = build_store(config_path=str(persistence_config_path))
         except Exception:
             _exp_store = None
         application.state.evaluate = EvaluationService(
@@ -330,7 +330,7 @@ def create_app(
         try:
             from core.services.base_store import build_store
 
-            _store = build_store(config_path=persistence_config_path)
+            _store = build_store(config_path=str(persistence_config_path))
         except Exception:
             _store = None
         application.state.history = RunHistory(
@@ -348,7 +348,7 @@ def create_app(
         try:
             from core.services.base_store import build_store
 
-            _audit_store = build_store(config_path=persistence_config_path)
+            _audit_store = build_store(config_path=str(persistence_config_path))
         except Exception:
             _audit_store = None
         application.state.audit = AuditLogger.from_config(
