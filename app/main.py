@@ -809,17 +809,19 @@ def create_app(
     def admin_tenants_list(request: Request):
         role = getattr(request.state, "role", access_controller.default_role)
         if not access_controller.has_capability(role, "admin") and not access_controller.has_capability(role, "rebuild"):
-            return _error_response(
+            return _error_envelope(
                 request,
                 status_code=403,
                 failure_type=FailureType.UNKNOWN_FAILURE,
                 message="admin capability required",
                 failure_tags=["forbidden", "admin_required"],
             )
+        redactor = getattr(request.app.state, "redactor", None)
         tenants = []
         for item in tenant_resolver.describe_all():
             t = dict(item)
-            t = _redactor.redact_obj(t) if _redactor is not None else t
+            if redactor is not None:
+                t = redactor.redact_obj(t)
             tenants.append(t)
         return AdminTenantListResponse(
             enabled=tenant_resolver.enabled,
@@ -831,21 +833,22 @@ def create_app(
     def admin_tenants_update(tenant_id: str, payload: TenantUpdateRequest, request: Request):
         role = getattr(request.state, "role", access_controller.default_role)
         if not access_controller.has_capability(role, "admin") and not access_controller.has_capability(role, "rebuild"):
-            return _error_response(
+            return _error_envelope(
                 request,
                 status_code=403,
                 failure_type=FailureType.UNKNOWN_FAILURE,
                 message="admin capability required",
                 failure_tags=["forbidden", "admin_required"],
             )
-        # In-memory view update only (GitOps remains source of truth)
+        redactor = getattr(request.app.state, "redactor", None)
         updated = []
         for item in tenant_resolver.describe_all():
             t = dict(item)
             if t.get("id") == tenant_id:
                 data = payload.model_dump(exclude_none=True)
                 t.update(data)
-            t = _redactor.redact_obj(t) if _redactor is not None else t
+            if redactor is not None:
+                t = redactor.redact_obj(t)
             updated.append(t)
         return AdminTenantListResponse(
             enabled=tenant_resolver.enabled,
@@ -857,13 +860,14 @@ def create_app(
     def admin_users_list(request: Request):
         role = getattr(request.state, "role", access_controller.default_role)
         if not access_controller.has_capability(role, "admin") and not access_controller.has_capability(role, "rebuild"):
-            return _error_response(
+            return _error_envelope(
                 request,
                 status_code=403,
                 failure_type=FailureType.UNKNOWN_FAILURE,
                 message="admin capability required",
                 failure_tags=["forbidden", "admin_required"],
             )
+        redactor = getattr(request.app.state, "redactor", None)
         users = []
         if identity_resolver is not None and getattr(identity_resolver, "directory", None) is not None:
             directory = identity_resolver.directory
@@ -875,7 +879,9 @@ def create_app(
                     "groups": list(getattr(user, "groups", []) or []),
                     "role": getattr(user, "role", None),
                 }
-                users.append(_redactor.redact_obj(u) if _redactor is not None else u)
+                if redactor is not None:
+                    u = redactor.redact_obj(u)
+                users.append(u)
         return AdminUserListResponse(
             enabled=identity_resolver.enabled if identity_resolver is not None else False,
             users=users,
