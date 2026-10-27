@@ -179,17 +179,14 @@ class RunHistory:
     def trace(self, request_id: str, tenant: Optional[str] = None) -> Optional[Any]:
         with self._lock:
             trace = self._traces.get(request_id)
-            if trace is None and self._store is not None:
-                try:
-                    trace = self._store.get(f"{self._store_prefix}:trace:{request_id}")
-                except Exception:
-                    trace = None
             if (
                 trace is not None
                 and tenant is not None
                 and isinstance(trace, dict)
                 and trace.get("tenant") not in (None, tenant)
             ):
+                return None
+            if trace is None:
                 return None
             return dict(trace) if isinstance(trace, dict) else trace
 
