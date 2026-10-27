@@ -47,10 +47,12 @@ class UnknownEvaluatorError(LookupError):
 class _ExperimentStore:
     """Bounded in-memory store of experiment runs (oldest entries evicted)."""
 
-    def __init__(self, max_entries: int = 50):
+    def __init__(self, max_entries: int = 50, store: Optional[Any] = None):
         self.max_entries = int(max_entries)
         self._entries: "OrderedDict[str, Dict[str, Any]]" = OrderedDict()
         self._lock = threading.Lock()
+        self._store = store
+        self._prefix = "experiments"
 
     def create(
         self, exp_id: str, kind: str, tenant: Optional[str] = None
@@ -70,11 +72,23 @@ class _ExperimentStore:
             self._entries[exp_id] = entry
             while len(self._entries) > self.max_entries:
                 self._entries.popitem(last=False)
+            if self._store is not None:
+                try:
+                    self._store.set(f"{self._prefix}:{exp_id}", entry)
+                except Exception:
+                    pass
             return dict(entry)
 
     def get(self, exp_id: str) -> Optional[Dict[str, Any]]:
         with self._lock:
             entry = self._entries.get(exp_id)
+            if entry is None and self._store is not None:
+                try:
+                    entry = self._store.get(f"{self._prefix}:{exp_id}")
+                    if entry is not None:
+                        self._entries[exp_id] = entry
+                except Exception:
+                    entry = None
             return dict(entry) if entry is not None else None
 
     def complete(self, exp_id: str, result: Any) -> None:
@@ -89,6 +103,11 @@ class _ExperimentStore:
                 error=None,
                 failure_type=None,
             )
+            if self._store is not None:
+                try:
+                    self._store.set(f"{self._prefix}:{exp_id}", entry)
+                except Exception:
+                    pass
 
     def fail(self, exp_id: str, error: str, failure_type: str) -> None:
         with self._lock:
@@ -102,6 +121,11 @@ class _ExperimentStore:
                 error=error,
                 failure_type=failure_type,
             )
+            if self._store is not None:
+                try:
+                    self._store.set(f"{self._prefix}:{exp_id}", entry)
+                except Exception:
+                    pass
 
 
 def jsonable(value: Any) -> Any:
@@ -145,6 +169,7 @@ class EvaluationService:
     resilience_config_path: Optional[Path] = None,
     guardrails_config_path: Optional[Path] = None,
     acl_config_path: Optional[Path] = None,
+    store: Optional[Any] = None,
     ):
         self.models_config_path = Path(models_config_path)
         self.prompt_config_path = Path(prompt_config_path)
@@ -168,7 +193,7 @@ class EvaluationService:
             ),
             acl_config_path=(str(acl_config_path) if acl_config_path else None),
         )
-        self.store = _ExperimentStore()
+        self.store = _ExperimentStore(store=store)
         self._executor = ThreadPoolExecutor(
             max_workers=max_workers, thread_name_prefix="experiment"
         )

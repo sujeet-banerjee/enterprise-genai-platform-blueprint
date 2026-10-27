@@ -80,6 +80,7 @@ class RunHistory:
         max_traces: int = 500,
         redactor: Optional[SensitiveDataRedactor] = None,
         observability_config_path: Optional[Any] = None,
+        store: Optional[Any] = None,
     ):
         self.max_runs = int(max_runs)
         self.max_traces = int(max_traces)
@@ -89,6 +90,8 @@ class RunHistory:
         if redactor is None:
             redactor = _build_redactor(observability_config_path)
         self._redactor = redactor
+        self._store = store
+        self._store_prefix = "runs"
 
     @property
     def redactor(self) -> SensitiveDataRedactor:
@@ -162,12 +165,23 @@ class RunHistory:
                 self._traces.move_to_end(request_id)
                 while len(self._traces) > self.max_traces:
                     self._traces.popitem(last=False)
+            if self._store is not None:
+                try:
+                    self._store.set(f"{self._store_prefix}:run:{request_id}", entry)
+                    self._store.set(f"{self._store_prefix}:trace:{request_id}", self._traces.get(request_id))
+                except Exception:
+                    pass
 
     # -- reads ------------------------------------------------------------
 
     def trace(self, request_id: str, tenant: Optional[str] = None) -> Optional[Any]:
         with self._lock:
             trace = self._traces.get(request_id)
+            if trace is None and self._store is not None:
+                try:
+                    trace = self._store.get(f"{self._store_prefix}:trace:{request_id}")
+                except Exception:
+                    trace = None
             if (
                 trace is not None
                 and tenant is not None

@@ -41,6 +41,7 @@ class AuditLogger:
         clock: Optional[Callable[[], float]] = None,
         sink: Optional[Any] = None,
         export_dir: Optional[Any] = None,
+        store: Optional[Any] = None,
     ):
         self.enabled = bool(enabled)
         self.path = Path(path) if path else None
@@ -51,6 +52,7 @@ class AuditLogger:
         self._lock = threading.Lock()
         self._events: Deque[Dict[str, Any]] = deque(maxlen=self.max_entries)
         self._sink = sink
+        self._store = store
         self._closed = False
         if self.enabled and self.path is not None:
             self.path.parent.mkdir(parents=True, exist_ok=True)
@@ -94,7 +96,12 @@ class AuditLogger:
             self._events.append(event)
             if self._sink is not None:
                 self._sink.append(event)
-            elif self.path is not None:
+            if self._store is not None:
+                try:
+                    self._store.set(f"audit:{event.get('event_id')}", event)
+                except Exception:
+                    pass
+            if self._sink is None and self._store is None and self.path is not None:
                 try:
                     with open(self.path, "a", encoding="utf-8") as handle:
                         handle.write(json.dumps(event, sort_keys=True) + "\n")
@@ -123,10 +130,17 @@ class AuditLogger:
                 since=since,
                 until=until,
             )
-        with self._lock:
-            items = list(self._events)
+        items = []
+        if self._store is not None:
+            try:
+                items = list(self._store.list(prefix="audit:", limit=10000))
+            except Exception:
+                items = []
+        if not items:
+            with self._lock:
+                items = list(self._events)
         if event_type is not None:
-            items = [item for item in items if item["event_type"] == event_type]
+            items = [item for item in items if item.get("event_type") == event_type]
         if tenant is not None:
             items = [item for item in items if item.get("tenant") == str(tenant)]
         if outcome is not None:
@@ -192,6 +206,7 @@ class AuditLogger:
         config: Optional[Dict[str, Any]],
         redactor: Optional[SensitiveDataRedactor] = None,
         clock: Optional[Callable[[], float]] = None,
+        store: Optional[Any] = None,
     ) -> "AuditLogger":
         """Build a logger from an ``audit`` config section (default: disabled)."""
         config = config or {}
@@ -207,4 +222,5 @@ class AuditLogger:
             clock=clock,
             sink=sink,
             export_dir=export_dir,
+            store=store,
         )

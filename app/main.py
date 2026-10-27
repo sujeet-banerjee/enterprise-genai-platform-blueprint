@@ -309,6 +309,12 @@ def create_app(
             attribution_config_path=attribution_config_path,
             acl_config_path=acl_config_path,
         )
+        try:
+            from core.services.base_store import build_store
+
+            _exp_store = build_store(config_path=PERSISTENCE_CONFIG_PATH)
+        except Exception:
+            _exp_store = None
         application.state.evaluate = EvaluationService(
             models_config_path=models_config_path,
             prompt_config_path=prompt_config_path,
@@ -318,11 +324,19 @@ def create_app(
             resilience_config_path=resilience_config_path,
             guardrails_config_path=guardrails_config_path,
             acl_config_path=acl_config_path,
+            store=_exp_store,
         )
+        try:
+            from core.services.base_store import build_store
+
+            _store = build_store(config_path=PERSISTENCE_CONFIG_PATH)
+        except Exception:
+            _store = None
         application.state.history = RunHistory(
             max_runs=int(api_config.get("history_max_runs", 1000)),
             max_traces=int(api_config.get("trace_store_max", 500)),
             observability_config_path=observability_config_path,
+            store=_store,
         )
         # Prometheus collector (issue #44): optional dependency; a no-op when
         # prometheus-client is not installed.
@@ -330,8 +344,14 @@ def create_app(
         # Audit log (issue #28): structured, append-only, off by default. It
         # reuses the history redactor so the trail never stores secrets.
         audit_config = _load_config(audit_config_path) or {}
+        try:
+            from core.services.base_store import build_store
+
+            _audit_store = build_store(config_path=PERSISTENCE_CONFIG_PATH)
+        except Exception:
+            _audit_store = None
         application.state.audit = AuditLogger.from_config(
-            audit_config, redactor=application.state.history.redactor
+            audit_config, redactor=application.state.history.redactor, store=_audit_store
         )
         audit_logger = application.state.audit
         audit_logger.record(
