@@ -192,6 +192,7 @@ def _tmp_configs(tmp_path: Path, *, audit_enabled: bool, audit_path: str = ""):
             f"enabled: {'true' if audit_enabled else 'false'}\n"
             f"path: {json.dumps(audit_path)}\nmax_entries: 100\n",
         ),
+        "persistence_config_path": _write(tmp_path / "persistence.yaml", "backend: memory\n"),
     }
 
 
