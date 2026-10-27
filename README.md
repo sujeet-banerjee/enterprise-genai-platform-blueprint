@@ -766,3 +766,5 @@ tracked by milestones `H0`-`H3` (umbrella issue #43).
 ## License
 
 MIT
+
+- config/persistence.yaml (store backend: memory/SQLite/Postgres)

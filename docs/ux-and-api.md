@@ -118,7 +118,11 @@ Legend: **[E]**xisting. Every row is asserted by `tests/test_api_contract.py`
 | 16 | `GET /v1/traces/{request_id}` | Observability | last-trace store (bounded LRU); 404 `trace_not_found` |
 | 17 | `GET /v1/metrics` | Observability | aggregate stage latencies (mean/p50/p95), failures by type/tag, cost, guardrails, cache |
 | 18 | `GET /metrics` | Ops | Prometheus exposition of the same run counters (optional extra) |
-| 19 | `GET /v1/audit` | Governance | audit events with `limit`/`event_type` filters; redacted |
+| 19 | `GET /v1/audit` | Governance | audit events with `limit`/`event_type` filters; redacted | `AuditEventsResponse` | `audit` |
+| 20 | `GET /v1/audit/evidence` | Governance | evidence pack for a time window (`start`/`end`/`tenant`) | `EvidencePack` | `audit` |
+| 21 | `GET /v1/audit/export` | Governance | download filtered events as attachment | JSON/attachment | `audit` |
+| 22 | `GET /v1/audit/verify` | Governance | verify immutable hash chain (`region`) | `VerifyResult` | `audit` |
+| 23 | `POST /v1/audit/purge` | Governance | retention purge exporting before deletion | `PurgeResult` | `governance` |
 | 20 | `GET /docs`, `GET /redoc`, `GET /openapi.json` | Docs | generated from the Pydantic models |
 
 Cross-cutting (all endpoints): `/v1` ordering, error envelope per Â§3.4,

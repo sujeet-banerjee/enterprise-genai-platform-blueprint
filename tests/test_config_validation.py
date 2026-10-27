@@ -62,6 +62,7 @@ def test_all_shipped_configs_validate():
         "identity.yaml",
         "attribution.yaml",
         "acl.yaml",
+        "persistence.yaml",
     }
     for name, issues in results.items():
         hard = [i for i in issues if i.kind != "version-warning"]
