@@ -833,12 +833,14 @@ def create_app(
     def admin_tenants_list(request: Request):
         role = getattr(request.state, "role", access_controller.default_role)
         if not access_controller.has_capability(role, "admin") and not access_controller.has_capability(role, "rebuild"):
-            return _error_envelope(
-                request,
+            return JSONResponse(
                 status_code=403,
-                failure_type=FailureType.UNKNOWN_FAILURE,
-                message="admin capability required",
-                failure_tags=["forbidden", "admin_required"],
+                content=_error_envelope(
+                    error="admin capability required",
+                    failure_type=FailureType.UNKNOWN_FAILURE.value,
+                    failure_tags=["forbidden", "admin_required"],
+                    request_id=getattr(request.state, "request_id", str(uuid.uuid4())),
+                ),
             )
         redactor = getattr(request.app.state, "redactor", None)
         tenants = []
@@ -857,12 +859,14 @@ def create_app(
     def admin_tenants_update(tenant_id: str, payload: TenantUpdateRequest, request: Request):
         role = getattr(request.state, "role", access_controller.default_role)
         if not access_controller.has_capability(role, "admin") and not access_controller.has_capability(role, "rebuild"):
-            return _error_envelope(
-                request,
+            return JSONResponse(
                 status_code=403,
-                failure_type=FailureType.UNKNOWN_FAILURE,
-                message="admin capability required",
-                failure_tags=["forbidden", "admin_required"],
+                content=_error_envelope(
+                    error="admin capability required",
+                    failure_type=FailureType.UNKNOWN_FAILURE.value,
+                    failure_tags=["forbidden", "admin_required"],
+                    request_id=getattr(request.state, "request_id", str(uuid.uuid4())),
+                ),
             )
         redactor = getattr(request.app.state, "redactor", None)
         updated = []
@@ -884,12 +888,14 @@ def create_app(
     def admin_users_list(request: Request):
         role = getattr(request.state, "role", access_controller.default_role)
         if not access_controller.has_capability(role, "admin") and not access_controller.has_capability(role, "rebuild"):
-            return _error_envelope(
-                request,
+            return JSONResponse(
                 status_code=403,
-                failure_type=FailureType.UNKNOWN_FAILURE,
-                message="admin capability required",
-                failure_tags=["forbidden", "admin_required"],
+                content=_error_envelope(
+                    error="admin capability required",
+                    failure_type=FailureType.UNKNOWN_FAILURE.value,
+                    failure_tags=["forbidden", "admin_required"],
+                    request_id=getattr(request.state, "request_id", str(uuid.uuid4())),
+                ),
             )
         redactor = getattr(request.app.state, "redactor", None)
         users = []
