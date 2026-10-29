@@ -4,6 +4,8 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any, Callable, Optional
 
+from core.config.generation_config import GenerationConfig
+from core.services.access_control import AccessController
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
@@ -33,8 +35,6 @@ from app.schemas import (
 )
 from app.scim_api import register_scim_routes
 from app.whatif_api import PipelineRebuildService, describe_pipeline, register_whatif_routes
-from core.config.generation_config import GenerationConfig
-from core.services.access_control import AccessController
 from core.services.acl import AclSettings
 from core.services.attribution import (
     AttributionContext,
