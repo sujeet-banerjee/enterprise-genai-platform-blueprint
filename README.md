@@ -138,10 +138,11 @@ the lifespan startup hook (not at import). Endpoints:
 - `POST /v1/pipeline:rebuild` - runtime component swap via config overrides (gated by `api.allow_rebuild`)
 - `GET /v1/governance/status`, `GET /v1/traces/{request_id}`, `GET /v1/metrics` - governance & observability
 - `GET /metrics` - Prometheus exposition (requires the optional `observability` extra; 503 otherwise)
-- `GET /v1/audit` - read the redacted append-only audit trail (`event_type`/`limit` filters)
+- `GET /v1/audit` - read the redacted append-only audit trail (`event_type`/`limit` filters); `/v1/audit/evidence`, `/v1/audit/export`, `/v1/audit/verify` and `POST /v1/audit/purge` add compliance evidence, export, chain verification and retention purge
 - `GET /v1/access` - report the calling persona's role and effective permissions
 - `GET /v1/tenants` - resolved tenant/workspace/app identity and per-tenant policy
 - `GET /v1/attribution` - request/spend totals grouped by tenant/workspace/app/user/cost_center (`tenant`, `window_seconds` filters)
+- `GET /v1/admin/tenants`, `POST /v1/admin/tenants/{tenant_id}`, `GET /v1/admin/users` - tenant policy admin + identity directory (requires the `admin` or `rebuild` capability)
 - Interactive docs at `/docs`
 
 Every response carries `request_id`, `error`, `failure_type` and `failure_tags`, and the

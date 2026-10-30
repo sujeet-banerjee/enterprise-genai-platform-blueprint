@@ -1,7 +1,7 @@
-# UX & API Architecture Ã¢â‚¬â€ Fronting UI Plan
+# UX & API Architecture — Fronting UI Plan
 
 > **Status: DELIVERED (reconciled 2026-10-22, #81).** The API surface and the Streamlit
-> console described here shipped in the P2/P3 series; Ã‚Â§7 is now a delivery record rather
+> console described here shipped in the P2/P3 series; §7 is now a delivery record rather
 > than a proposal. The forward-looking roadmap (multi-tenancy, guardrails depth,
 > observability, deployment, product UI) lives in
 > [enterprise-roadmap.md](enterprise-roadmap.md).
@@ -10,7 +10,7 @@
 
 Define (a) the public API surface that makes this backend usable by **any enterprise
 architect** integrating the blueprint, and (b) the UX architecture for a fronting UI
-built on top of it Ã¢â‚¬â€ in that order. The API is the contract; the UI is its first
+built on top of it — in that order. The API is the contract; the UI is its first
 non-trivial consumer and living proof that the contract is sufficient.
 
 ## 2. Personas & jobs-to-be-done
@@ -18,7 +18,7 @@ non-trivial consumer and living proof that the contract is sufficient.
 | Persona | Job to be done | Primary surfaces |
 |---|---|---|
 | **Enterprise architect** | Evaluate: what is pluggable, what does a request cost/latency, how do I swap vendor/model? | Introspection endpoints, `/docs` (OpenAPI), config viewer, governance status |
-| **RAG/ML engineer** | Experiment: prompt, `top_k`, chunking, metric, model Ã¢â‚¬â€ compare outcomes quickly | `POST /v1/query`, experiments, evaluation, Query Studio UI |
+| **RAG/ML engineer** | Experiment: prompt, `top_k`, chunking, metric, model — compare outcomes quickly | `POST /v1/query`, experiments, evaluation, Query Studio UI |
 | **Platform/ops engineer** | Operate: health, budgets, traces, failure rates, deploys | `/health`, `/ready`, governance, traces, Prometheus metrics |
 | **Evaluator/analyst** | Measure: run evaluations/benchmarks, track regressions | `POST /v1/evaluate`, experiments, comparison tables |
 | **Security/compliance reviewer** | Audit: who did what, were guardrails enforced, what PII was scrubbed | `/v1/audit`, `/v1/guardrails`, `/v1/access`, redacted traces |
@@ -27,7 +27,7 @@ non-trivial consumer and living proof that the contract is sufficient.
 
 1. **API-first.** FastAPI + Pydantic request/response models are the contract;
    OpenAPI (`/docs`, `/openapi.json`) is generated, never hand-maintained.
-2. **UI over HTTP only.** The fronting UI must call the REST API Ã¢â‚¬â€ it must **never
+2. **UI over HTTP only.** The fronting UI must call the REST API — it must **never
    import `app.pipeline`, `core.*`, or build a pipeline itself.** If the UI cannot
    be built purely on the public API, the API is incomplete and must be extended
    first. This is the acceptance test for "usable by any enterprise architect";
@@ -35,7 +35,7 @@ non-trivial consumer and living proof that the contract is sufficient.
 3. **Versioned surface** (`/v1/...`), with the legacy `POST /query` kept as an alias
    during transition (existing tests depend on it).
 4. **One error envelope** reusing the existing `FailureType` taxonomy
-   (`core/services/failure_classifier.py`; see architecture Ã‚Â§8.1 for the current
+   (`core/services/failure_classifier.py`; see architecture §8.1 for the current
    members, including the API-level `not_ready`, `unauthorized` and `batch_too_large`,
    the query guard `query_too_long`, and the guardrail `guardrail_input_blocked` /
    `guardrail_output_blocked`) + `request_id` + `failure_tags`.
@@ -47,50 +47,61 @@ non-trivial consumer and living proof that the contract is sufficient.
 
 ## 4. Current state (shipped)
 
-- **HTTP surface** Ã¢â‚¬â€ 22 application routes (see Ã‚Â§5) plus the generated `/docs`,
+- **HTTP surface** — 35 application routes (see §5) plus the generated `/docs`,
   `/redoc` and `/openapi.json`, all with typed response models where the payload is
   structured (`app/schemas.py`). Cross-cutting: `/v1` prefix, error
   envelope, `X-Request-ID` echo, optional config-driven API-key stub
   (`config/api.yaml`), `503 not_ready` before the lifespan completes.
-- **Readiness** Ã¢â‚¬â€ `GET /ready` reports `status`, `config_revision` and a
+- **Readiness** — `GET /ready` reports `status`, `config_revision` and a
   `describe_pipeline(...)` component summary; it reflects a successful
   `POST /v1/pipeline:rebuild`.
-- **Introspection** Ã¢â‚¬â€ redacted effective config (`/v1/config`), models,
+- **Introspection** — redacted effective config (`/v1/config`), models,
   embedding models, retrievers (with the *effective* `similarity_metric`), rerankers,
   evaluators, guardrails (resolved input/output chains, previewable while disabled)
   and the RBAC summary (`/v1/access`).
-- **Query** Ã¢â‚¬â€ `POST /v1/query` (+ legacy `/query`) and `POST /v1/query:batch`
+- **Query** — `POST /v1/query` (+ legacy `/query`) and `POST /v1/query:batch`
   (sequential or bounded parallel; per-item envelopes with their own `request_id`,
   cost and latency; one query failing never aborts the batch; `api.max_batch_size`).
-- **Evaluation & experiments** Ã¢â‚¬â€ `POST /v1/evaluate` (active or named evaluator;
+- **Evaluation & experiments** — `POST /v1/evaluate` (active or named evaluator;
   auto-retrieves through the live pipeline when docs are omitted; ground truth is
   used only when the evaluator advertises `supports_ground_truth`), `POST
   /v1/experiments` (202) and `GET /v1/experiments/{exp_id}` backed by a bounded store and
   a thread pool. Experiments reuse the same composition root as the API (#75).
-- **What-if** Ã¢â‚¬â€ `POST /v1/pipeline:rebuild`: deep-applies approved overrides to the
+- **What-if** — `POST /v1/pipeline:rebuild`: deep-applies approved overrides to the
   base YAML in a temp workspace, builds everything, then atomically swaps the live
   pipeline (in-flight requests keep the old instance). Gated by
   `api.allow_rebuild`; governance overrides require `allow_governance_override`.
-- **Ops** Ã¢â‚¬â€ `GET /v1/governance/status` (limits + spend window), `GET
+- **Ops** — `GET /v1/governance/status` (limits + spend window), `GET
   /v1/traces/{request_id}` (redacted trace from a bounded LRU), `GET /v1/metrics`
   (totals, per-stage p50/p95, failures, cost, guardrail decisions, cache) and
   `GET /metrics` (Prometheus exposition; 503 envelope when the `[observability]`
   extra is absent).
-- **Audit** Ã¢â‚¬â€ `GET /v1/audit` over a bounded in-memory trail plus an optional
-  append-only JSONL file (`config/audit.yaml`, disabled by default).
-- **Guardrails** Ã¢â‚¬â€ input/output chains built from `config/guardrails.yaml`
+- **Audit** — `GET /v1/audit` over a bounded in-memory trail plus an optional
+  append-only JSONL file (`config/audit.yaml`, disabled by default). An optional
+  immutable hash-chained store adds sequence + `prev_hash` per record,
+  `GET /v1/audit/verify`, `GET /v1/audit/evidence`, `GET /v1/audit/export` and
+  retention `POST /v1/audit/purge` (export-before-delete), with optional regional
+  routing (#55).
+- **Persistence** — `config/persistence.yaml` selects a `BaseStore` backend for run
+  history, traces, experiments and audit: `memory` (default), `sqlite` or
+  `postgres` (#56); disabled by default so in-memory behaviour is unchanged.
+- **Tenancy & admin** — `config/tenants.yaml` and `config/identity.yaml` resolve the
+  tenant/workspace/app and IdP identity; `GET /v1/admin/tenants`,
+  `POST /v1/admin/tenants/{tenant_id}` and `GET /v1/admin/users` expose the
+  capability-gated read/update surface used by the console **Admin** screen (#57).
+- **Guardrails** — input/output chains built from `config/guardrails.yaml`
   (`injection`, `pii`, `deny_list`, `schema_validator`, plus profiles); blocks return
   **403** with the failure taxonomy, decisions appear in results/traces/metrics/audit.
-- **Config & secrets** Ã¢â‚¬â€ 10 YAML files with strict Pydantic schemas, `${VAR}` /
+- **Config & secrets** — 15 YAML files with strict Pydantic schemas, `${VAR}` /
   `env:` secret resolution at load time, and fail-fast startup validation; the same
   checks run in CI via `python -m app.config_validate`.
-- **Implementations behind the contract** Ã¢â‚¬â€ registries/factories for models,
+- **Implementations behind the contract** — registries/factories for models,
   embedders, retrievers (vector, FAISS, hybrid, knowledge-graph), rerankers,
   evaluators, chunkers, query expanders and guardrails, all selected by config.
-- **Console** Ã¢â‚¬â€ 10 screens (Ã‚Â§6), a dependency-free 11-step tour, and a client that
+- **Console** — 11 screens (§6), a dependency-free 12-step tour, and a client that
   wraps every documented endpoint (HTTP only).
 
-## 5. API surface v1 Ã¢â‚¬â€ endpoint matrix
+## 5. API surface v1 — endpoint matrix
 
 Legend: **[E]**xisting. Every row is asserted by `tests/test_api_contract.py`
 (`EXPECTED_PATHS` equality) and covered by endpoint tests.
@@ -110,6 +121,9 @@ Legend: **[E]**xisting. Every row is asserted by `tests/test_api_contract.py`
 | 10b | `GET /v1/tenants` | Introspection | tenant/workspace/app identity + per-tenant policy (budget cap, retrieval depth, model allow-list, overlays); caller's resolved tenant + all configured tenants (#48) |
 | 10c | `GET/POST/DELETE /scim/v2/Users` (`/scim/v2/Users/{user_id}`), `/scim/v2/Groups` (`/scim/v2/Groups/{group_id}`) | Provisioning | SCIM 2.0 user/group lifecycle; dedicated SCIM bearer token; group membership feeds IdP-group -> RBAC role mapping (#49) |
 | 10d | `GET /v1/attribution` | Governance | request/spend totals grouped by tenant/workspace/app/user/cost_center over a rolling window (`tenant`, `window_seconds` filters) (#50) |
+| 10e | `GET /v1/admin/tenants` | Admin | tenant list with policy/limits; requires the `admin` (or `rebuild`) capability (#57) |
+| 10f | `POST /v1/admin/tenants/{tenant_id}` | Admin | apply a tenant policy update (budget cap etc.); returns the updated tenant list (#57) |
+| 10g | `GET /v1/admin/users` | Admin | identity/SCIM directory users; empty when identity is disabled (#57) |
 | 11 | `POST /v1/evaluate` | Evaluation | active or named evaluator; auto-retrieval; ground truth only when supported |
 | 12 | `POST /v1/experiments` | Evaluation | 202; single run or `compare_embedding_models` / `compare_chunking_strategies` |
 | 13 | `GET /v1/experiments/{exp_id}` | Evaluation | status/result from the bounded experiment store |
@@ -125,21 +139,21 @@ Legend: **[E]**xisting. Every row is asserted by `tests/test_api_contract.py`
 | 23 | `POST /v1/audit/purge` | Governance | retention purge exporting before deletion | `PurgeResult` | `governance` |
 | 20 | `GET /docs`, `GET /redoc`, `GET /openapi.json` | Docs | generated from the Pydantic models |
 
-Cross-cutting (all endpoints): `/v1` ordering, error envelope per Ã‚Â§3.4,
+Cross-cutting (all endpoints): `/v1` ordering, error envelope per §3.4,
 `X-Request-ID` echo, API-key auth **stub** (config-driven middleware, disabled by
 default), and Pydantic response models so `/docs` is self-describing. Public paths
 (`/health`, `/ready`, `/metrics`, `/docs`, `/redoc`, `/openapi.json`) bypass the key.
 
-## 6. UX architecture Ã¢â‚¬â€ Streamlit console (`ui/`)
+## 6. UX architecture — Streamlit console (`ui/`)
 
 **Choice: Streamlit for v1.** Pure Python (no JS toolchain), fast iteration, and its
 widget strengths (sliders, tables, plots) match the experimentation persona. Gradio is
 narrower (single-model demos), Dash/NiceGUI are not better here, and a
-React/Next.js frontend is the *production product* path Ã¢â‚¬â€ deferred to a later phase
+React/Next.js frontend is the *production product* path — deferred to a later phase
 because it is only justified once the API is stable (roadmap workstream F). Constraint
-from Ã‚Â§3.2 applies to every UI: HTTP only, no `core.*` imports.
+from §3.2 applies to every UI: HTTP only, no `core.*` imports.
 
-### Page map Ã¢â€ â€™ endpoint mapping
+### Page map → endpoint mapping
 
 | Screen | User interactions | Endpoints |
 |---|---|---|
@@ -151,13 +165,14 @@ from Ã‚Â§3.2 applies to every UI: HTTP only, no `core.*` imports.
 | **Guardrails** | profile/enabled/providers, resolved chains, probe query decisions, hit-rate | `/v1/guardrails`, `/metrics` |
 | **Audit** | filter by `limit`/`event_type`; inspect redacted events | `/v1/audit` |
 | **Access / RBAC** | roles, capabilities, request caps, allowed models | `/v1/access` |
+| **Admin** | tenant policy view/update + identity directory users; requires `admin`/`rebuild` capability | `/v1/admin/tenants`, `/v1/admin/tenants/{tenant_id}`, `/v1/admin/users`, `/v1/access` |
 | **Traces** | look up `request_id`; stage latencies, failure taxonomy, guardrail decisions, resilience, OTel ids, raw trace | `/v1/traces/{request_id}`, `/v1/metrics` |
 | **Settings (read-only)** | effective config viewer (redacted), model/provider/guardrail lists | `/v1/config`, `/v1/models`, `/v1/embedding-models`, `/v1/retrievers`, `/v1/rerankers`, `/v1/evaluators`, `/v1/guardrails` |
 
 No config-editing UI in v1 (write path = files in `config/`); `pipeline:rebuild` in the
 UI is expressed as preset "what-if" selections, keeping humans as the owners of YAML.
 The sidebar also exposes the API base URL and the optional API key, and
-`ui/tour.py` guides a first-run user through 11 steps (one per screen + connect).
+`ui/tour.py` guides a first-run user through 12 steps (one per screen + connect).
 
 ## 7. Delivery record (was: proposed issues)
 
@@ -175,6 +190,9 @@ The sidebar also exposes the API base URL and the optional API key, and
 | (added during delivery) | guardrail introspection, profiles, hit-rate metrics | #86 `4986daa`, #88 `2b762ae`, #87 `5ab41ee` |
 | (added during delivery) | docs reconciliation (this document) | #81 |
 | (added during delivery) | permission-aware retrieval (ACL metadata filtered before reranking/prompting) | #51 |
+| (added during delivery) | immutable hash-chained audit, retention + evidence/export/verify/purge | #55 `12ab4ec` |
+| (added during delivery) | pluggable persistence (`BaseStore`: memory/SQLite/Postgres) | #56 `94de739` |
+| (added during delivery) | multi-tenant admin API + console **Admin** screen | #57 `8234b06`, `325d025` |
 
 The forward roadmap (H0-H3, workstreams A-G) is tracked in
 [enterprise-roadmap.md](enterprise-roadmap.md) and the GitHub Project board; API/UX
@@ -183,11 +201,11 @@ workstream F there.
 
 ## 8. Delivery plan
 
-- **P0 (this document)** Ã¢â‚¬â€ retrospective artifact; review gate. Done.
-- **P1 Ã¢â‚¬â€ Phase-2 completion:** #16, #17, #18, #1, #34. Done.
-- **P2 Ã¢â‚¬â€ API expansion:** A-F above, plus #42 ground-truth scoring, #21 evaluation
+- **P0 (this document)** — retrospective artifact; review gate. Done.
+- **P1 — Phase-2 completion:** #16, #17, #18, #1, #34. Done.
+- **P2 — API expansion:** A-F above, plus #42 ground-truth scoring, #21 evaluation
   engine, #22 benchmarks and #23-#29 retrieval/eval/ops features. Done.
-- **P3 Ã¢â‚¬â€ UX console:** G above, kept strictly over the API (Ã‚Â§3.2), plus README
-  quickstart and a guided tour. Done.
-- **P4 (optional, later)** Ã¢â‚¬â€ React/Next.js product frontend reusing the same OpenAPI
+- **P3 — UX console:** G above, kept strictly over the API (§3.2), plus README
+  quickstart, a guided tour and the capability-gated **Admin** screen (#57). Done.
+- **P4 (optional, later)** — React/Next.js product frontend reusing the same OpenAPI
   contract; tracked as workstream F in the enterprise roadmap (not committed).
