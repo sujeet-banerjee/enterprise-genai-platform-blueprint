@@ -8,6 +8,14 @@ See [docs/architecture.md](docs/architecture.md) for the full architecture, prin
 
 ## Quickstart
 
+### 0) Try it in GitHub Codespaces
+
+Open the repository, choose **Code -> Codespaces -> Create codespace on `main`**, and wait for the
+container to finish setup. The devcontainer installs the backend, console and observability
+dependencies, then starts FastAPI on port 8000 and the Streamlit console on port 8501 (opened
+automatically). See [deployment/codespace/README.md](deployment/codespace/README.md) for ports,
+optional secrets, first-run model downloads and troubleshooting.
+
 ### 1) Clone and setup
 
 Create and activate a virtual environment first (recommended). On Windows (PowerShell):

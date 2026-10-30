@@ -164,6 +164,20 @@ Practical notes:
   sidecar loads the models.
 - Tradeoff: no extra network hop, but upgrades and restarts are coupled to the host workload.
 
+### 2.7 GitHub Codespaces (demo)
+
+- **Topology:** one devcontainer workspace; `postCreateCommand` installs the runtime, UI and
+  observability dependencies, validates `config/`, and seeds an optional `.env`;
+  `postStartCommand` runs `uvicorn app.main:app` on `:8000` and `streamlit run ui/app.py` on
+  `:8501` (idempotent `deployment/codespace/start.sh`).
+- **Config/secrets:** identical to local - `GENAI_CONFIG_DIR` points at the repo `config/`;
+  Codespaces secrets (`OPENAI_API_KEY`, `HF_TOKEN`) are injected as env vars, or uncomment the
+  placeholders in `deployment/codespace/.env`.
+- **Tradeoff:** ephemeral, single replica, 2-4 cores; ideal for demos and reviewing the console,
+  not a production path. The first start downloads the local models (~1.5 GB).
+- **Reference:** [deployment/codespace/README.md](../deployment/codespace/README.md); the root
+  `.devcontainer/devcontainer.json` is only the required manifest pointer.
+
 ---
 
 ## 3. Deployment processes

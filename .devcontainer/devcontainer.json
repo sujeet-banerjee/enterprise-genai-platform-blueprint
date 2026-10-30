@@ -1,0 +1,41 @@
+{
+  "name": "Enterprise GenAI Platform (demo)",
+  "dockerComposeFile": "../deployment/codespace/docker-compose.yml",
+  "service": "workspace",
+  "workspaceFolder": "/workspaces/enterprise-genai-platform-blueprint",
+  "remoteUser": "vscode",
+  "hostRequirements": {
+    "cpus": 2,
+    "memory": "8gb",
+    "storage": "32gb"
+  },
+  "forwardPorts": [8000, 8501],
+  "portsAttributes": {
+    "8000": {
+      "label": "GenAI API (FastAPI)",
+      "onAutoForward": "notify",
+      "visibility": "private"
+    },
+    "8501": {
+      "label": "Streamlit console",
+      "onAutoForward": "openBrowser",
+      "visibility": "public"
+    }
+  },
+  "postCreateCommand": "bash deployment/codespace/setup.sh",
+  "postStartCommand": "bash deployment/codespace/start.sh",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "charliermarsh.ruff"
+      ],
+      "settings": {
+        "python.defaultInterpreterPath": "/usr/local/bin/python",
+        "python.testing.pytestEnabled": true,
+        "python.testing.pytestArgs": ["tests"]
+      }
+    }
+  }
+}
