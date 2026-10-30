@@ -1,0 +1,19 @@
+# GitHub Codespaces workspace (issue #105).
+#
+# GitHub only reads `.devcontainer/devcontainer.json` from the repository root,
+# so that file is a thin pointer; every other Codespaces artifact lives here.
+#
+# The repository is bind-mounted at the path used by the devcontainer's
+# `workspaceFolder`, and the container simply idles - setup.sh/start.sh run the
+# backend and console as background processes (see deployment/codespace/README.md).
+services:
+  workspace:
+    image: mcr.microsoft.com/devcontainers/python:3.11
+    command: sleep infinity
+    init: true
+    environment:
+      GENAI_CONFIG_DIR: /workspaces/enterprise-genai-platform-blueprint/config
+      HF_HOME: /home/vscode/.cache/huggingface
+      PYTHONUNBUFFERED: "1"
+    volumes:
+      - ../..:/workspaces/enterprise-genai-platform-blueprint:cached
