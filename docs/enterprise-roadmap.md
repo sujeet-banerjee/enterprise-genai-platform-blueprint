@@ -169,6 +169,9 @@ Issue IDs are placeholders (`E-*`) — not yet created.
   gate ingress, retrieval, generation, and egress; versioned and testable.
 - **B5. Audit & compliance exports** — immutable (append-only/WORM) audit trail, retention
   policies, SOC2/EU-AI-Act/GDPR evidence packs, data-residency controls.
+  **Landed (#55, PR #102):** hash-chained `ImmutableAuditStore` (`sequence`/`prev_hash`),
+  retention with export-before-purge, evidence packs, optional regional routing, and
+  `/v1/audit/{verify,evidence,export,purge}`.
 - **B6. Human-in-the-loop (HITL) review** — queue + UI for flagging/escalating low-confidence
   or high-risk answers; approval workflow before release.
 
@@ -224,6 +227,8 @@ Issue IDs are placeholders (`E-*`) — not yet created.
   rotation.
 - **E4. State & persistence** — move run/trace/experiment/audit stores from in-memory to a
   pluggable persistence layer (Postgres) so they survive restarts and scale horizontally.
+  **Landed (#56, PR #104):** `BaseStore` with `memory` (default), `sqlite` and `postgres`
+  backends selected by `config/persistence.yaml`; in-memory remains the default.
 - **E5. GitOps delivery** — IaC (Terraform/Helm) + ArgoCD/Flux reconciliation for config,
   prompts, and policies; environment promotion (dev→staging→prod).
 - **E6. Multi-region/residency & DR** — data-residency routing, backup/restore, disaster
@@ -276,6 +281,9 @@ evidence export.
 **F5. Multi-tenant admin & RBAC UI** — tenant/team/user management (fed by OIDC, A2), budget
 assignment, quota views, per-tenant config editing (write path — the current UI is read-only by
 design; this is the deliberate upgrade, gated by approval/GitOps).
+**Landed (#57, PR #106):** `GET /v1/admin/tenants`, `POST /v1/admin/tenants/{tenant_id}` and
+`GET /v1/admin/users` plus the capability-gated console **Admin** screen (tenant policy view/
+update and identity directory).
 
 **F6. Real-time & collaboration** — live streaming answers, shared saved queries/dashboards,
 comments on traces, notifications/alerts.
@@ -360,7 +368,7 @@ A capability is only "done" when it is:
 | Horizon | Theme | Workstreams | Outcome |
 |---|---|---|---|
 | **H0 — Now (0–1 mo)** | Finish the foundation & make it operable | C2 (Prometheus/Grafana + dashboard pack), D1 (resilience/failover), E2 (config schema/validation), E3 (secrets), C1 (OTel), **G0 (hardened container + Compose), G1 (deployment playbook — landed #66), B3-slice #72 (input/doc redaction before prompt)** | The platform is observable, hardened, **deployable**, and no longer leaks raw secrets in the query/doc path; ops can adopt it. |
-| **H1 (1–3 mo)** | Multi-tenant & governed | **A1 (tenant model — landed #48)**, **A2 (OIDC + SCIM — landed #49)**, **A3 (attribution - landed #50)**, **A4 (permission-aware retrieval - landed #51)**, B1–B3, B5, E1, E4, F5 (admin), **G2 (Helm + Kustomize + GitOps example + CI deploy smoke, landed #67)** — *B1-B3 (#52/#53/#54) landed* | Teams can onboard safely; access and cost are attributable; guardrails + audit are real; it installs on Kubernetes. |
+| **H1 (1–3 mo)** | Multi-tenant & governed | **A1 (tenant model — landed #48)**, **A2 (OIDC + SCIM — landed #49)**, **A3 (attribution - landed #50)**, **A4 (permission-aware retrieval - landed #51)**, B1–B3, **B5 (landed #55)**, E1, **E4 (landed #56)**, **F5 (landed #57)**, **G2 (Helm + Kustomize + GitOps example + CI deploy smoke, landed #67)** — *B1-B3 (#52/#53/#54) landed* | Teams can onboard safely; access and cost are attributable; guardrails + audit are real; it installs on Kubernetes. |
 | **H2 (3–6 mo)** | The product surface | C3–C6, D2–D5, F1–F4 (composer, graphs, experiments, governance console), **G3 (HA/autoscale), G4 (progressive delivery)** | This becomes a *platform teams want to use*: visual, measurable, ROI-provable, safely rollout-able. |
 | **H3 (6–12 mo)** | Enterprise scale & compliance | B4, B6, D6, E5, E6, F6, F7, **G5 (GitOps at scale), G6 (multi-region/DR + cloud IaC)** | Runs at scale, in-region, GitOps-managed, compliance-evidenced, multi-team. |
 
