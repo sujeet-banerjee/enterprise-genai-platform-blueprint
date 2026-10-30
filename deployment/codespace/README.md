@@ -25,6 +25,78 @@ so the private API port is enough for the demo. To explore `/docs` or `curl`
 the API from your browser, change port 8000 to **Public** in the Ports panel
 (and stop the codespace when you are done).
 
+> Running instances are listed at <https://github.com/codespaces>. The repo page
+> `settings/codespaces` only holds repo-level settings (secrets, prebuilds,
+> retention) - it does not list or create instances.
+
+## Creating a Codespace from the CLI (optional)
+
+The web UI path above needs no extra permissions. The GitHub CLI can also
+create/manage codespaces, but it requires the **`codespace` OAuth scope**. The
+default `gh` login (repo/workflow/project) does not include it, so
+`gh codespace list` fails with `HTTP 404 ... needs the "codespace" scope`.
+
+### 1. Grant the scope (one-time, device flow)
+
+```bash
+gh auth refresh -h github.com -s codespace
+```
+
+On this WSL setup, use the Windows GitHub CLI binary:
+
+```bash
+"/mnt/c/Program Files/GitHub CLI/gh.exe" auth refresh -h github.com -s codespace
+```
+
+The command prints a one-time code and waits:
+
+1. Copy the code shown as `First copy your one-time code: XXXX-XXXX`.
+2. Open <https://github.com/login/device> in any browser (from WSL, Windows or
+   your phone) and sign in as `sujeet-banerjee`.
+3. Enter the code and approve the requested access for **GitHub CLI**.
+4. Return to the terminal; it finishes with `Authentication complete`.
+
+The refresh keeps your existing scopes and adds `codespace`. Verify with:
+
+```bash
+gh auth status
+# Token scopes: 'codespace', 'gist', 'project', 'read:org', 'repo', 'workflow'
+```
+
+### 2. Create and open a codespace
+
+```bash
+# default machine; uses .devcontainer/devcontainer.json and branch main
+gh codespace create -R sujeet-banerjee/enterprise-genai-platform-blueprint -b main
+
+# optional: 4-core machine (names vary by plan) and a shorter idle timeout
+gh codespace create -R sujeet-banerjee/enterprise-genai-platform-blueprint -b main \
+  --machine standardLinux32gb --idle-timeout 30m
+```
+
+The command prints the codespace name. Then:
+
+```bash
+gh codespace list                       # name, repo, branch, state, machine
+gh codespace code -c <name>             # open in VS Code desktop
+gh codespace ssh -c <name>              # shell inside the container
+```
+
+The devcontainer `postCreateCommand`/`postStartCommand` run automatically, so
+the API (`:8000`) and console (`:8501`) come up as in the UI flow. The first boot
+takes a few minutes (image + dependency install + model download).
+
+### 3. Stop or delete
+
+```bash
+gh codespace stop -c <name>             # stop billing for compute, keep disk
+gh codespace delete -c <name>           # remove it (prompts for confirmation)
+```
+
+CLI-created codespaces consume the same Codespaces quota as UI-created ones.
+Stopped codespaces are retained for the repo/user retention period (30 days by
+default); delete them when you are done with the demo.
+
 ## First run downloads the models
 
 The shipped config uses local HuggingFace models (Qwen2.5-0.5B + MiniLM), so no

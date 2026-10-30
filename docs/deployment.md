@@ -170,6 +170,13 @@ Practical notes:
   observability dependencies, validates `config/`, and seeds an optional `.env`;
   `postStartCommand` runs `uvicorn app.main:app` on `:8000` and `streamlit run ui/app.py` on
   `:8501` (idempotent `deployment/codespace/start.sh`).
+- **Launch/list:** use **Code -> Codespaces -> Create codespace on `main`** or
+  <https://github.com/codespaces>; the repo `settings/codespaces` page only holds repo-level
+  settings, not running instances.
+- **CLI / permissions:** `gh codespace create/list` requires the `codespace` OAuth scope
+  (`gh auth refresh -h github.com -s codespace`). See
+  [deployment/codespace/README.md](../deployment/codespace/README.md) for the full device-flow
+  steps.
 - **Config/secrets:** identical to local - `GENAI_CONFIG_DIR` points at the repo `config/`;
   Codespaces secrets (`OPENAI_API_KEY`, `HF_TOKEN`) are injected as env vars, or uncomment the
   placeholders in `deployment/codespace/.env`.
