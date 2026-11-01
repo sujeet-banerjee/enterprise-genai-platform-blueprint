@@ -53,10 +53,14 @@ secrets:
 modelCache:
   enabled: true
   # Reuse an existing PVC (e.g. RWX or per-node) instead of creating one.
+  # For multi-replica API pods, use ReadWriteMany (RWX) if all replicas
+  # must share the same HuggingFace cache; otherwise prefer per-pod cache or
+  # a pre-warmed image/volume per node.
   existingClaim: ""
   size: 20Gi
   storageClassName: ""
   mountPath: /app/.cache/huggingface
+  accessMode: ReadWriteOnce
 
 service:
   type: ClusterIP
@@ -102,8 +106,19 @@ probes:
 autoscaling:
   enabled: false
   minReplicas: 1
-  maxReplicas: 3
+  maxReplicas: 5
   targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+  behavior: {}
+  # Optional KEDA ScaledObject (issue #68). When enabled, an external scaler
+  # (e.g. Prometheus/request rate/queue depth) controls replica count.
+  keda:
+    enabled: false
+    minReplicaCount: 1
+    maxReplicaCount: 10
+    pollingInterval: 30
+    cooldownPeriod: 300
+    triggers: []
 
 # Extra env vars for the API container (config seams, tuning).
 env: []

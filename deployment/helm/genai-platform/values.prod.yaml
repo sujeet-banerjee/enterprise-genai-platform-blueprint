@@ -1,11 +1,11 @@
 # Production overlay: pinned tag, ingress, secrets from an existing Secret
 # (External Secrets / cloud secret manager), tracing to the cluster collector.
-# Single replica on purpose: multi-replica HA is G3 (#68) and needs persistence
-# (E4 / #56) for traces/metrics/audit continuity.
+# Multi-replica HA enabled in G3 (#68): share state via BaseStore (persistence)
+# and ensure model cache uses RWX or is pre-warmed per node.
 image:
   tag: "1.0.0"
 
-replicaCount: 1
+replicaCount: 2
 
 resources:
   requests:
@@ -17,6 +17,7 @@ resources:
 
 modelCache:
   size: 50Gi
+  accessMode: ReadWriteMany
 
 secrets:
   existingSecret: genai-platform-secrets
@@ -39,9 +40,13 @@ observability:
     enabled: true
     endpoint: http://otel-collector.observability.svc.cluster.local:4318/v1/traces
 
-# No HPA until G3 (#68): a second replica would split the in-process stores.
+# HPA enabled (G3 #68): requires persistence (#56) for shared state.
 autoscaling:
-  enabled: false
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
 
 nodeSelector: {}
 tolerations: []

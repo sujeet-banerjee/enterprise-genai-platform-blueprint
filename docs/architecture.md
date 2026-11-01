@@ -1125,6 +1125,12 @@ Tracked via repository issues (#21–#32).
 
 ---
 
+## 13. Deployment
+
+See the [Deployment Playbook](deployment.md). **G3 (#68)** enables multi-replica HA with
+persistence (#56), HPA/KEDA autoscaling and explicit per-pod/shared response cache
+semantics.
+
 # 18. References
 
 ## Repo

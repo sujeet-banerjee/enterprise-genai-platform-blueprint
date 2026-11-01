@@ -4,7 +4,7 @@ A modular, vendor-neutral, evaluation-aware GenAI platform reference implementat
 
 ## Architecture
 
-See [docs/architecture.md](docs/architecture.md) for the full architecture, principles, composition root, registries, and contracts. To run it (Docker Compose, Kubernetes, air-gapped, BYO-model, embedded), see the [deployment playbook](docs/deployment.md).
+See [docs/architecture.md](docs/architecture.md) for the full architecture, principles, composition root, registries, and contracts. To run it (Docker Compose, Kubernetes, air-gapped, BYO-model, embedded), see the [deployment playbook](docs/deployment.md) (multi-replica HA + HPA/KEDA via G3 #68).
 
 ## Quickstart
 

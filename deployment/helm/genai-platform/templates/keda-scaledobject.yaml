@@ -1,0 +1,22 @@
+{{- if and .Values.autoscaling.enabled .Values.autoscaling.keda.enabled }}
+{{- if not .Values.autoscaling.keda.triggers }}
+{{- fail "autoscaling.keda.triggers must be provided when autoscaling.keda.enabled is true" }}
+{{- end }}
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: {{ include "genai-platform.fullname" . }}
+  labels:
+    {{- include "genai-platform.labels" . | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "genai-platform.fullname" . }}
+  pollingInterval: {{ .Values.autoscaling.keda.pollingInterval }}
+  cooldownPeriod: {{ .Values.autoscaling.keda.cooldownPeriod }}
+  minReplicaCount: {{ .Values.autoscaling.keda.minReplicaCount }}
+  maxReplicaCount: {{ .Values.autoscaling.keda.maxReplicaCount }}
+  triggers:
+    {{- toYaml .Values.autoscaling.keda.triggers | nindent 4 }}
+{{- end }}
