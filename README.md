@@ -772,7 +772,8 @@ With `redact_sensitive_data: true`, API responses and traces replace secret valu
 See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the trunk-based workflow (protected `main`,
 `feature/<issue>-<slug>` branches, PR checklist, release tags) and
 [`docs/enterprise-roadmap.md`](docs/enterprise-roadmap.md) for the post-blueprint roadmap
-tracked by milestones `H0`-`H3` (umbrella issue #43).
+tracked by milestones `H0`-`H3` (umbrella issue #43). Progressive delivery and config
+rollback are covered in the [deployment playbook](docs/deployment.md) (G4 #69).
 
 ## License
 

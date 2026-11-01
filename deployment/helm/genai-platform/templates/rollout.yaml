@@ -1,0 +1,56 @@
+{{- if .Values.rollout.enabled }}
+{{- if and (eq .Values.rollout.strategy "canary") (not .Values.rollout.canary.steps) }}
+{{- fail "rollout.canary.steps must be provided when rollout.strategy is canary" }}
+{{- end }}
+{{- if and (eq .Values.rollout.strategy "blueGreen") (not .Values.rollout.blueGreen.activeService) }}
+{{- fail "rollout.blueGreen.activeService must be provided when rollout.strategy is blueGreen" }}
+{{- end }}
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: {{ include "genai-platform.fullname" . }}
+  labels:
+    {{- include "genai-platform.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  revisionHistoryLimit: {{ .Values.rollout.revisionHistoryLimit }}
+  selector:
+    matchLabels:
+      {{- include "genai-platform.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: api
+  workloadRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "genai-platform.fullname" . }}
+  strategy:
+    {{- if eq .Values.rollout.strategy "canary" }}
+    canary:
+      canaryService: {{ include "genai-platform.fullname" . }}-canary
+      stableService: {{ include "genai-platform.fullname" . }}
+      trafficRouting:
+        {{- toYaml .Values.rollout.trafficRouting | nindent 8 }}
+      steps:
+        {{- toYaml .Values.rollout.canary.steps | nindent 8 }}
+      analysis:
+        {{- toYaml .Values.rollout.analysis | nindent 8 }}
+      {{- with .Values.rollout.canary.antiaffinity }}
+      antiAffinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    {{- else if eq .Values.rollout.strategy "blueGreen" }}
+    blueGreen:
+      activeService: {{ .Values.rollout.blueGreen.activeService }}
+      previewService: {{ .Values.rollout.blueGreen.previewService }}
+      autoPromotionEnabled: {{ .Values.rollout.blueGreen.autoPromotionEnabled }}
+      autoPromotionSeconds: {{ .Values.rollout.blueGreen.autoPromotionSeconds }}
+      prePromotionAnalysis:
+        {{- toYaml .Values.rollout.blueGreen.prePromotionAnalysis | nindent 8 }}
+      postPromotionAnalysis:
+        {{- toYaml .Values.rollout.blueGreen.postPromotionAnalysis | nindent 8 }}
+      scaleDownDelaySeconds: {{ .Values.rollout.blueGreen.scaleDownDelaySeconds }}
+    {{- else }}
+    {{- fail (printf "unsupported rollout.strategy: %s" .Values.rollout.strategy) }}
+    {{- end }}
+{{- end }}

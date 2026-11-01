@@ -120,6 +120,27 @@ autoscaling:
     cooldownPeriod: 300
     triggers: []
 
+# Progressive delivery (issue #69 / G4). Disabled by default; use with Argo
+# Rollouts CRDs installed in the cluster. Versioned config rollback is
+# documented in docs/deployment.md (revert config commit + previous image tag).
+rollout:
+  enabled: false
+  strategy: canary  # canary | blueGreen
+  revisionHistoryLimit: 10
+  trafficRouting: {}
+  analysis: {}
+  canary:
+    steps: []
+    antiaffinity: {}
+  blueGreen:
+    activeService: ""
+    previewService: ""
+    autoPromotionEnabled: false
+    autoPromotionSeconds: 300
+    scaleDownDelaySeconds: 30
+    prePromotionAnalysis: {}
+    postPromotionAnalysis: {}
+
 # Extra env vars for the API container (config seams, tuning).
 env: []
 # Extra envFrom sources (secretRef/configMapRef), e.g. platform-managed secrets.

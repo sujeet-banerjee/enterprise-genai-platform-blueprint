@@ -209,12 +209,19 @@ a `ConfigMap`/mounted directory.
 
 - **Upgrade:** build a new immutable image tag, roll out with `maxUnavailable: 0`; readiness
   (`/ready`) keeps traffic off pods that are still loading models.
-- **Rollback:** redeploy the previous image tag and revert the config commit. There is no database
-  migration to undo; the only durable artifacts are the model cache (reproducible) and the audit
-  JSONL (append-only, keep it).
+- **Config/prompt/model rollback (G4 #69):** revert the git commit under `config/**`
+  (validated by `python -m app.config_validate`). The Kustomize ConfigMap hash or Helm
+  values change rolls pods; verify via `/ready` and `/v1/config`. See
+  [config/versions/README.md](../config/versions/README.md) for the end-to-end procedure.
+- **Image rollback:** redeploy the previous immutable image tag and revert the GitOps manifest.
+  There is no database migration to undo for config changes; durable artifacts are the model
+  cache (reproducible) and the audit JSONL (append-only). For persistent stores (#56), follow
+  backwards-compatible migration guidance.
 - **Blue-green:** run two environments sharing the model cache; switch the Service selector after
   `/ready` is green. **Canary:** route a small share of traffic to the new version and compare
-  `/metrics` (error rate, p95 latency, guardrail blocks, cost) before promoting.
+  `/metrics` (error rate, p95 latency, guardrail blocks, cost) before promoting. When Argo
+  Rollouts CRDs are installed, use `deployment/helm/genai-platform/templates/rollout.yaml`
+  with `rollout.enabled: true` (canary steps or blue/green services) and observability gates.
 - **What-if preview:** `POST /v1/pipeline:rebuild` (gated by `api.allow_rebuild: true`) is for
   side-by-side experiments; it does not persist. Never use it as the production change mechanism.
 
