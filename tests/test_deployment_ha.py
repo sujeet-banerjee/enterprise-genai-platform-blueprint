@@ -68,6 +68,7 @@ def test_overlays_enable_multi_replica_and_hpa() -> None:
 def test_kustomize_prod_multi_replica() -> None:
     content = KUSTOMIZE_PROD.read_text(encoding="utf-8")
     assert "replicas:" in content
+    # G3 #68: prod multi-replica now enabled.
     assert "count: 2" in content
 
 

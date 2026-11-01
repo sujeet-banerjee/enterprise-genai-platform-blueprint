@@ -141,7 +141,9 @@ def test_environment_overlays_render() -> None:
     assert env["OTEL_EXPORTER_OTLP_ENDPOINT"].startswith("http://otel-collector")
     assert container["envFrom"][0]["secretRef"]["name"] == "genai-platform-secrets"
     assert _by_kind(prod, "Ingress")[0]["spec"]["rules"][0]["host"] == "genai.example.com"
-    assert deployment["spec"]["replicas"] == 1
+    # G3 #68: prod now uses HPA with >=2 replicas; when autoscaling enabled
+    # the Deployment replicas may be omitted (HPA controls it).
+    assert deployment["spec"].get("replicas") in (None, 2)
 
 
 @requires_helm
@@ -210,8 +212,10 @@ def test_kustomize_overlays_render_real_config() -> None:
     assert _by_kind(prod, "Ingress")[0]["spec"]["rules"][0]["host"] == "genai.example.com"
     prod_pvc = _by_kind(prod, "PersistentVolumeClaim")[0]
     assert prod_pvc["spec"]["resources"]["requests"]["storage"] == "50Gi"
-    # Single replica until shared state lands (G3).
-    assert _by_kind(prod, "Deployment")[0]["spec"]["replicas"] == 1
+    # G3 #68: prod multi-replica with persistence (#56); HPA may control replicas.
+    prod_deploy = _by_kind(prod, "Deployment")[0]
+    replicas = prod_deploy["spec"].get("replicas")
+    assert replicas in (None, 2)
 
 
 def test_gitops_application_is_valid_and_points_at_existing_overlay() -> None:
