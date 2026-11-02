@@ -22,7 +22,7 @@ labels:
 
 replicas:
   - name: genai-platform
-    count: 1
+    count: 2
 
 patches:
   - path: patch-runtime.yaml
