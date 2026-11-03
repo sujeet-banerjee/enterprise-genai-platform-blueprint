@@ -1,0 +1,26 @@
+# Disaster Recovery (G6)
+enabled: false
+backup:
+  store: true
+  audit: true
+  config: true
+  artifacts: false
+  schedule_cron: "0 2 * * *"
+  retention_days: 30
+  encryption_at_rest: true
+restore:
+  test_frequency: monthly
+  automated_verification: false
+  runbook_path: docs/dr-runbook.md
+targets:
+  primary_region: us-east-1
+  secondary_region: us-west-2
+  object_storage_bucket: ""
+  kms_key_id: ""
+rpo_minutes: 60
+rto_minutes: 120
+failover:
+  mode: manual
+  health_check_interval_seconds: 30
+  promote_on_failure: false
+  dns_failover: false

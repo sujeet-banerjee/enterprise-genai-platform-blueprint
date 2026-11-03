@@ -1,0 +1,25 @@
+# Multi-region / residency routing (G6)
+# Disabled by default; cloud-agnostic core is the priority.
+enabled: false
+default_region: us-east-1
+regions: []
+routing:
+  strategy: header  # header | geo | tenant
+  header_name: X-Region
+  allowed_regions: []
+tenancy:
+  enforce_residency: false
+  allowed_regions: []
+failover:
+  enabled: false
+  primary_region: us-east-1
+  secondary_region: us-west-2
+  health_check_path: /ready
+  failover_mode: manual
+disaster_recovery:
+  rpo_minutes: 60
+  rto_minutes: 120
+  backup_enabled: false
+  backup_schedule: "0 2 * * *"
+  restore_test_schedule: "0 4 * 0"
+  cross_region_replication: false
