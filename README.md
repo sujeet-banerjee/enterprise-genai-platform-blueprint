@@ -780,3 +780,5 @@ rollback are covered in the [deployment playbook](docs/deployment.md) (G4 #69).
 MIT
 
 - config/persistence.yaml (store backend: memory/SQLite/Postgres)
+- config/residency.yaml (multi-region/residency routing, disabled by default)
+- config/dr.yaml (disaster recovery backup/restore, disabled by default)
