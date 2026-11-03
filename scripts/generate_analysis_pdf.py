@@ -7,7 +7,8 @@ from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import inch
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
-out = Path("/home/sujeet/enterprise-genai-platform-blueprint/docs/analysis/fact_check_usability_value_for_enterprise_architects.pdf")
+REPO_ROOT = Path(__file__).resolve().parents[1]
+out = REPO_ROOT / "docs" / "analysis" / "fact_check_usability_value_for_enterprise_architects.pdf"
 out.parent.mkdir(parents=True, exist_ok=True)
 doc = SimpleDocTemplate(str(out), pagesize=letter, topMargin=0.5*inch, bottomMargin=0.5*inch)
 styles = getSampleStyleSheet()
@@ -18,7 +19,7 @@ styles.add(ParagraphStyle(name='Small', parent=styles['BodyText'], fontSize=8, l
 
 story = []
 story.append(Paragraph("Fact Analysis: Usability & Value for Enterprise Architects", styles['H1']))
-story.append(Paragraph("Generated 2026-11-02. Grounded in repository state.", styles['Small']))
+story.append(Paragraph("Reconciled 2026-11-04. Summary of docs/analysis/fact_check_usability_value_for_enterprise_architects.md (source of truth). Grounded in repository state.", styles['Small']))
 story.append(Spacer(1, 6))
 
 story.append(Paragraph("1) Market Pain Points vs. What This Project Addresses", styles['H2']))
@@ -30,7 +31,7 @@ data = [
 ["RAG workflow complexity", "Chunking, retrieval, reranking, query expansion ad-hoc and hard to compare.", "Config-driven registries, retrievers (FAISS/Simple/Dummy/KG/Hybrid), rerankers, query expanders, response cache, batching/parallel, /v1/pipeline:rebuild.", "Strong"],
 ["Knowledge Graph adoption friction", "KGs powerful but hard to integrate with vector search and evaluate.", "KGRetriever (triples + expansion), hybrid BM25+vector, benchmark runner.", "Good"],
 ["Vendor lock-in & cost control", "Want to swap models/providers without rewriting code, need cost governance.", "Vendor-neutral interfaces/registries, OpenAI+local/HF, per-model pricing, budget caps, tenant budgets, attribution, what-if.", "Strong"],
-["Deployment & operations", "Need HA, rollbacks, secrets, validation to go from notebook to prod.", "Helm/Kustomize/GitOps, HPA/KEDA, Argo Rollouts, config validation+secrets, Codespaces, health/ready, BaseStore, immutable audit.", "Good"],
+["Deployment & operations", "Need HA, rollbacks, secrets, validation to go from notebook to prod.", "Helm/Kustomize/GitOps, HPA/KEDA, Argo Rollouts, config validation+secrets, Codespaces, health/ready, BaseStore, immutable audit, multi-region/residency/DR foundations, cloud Terraform modules (G5/G6 landed 2026-11-03).", "Good"],
 ]
 t = Table(data, repeatRows=1, colWidths=[0.9*inch, 1.3*inch, 2.7*inch, 0.6*inch])
 t.setStyle(TableStyle([
@@ -56,7 +57,7 @@ data2 = [
 ["Platform/AI Architects", "Very High", "Treats eval/governance/observability as non-negotiable; config-driven architecture reference-quality."],
 ["Security/Compliance Architects", "Very High", "Guardrails, PII, ACL, tenancy, immutable audit, attribution address enterprise requirements."],
 ["Data/ML Architects (RAG/KG)", "High", "Hybrid+KG, experiments, benchmarks strong; needs connectors and larger eval datasets."],
-["SRE/Platform Engineers", "High", "OTel/Prometheus/Helm/Kustomize/HPA/rollouts/health/config validation aligned; multi-region/DR planned."],
+["SRE/Platform Engineers", "High", "OTel/Prometheus/Helm/Kustomize/HPA/rollouts/health/config validation and multi-region/residency/DR foundations aligned; operational DR automation remains."],
 ["Product/Business Stakeholders", "Medium-High", "Cost attribution/governance help; more architectural than user-facing; UI functional not polished."],
 ]
 t2 = Table(data2, repeatRows=1, colWidths=[1.5*inch, 0.8*inch, 3.2*inch])
@@ -75,8 +76,8 @@ story.append(Spacer(1, 8))
 story.append(Paragraph("4) Verdict & Remaining Gaps", styles['H2']))
 story.append(Paragraph("<b>Verdict:</b> Highly valuable and usable for enterprise architects moving RAG/agentic workflows from POC to production. Fills evaluation/governance/observability gaps better than most open-source alternatives.", styles['Body']))
 story.append(Paragraph("<b>Key differentiators:</b> Evaluation-first; config-driven swappability/vendor neutrality; defense-in-depth; production operations (Helm/GitOps/rollouts/observability).", styles['Body']))
-story.append(Paragraph("<b>Remaining gaps:</b> Data connectors (SharePoint/Confluence/S3/etc.); scalability hardening (multi-region/DR G5/G6 + robust persistence); policy-as-code engine; larger/domain-specific eval datasets; simplified onboarding/golden-path templates.", styles['Body']))
-story.append(Paragraph("<b>Bottom line:</b> With near-completion of remaining roadmap items (especially G5/G6), this is an excellent reference architecture and viable foundation for an internal platform - solving the productionization problem.", styles['Body']))
+story.append(Paragraph("<b>Remaining gaps:</b> Data connectors (SharePoint/Confluence/S3/etc.); operational DR hardening (cross-region persistence, backup/restore automation, chaos - G5/G6 foundations landed 2026-11-03); policy-as-code engine; larger/domain-specific eval datasets; simplified onboarding/golden-path templates.", styles['Body']))
+story.append(Paragraph("<b>Bottom line:</b> With G5/G6 landed and the remaining roadmap items in progress, this is an excellent reference architecture and viable foundation for an internal platform - solving the productionization problem.", styles['Body']))
 
 doc.build(story)
 print(out)

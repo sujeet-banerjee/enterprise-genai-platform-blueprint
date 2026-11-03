@@ -1,2 +1,5 @@
 # Keep the tracked git hooks as LF so the shell shebang works on Linux/macOS clones.
 .githooks/* text eol=lf
+
+# Generated PDFs are binary; never apply EOL conversion or text diffs.
+*.pdf binary

@@ -427,7 +427,8 @@ later deployment item.
 - Horizons are opened **lazily**: H0 (#44–#47, **#65 G0, #66 G1**), H1 (#48–#57, **#67 G2**) are
   opened now; H2/H3 items (incl. **#68 G3, #69 G4, #70 G5, #71 G6**) are filed but stay the
   checklist in #43/#64 until their horizon activates.
-- The Project v2 board (**#8**) carries a **Workstream** field (A–G + Cross-cutting) for slicing.
+- The Project v2 board (**#8**) carries a **Workstream** field (A–G + Cross-cutting today; H–M proposed
+  in the addendum, board options not yet added) for slicing.
 - Contribution workflow (branching, PR checklist, release tags) is in
   [`CONTRIBUTING.md`](../CONTRIBUTING.md).
-- **Addendum (fact-check):** [enterprise-roadmap-gaps-addendum.md](enterprise-roadmap-gaps-addendum.md) + [analysis/fact_check_usability_value_for_enterprise_architects.pdf](analysis/fact_check_usability_value_for_enterprise_architects.pdf) propose H4 workstreams H–L (#114–#128) for connectors/ingestion, multi-region/DR, policy-as-code, eval expansion/CI gates, and onboarding/golden paths.
+- **Addendum (fact-check):** [enterprise-roadmap-gaps-addendum.md](enterprise-roadmap-gaps-addendum.md) + [analysis/fact_check_usability_value_for_enterprise_architects.pdf](analysis/fact_check_usability_value_for_enterprise_architects.pdf) define the H4 workstreams H–L (#115–#129) for connectors/ingestion, multi-region/DR operations, policy-as-code, eval expansion/CI gates, and onboarding/golden paths. **UX addendum:** [analysis/ux_roadmap_fact_check.pdf](analysis/ux_roadmap_fact_check.pdf) / [analysis/ux_roadmap_fact_check.md](analysis/ux_roadmap_fact_check.md) define Workstream M (#130–#136) — UX polish for the existing console, kept separate from Workstream F (console build-out).
