@@ -1,0 +1,28 @@
+# Promotion metadata for GitOps tools
+environments:
+  - name: dev
+    namespace: genai-platform-dev
+    autoPromote: true
+    gates:
+      - health
+      - smoke
+  - name: staging
+    namespace: genai-platform-staging
+    autoPromote: false
+    gates:
+      - health
+      - smoke
+      - eval_regression
+  - name: prod
+    namespace: genai-platform
+    autoPromote: false
+    requiresApproval: true
+    gates:
+      - health
+      - smoke
+      - eval_regression
+      - policy_check
+      - observability_gate
+promotion:
+  strategy: progressive
+  rollbackOnFailure: true

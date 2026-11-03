@@ -1,0 +1,25 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: genai-platform-dev
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/sujeet-banerjee/enterprise-genai-platform-blueprint.git
+    targetRevision: main
+    path: deployment/kustomize/overlays/dev
+    kustomize:
+      buildOptions: --load-restrictor LoadRestrictionsNone
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: genai-platform-dev
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ApplyOutOfSyncOnly=true

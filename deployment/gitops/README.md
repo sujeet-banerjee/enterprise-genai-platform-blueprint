@@ -1,8 +1,12 @@
-# GitOps example (roadmap G2)
+# GitOps (roadmap G2/G5)
 
 A minimal Argo CD `Application` that reconciles the **Kustomize prod overlay** into the
 `genai-platform` namespace. The delivery loop is: edit `config/**` or a manifest in git → PR → CI
 (config validation + tests + image build/health smoke) → merge to `main` → Argo CD syncs.
+
+**G5 additions:** app-of-apps (`argocd/app-of-apps.yaml` + `argocd/apps/` for dev/staging/prod),
+Flux v2 manifests (`flux/`), promotion pipeline (`promotion/`), Terraform IaC modules
+(`deployment/terraform/`), and versioned policy bundles under `config/policies/` reconciled via GitOps.
 
 ```bash
 kubectl apply -f deployment/gitops/argocd/application.yaml

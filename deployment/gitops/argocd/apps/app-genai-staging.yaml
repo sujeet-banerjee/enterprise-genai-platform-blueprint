@@ -1,0 +1,30 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: genai-platform-staging
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/sujeet-banerjee/enterprise-genai-platform-blueprint.git
+    targetRevision: main
+    path: deployment/kustomize/overlays/staging
+    kustomize:
+      buildOptions: --load-restrictor LoadRestrictionsNone
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: genai-platform-staging
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ApplyOutOfSyncOnly=true
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/replicas

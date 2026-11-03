@@ -1,0 +1,45 @@
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImageRepository
+metadata:
+  name: genai-platform
+  namespace: flux-system
+spec:
+  image: ghcr.io/example/genai-platform
+  interval: 1m0s
+---
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImagePolicy
+metadata:
+  name: genai-platform
+  namespace: flux-system
+spec:
+  imageRepositoryRef:
+    name: genai-platform
+  policy:
+    semver:
+      range: '>=1.0.0 <2.0.0'
+---
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImageUpdateAutomation
+metadata:
+  name: genai-platform
+  namespace: flux-system
+spec:
+  interval: 30m0s
+  sourceRef:
+    kind: GitRepository
+    name: genai-platform
+  git:
+    checkout:
+      ref:
+        branch: main
+    commit:
+      author:
+        email: fluxcdbot@example.com
+        name: fluxcdbot
+      messageTemplate: "chore: update image to {{range .Updated.Images}}{{.}}{{end}}"
+    push:
+      branch: main
+  update:
+    path: ./deployment/kustomize
+    strategy: Setters

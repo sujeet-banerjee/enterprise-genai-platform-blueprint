@@ -1,0 +1,15 @@
+configs:
+  params:
+    server.insecure: true
+  cm:
+    application.instanceLabelKey: argocd.argoproj.io/instance
+server:
+  service:
+    type: ClusterIP
+repoServer:
+  env:
+    - name: ARGOCD_EXEC_TIMEOUT
+      value: "300s"
+controller:
+  args:
+    appResyncPeriod: "180"

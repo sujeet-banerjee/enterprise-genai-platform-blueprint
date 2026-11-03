@@ -1,0 +1,13 @@
+apiVersion: policy/v1
+kind: PolicyBundle
+metadata:
+  name: default
+  version: "1.0.0"
+  description: "Default policy bundle reconciled via GitOps"
+spec:
+  enabled: false
+  policies:
+    input: []
+    output: []
+  checksum: ""
+  generatedAt: ""
