@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-from reportlab.lib.pagesizes import letter
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib.units import inch
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
-from reportlab.lib import colors
 from pathlib import Path
+
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import letter
+from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+from reportlab.lib.units import inch
+from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 out = Path("/home/sujeet/enterprise-genai-platform-blueprint/docs/analysis/fact_check_usability_value_for_enterprise_architects.pdf")
 out.parent.mkdir(parents=True, exist_ok=True)
