@@ -301,9 +301,11 @@ supported), with cloud-specific IaC as a long-term goal. Agentic workflows are *
 we ship the *seams* (worker/queue topology, checkpointing, per-tool egress) rather than an agent
 framework (§8 non-goal).
 
-- **G0. Hardened container + single-node reference** — multi-stage, non-root, healthchecked image
-  built from the real dependency files; `.dockerignore`; a backward-compatible **config-path env
-  seam**; a genuine Docker Compose single-node reference (config mounts, volumes, limits, probes).
+- **G0. Hardened container + single-node reference** *Landed (#65).* — multi-stage, non-root,
+  healthchecked image built from the real dependency files; `.dockerignore`; a backward-compatible
+  **config-path env seam**; a genuine Docker Compose single-node reference (config mounts, volumes,
+  limits, probes). **Artifacts:** [`deployment/Dockerfile`](../deployment/Dockerfile),
+  [`deployment/docker-compose.yml`](../deployment/docker-compose.yml), [`.env.example`](../.env.example).
 - **G1. Deployment playbook (`docs/deployment.md`)** — deployment **modes** (local, Compose,
   Kubernetes, air-gapped/on-prem, managed-cloud/BYO-model, embedded/sidecar), **processes**
   (config/prompt/model promotion, versioning, migration, rollback, blue-green/canary, backup/restore),
@@ -316,12 +318,26 @@ framework (§8 non-goal).
   [`deployment/kustomize/`](../deployment/kustomize/), the Argo CD example in
   [`deployment/gitops/`](../deployment/gitops/), and the **Deploy smoke** CI job (chart render +
   image build + `/health`/`/ready`).
-- **G3. Multi-replica / HA + autoscaling** — replication with shared state, HPA/KEDA. *Depends on
-  E4 (persistence).*
-- **G4. Progressive delivery** — canary/blue-green, versioned config/prompt/model rollback, upgrade
-  migrations, runbooks.
-- **G5. GitOps at scale** — ArgoCD/Flux reconciliation, environment promotion pipelines, IaC.
-- **G6. Multi-region / residency / DR + cloud-specific IaC** — the deferred long-term depth.
+- **G3. Multi-replica / HA + autoscaling** *Landed (#68).* — replication with shared state (E4
+  persistence, #56), HPA and KEDA templates. **Artifacts:**
+  [`hpa.yaml`](../deployment/helm/genai-platform/templates/hpa.yaml),
+  [`keda-scaledobject.yaml`](../deployment/helm/genai-platform/templates/keda-scaledobject.yaml),
+  [`tests/test_deployment_ha.py`](../tests/test_deployment_ha.py).
+- **G4. Progressive delivery** *Landed (#69).* — Argo Rollouts canary/blue-green, versioned
+  config/prompt/model rollback, upgrade migrations, runbooks. **Artifacts:**
+  [`rollout.yaml`](../deployment/helm/genai-platform/templates/rollout.yaml),
+  [`canary-service.yaml`](../deployment/helm/genai-platform/templates/canary-service.yaml),
+  [`tests/test_deployment_progressive_delivery.py`](../tests/test_deployment_progressive_delivery.py).
+- **G5. GitOps at scale** *Landed (#70).* — ArgoCD app-of-apps, Flux reconciliation, environment
+  promotion pipeline, Terraform IaC, and policy bundles. **Artifacts:**
+  [`deployment/gitops/`](../deployment/gitops/), [`deployment/terraform/`](../deployment/terraform/),
+  [`config/policies/`](../config/policies/), [`tests/test_gitops_scale.py`](../tests/test_gitops_scale.py).
+- **G6. Multi-region / residency / DR + cloud-specific IaC** *Landed (#71).* — residency routing and
+  DR config/runbook, AWS/Azure/GCP Terraform modules, and a multi-region environment. **Artifacts:**
+  [`config/residency.yaml`](../config/residency.yaml), [`config/dr.yaml`](../config/dr.yaml),
+  [`docs/dr-runbook.md`](dr-runbook.md), [`tests/test_multi_region_dr.py`](../tests/test_multi_region_dr.py).
+  *Operational DR execution (cross-region persistence, automated backup/restore verification, chaos
+  drills) is tracked separately as Workstream I (#118-#120).*
 
 
 
