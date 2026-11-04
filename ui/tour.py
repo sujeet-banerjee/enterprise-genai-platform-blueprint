@@ -56,12 +56,13 @@ TOUR_STEPS: List[TourStep] = [
         title="4. Query Studio",
         screen="Query Studio",
         body=(
-            "Type a question, set **top_k**, and optionally keep the redacted **trace**. "
-            "Click **Run query** to see the answer, retrieved documents + scores, "
-            "per-stage latency, cost, failure tags and the raw trace. Tick **Batch mode** "
-            "to run one query per line."
+            "Start from a **template**, or type a question and set **top_k**. Click "
+            "**Run query** to get tabbed results (Answer, Documents, Trace, Guardrails, "
+            "Resilience, Cache), a copy/share Markdown export, and a bounded session "
+            "**history**. Run the same query again to see a **Compare with last run** "
+            "delta table. Tick **Batch mode** to run one query per line."
         ),
-        try_it="Run `What is retrieval augmented generation?` with top_k = 3.",
+        try_it="Apply the RAG basics template, run it, then run it again to compare.",
     ),
     TourStep(
         title="5. Compare (what-if)",

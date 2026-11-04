@@ -56,7 +56,12 @@ M makes the existing console adoptable (IA, workflows, trace/waterfall, filters,
   five-step **Get started** checklist derived from completed actions. The pure contract lives
   in `ui/navigation.py` and is covered by `tests/test_ux_navigation.py`; the tour gained a
   checklist step (13 total).
-- #131-#136 remain open.
+- **#131 UX2 - shipped (2026-11-04):** six task templates, a bounded session history with
+  restore/clear, a **Compare with last run** delta table (latency, cost, docs, cache,
+  guardrail decisions/blocks, answer), six result tabs (Answer/Documents/Trace/Guardrails/
+  Resilience/Cache), and a copy/share + download Markdown export. The pure contract lives in
+  `ui/query_studio.py` and is covered by `tests/test_query_studio.py`.
+- #132-#136 remain open.
 
 ## Implementation Notes
 - Stay HTTP-only (enforced by `tests/test_ui_console.py`).

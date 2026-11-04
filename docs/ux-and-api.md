@@ -159,7 +159,7 @@ from §3.2 applies to every UI: HTTP only, no `core.*` imports.
 | Screen | User interactions | Endpoints |
 |---|---|---|
 | **Overview / Health** | status, readiness + config revision, active model/retriever/reranker/evaluator, Get started checklist | `/health`, `/ready`, `/v1/models`, `/v1/embedding-models`, `/v1/retrievers`, `/v1/rerankers`, `/v1/evaluators` |
-| **Query Studio** | enter query (or batch lines); `top_k`, rerank/include-trace; view answer, docs + scores, per-stage latency, cost, cache/guardrail/redaction/query-expansion flags, decisions table, resilience block, OTel ids, raw redacted trace | `/v1/query`, `/v1/query:batch`, `/v1/config` |
+| **Query Studio** | task templates; enter query (or batch lines); `top_k`, rerank/include-trace; tabbed results (Answer, Documents, Trace, Guardrails, Resilience, Cache); copy/share Markdown + download; bounded local history with restore and **Compare with last run** deltas | `/v1/query`, `/v1/query:batch`, `/v1/config` |
 | **Compare (what-if)** | pick config overrides (metric, retriever, model); rebuild then run A/B queries | `/v1/pipeline:rebuild`, `/v1/query` |
 | **Evaluation** | evaluator dropdown, optional ground truth, auto-retrieved docs; launch + poll experiments | `/v1/evaluators`, `/v1/evaluate`, `/v1/experiments`, `/v1/experiments/{exp_id}` |
 | **Governance & Cost** | budget limits, spend window, per-request cost, guardrail hit-rate, raw Prometheus scrape | `/v1/governance/status`, `/v1/metrics`, `/metrics` |
@@ -195,6 +195,30 @@ not just from visiting a screen. `ui/navigation.py` holds the pure navigation co
 `ui/tour.py` guides a first-run user through 13 steps (connect, overview, checklist, then
 one per screen).
 
+### Query Studio workflow polish (#131)
+
+The query screen is now a complete workflow rather than a single form:
+
+- **Templates** - six task-focused presets (RAG basics, grounding check, compare
+  retrievers, guardrail probe, chunking trade-offs, multi-doc synthesis) fill `query` and
+  `top_k` without locking either field.
+- **Tabbed result view** - Answer (cost/latency and copy/share), Documents (ranked scores),
+  Trace (per-stage latency + redacted payload), Guardrails (decisions + flags), Resilience
+  (provider events) and Cache (hit/miss + expansion), so diagnostics no longer require
+  scrolling one long page.
+- **Copy/share** - a Markdown render (query, answer, run metadata, documents, guardrail
+  decisions, resilience, OTel ids, redaction note) is shown for copying and offered as a
+  download; no secrets are read by the console.
+- **Local history** - the last 20 single-query runs are kept in Streamlit session state,
+  newest first, with outcome, latency, cost, cache, guardrail blocks and `request_id`.
+  Select a run to restore its query/result or clear the history.
+- **Compare with last run** - the same-query previous run (or the latest other run) is
+  compared on outcome, failure type, latency, cost, document count, cache, guardrail
+  decisions/blocks and answer change.
+
+The pure workflow contract lives in `ui/query_studio.py` and is covered by
+`tests/test_query_studio.py`; the tour step and README scenario were updated to match.
+
 ## 7. Delivery record (was: proposed issues)
 
 | Proposed | Delivered as | Where |
@@ -214,6 +238,7 @@ one per screen).
 | (added during delivery) | immutable hash-chained audit, retention + evidence/export/verify/purge | #55 `12ab4ec` |
 | (added during delivery) | pluggable persistence (`BaseStore`: memory/SQLite/Postgres) | #56 `94de739` |
 | (added during delivery) | multi-tenant admin API + console **Admin** screen | #57 `8234b06`, `325d025` |
+| (added during delivery) | UX polish: role-aware navigation + checklist; Query Studio templates/history/compare/tabs/share | #130, #131 |
 
 The forward roadmap (H0-H3, workstreams A-G) is tracked in
 [enterprise-roadmap.md](enterprise-roadmap.md) and the GitHub Project board; API/UX
@@ -228,5 +253,8 @@ workstream F there.
   engine, #22 benchmarks and #23-#29 retrieval/eval/ops features. Done.
 - **P3 — UX console:** G above, kept strictly over the API (§3.2), plus README
   quickstart, a guided tour and the capability-gated **Admin** screen (#57). Done.
+- **P3.1 — UX polish (workstream M):** grouped/role-aware navigation and onboarding
+  (#130), and the Query Studio templates/history/compare/tabs/share workflow (#131).
+  In progress; #132-#136 follow.
 - **P4 (optional, later)** — React/Next.js product frontend reusing the same OpenAPI
   contract; tracked as workstream F in the enterprise roadmap (not committed).

@@ -173,10 +173,12 @@ pip install -r requirements-ui.txt
 streamlit run ui/app.py -- --api-base http://localhost:8000
 ```
 
-Walkthrough: open **Query Studio**, enter a question with `top_k=3`, and the answer,
-retrieved docs + scores, per-stage latency, cost, failure tags and the redacted trace are
-shown - plus flags for response-cache hits, guardrails, input redaction and query expansion,
-the `guardrail_decisions` table, the provider-`resilience` block and OTel `trace_id`/`span_id`.
+Walkthrough: open **Query Studio**, apply a **template** (or type a question), set `top_k`,
+and click **Run query**. Results are tabbed - **Answer** (cost/latency plus a copy/share
+Markdown export and download), **Documents** (scores), **Trace** (per-stage latency + redacted
+trace), **Guardrails**, **Resilience** and **Cache**. The sidebar tracks a bounded, local
+**Recent runs** history; restore a run or run the same query again to see a **Compare with
+last run** delta table. Batch mode runs one query per line.
 Open **Traces** with the returned `request_id` to see the same trace the server logs;
 **Governance & Cost** shows the spend window, metrics, the guardrail hit-rate breakdown and a
 raw Prometheus `/metrics` panel. **Compare (what-if)** rebuilds the
@@ -219,13 +221,15 @@ in `config/retrieval.yaml` under `evaluation.active_evaluator`.
    value - that is your *active* evaluator for step 4.
 
 3. **Run a real retrieval** (sidebar *Start here* -> *Query Studio*).
-   - **Query**: `What is retrieval augmented generation?`
-   - **top_k**: `3`
-   - Keep **Include redacted trace** checked.
+   - Click the **RAG basics** template (it fills the query), or type
+     `What is retrieval augmented generation?`
+   - **top_k**: `3`; keep **Include redacted trace** checked.
    - Click **Run query**.
-   You should see an **Answer**, the **Retrieved documents** table (3 rows with `score` +
-   `content`), a **Per-stage latency** table, cost/latency/failure tiles, the **raw redacted
-   trace**, and a `request_id` caption. Copy that `request_id` - you will use it in step 6.
+   Results are tabbed: **Answer** (cost/latency + copy/share Markdown), **Documents**
+   (3 rows with `score` + `content`), **Trace** (per-stage latency + raw redacted trace),
+   **Guardrails**, **Resilience**, **Cache**. Copy the `request_id` caption - you will use it
+   in step 6. Run the query again (or restore it from **Recent runs**) to see
+   **Compare with last run**.
 
 4. **Score it with the LLM-as-judge** (sidebar *Experiment* -> *Evaluation*).
    - **Query**: `What is retrieval augmented generation?`
