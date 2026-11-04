@@ -17,6 +17,16 @@ import streamlit as st
 
 from ui.client import ApiClient
 from ui.common import api_base_url, latency_rows, metric_rows, require_ok
+from ui.navigation import (
+    can_access,
+    checklist_status,
+    effective_capabilities,
+    grouped_screens,
+    hidden_screens,
+    landing_screen,
+    quick_actions_for,
+    role_label,
+)
 from ui.tour import render_help_expander, render_tour, start_tour
 
 st.set_page_config(page_title="Enterprise GenAI RAG Console", layout="wide")
@@ -44,6 +54,22 @@ def _bootstrap() -> None:
         st.session_state.api_key = ""
     if "last_request_id" not in st.session_state:
         st.session_state.last_request_id = ""
+    if "last_query" not in st.session_state:
+        st.session_state.last_query = ""
+    if "active_screen" not in st.session_state:
+        st.session_state.active_screen = "Overview / Health"
+    if "nav_initialized" not in st.session_state:
+        st.session_state.nav_initialized = False
+    if "show_all_screens" not in st.session_state:
+        st.session_state.show_all_screens = False
+    if "checklist_hidden" not in st.session_state:
+        st.session_state.checklist_hidden = False
+    if "last_trace_request_id" not in st.session_state:
+        st.session_state.last_trace_request_id = ""
+    if "last_evaluation_at" not in st.session_state:
+        st.session_state.last_evaluation_at = ""
+    if "last_governance_seen" not in st.session_state:
+        st.session_state.last_governance_seen = False
     if "tour_state" not in st.session_state:
         st.session_state.tour_state = "idle"
     if "tour_step" not in st.session_state:
@@ -56,6 +82,138 @@ def _failure_taxonomy(result) -> None:
             f"Failure taxonomy: `{result.failure_type}` | tags: "
             f"{', '.join(result.failure_tags) or '-'}"
         )
+
+
+def _access_context(api: ApiClient) -> Dict[str, Any]:
+    """Resolve the calling persona so navigation and landing can adapt (#130)."""
+    result = api.access()
+    if result.ok:
+        data = result.data or {}
+        enabled = bool(data.get("enabled"))
+        return {
+            "ok": True,
+            "enabled": enabled,
+            "role": data.get("role") or "admin",
+            "capabilities": effective_capabilities(enabled, data.get("capabilities") or []),
+            "tenant": data.get("tenant") or {},
+        }
+    return {
+        "ok": False,
+        "enabled": False,
+        "role": "admin",
+        "capabilities": effective_capabilities(False, []),
+        "tenant": {},
+    }
+
+
+def _navigate(screen: str) -> None:
+    st.session_state.active_screen = screen
+    st.rerun()
+
+
+def _render_sidebar_navigation(access: Dict[str, Any]) -> None:
+    capabilities = access["capabilities"]
+    screens = list(SCREENS.keys())
+    show_all = bool(st.session_state.get("show_all_screens"))
+    active = st.session_state.get("active_screen", "Overview / Health")
+    if not st.session_state.get("nav_initialized"):
+        active = landing_screen(access["role"], capabilities, screens)
+        st.session_state.active_screen = active
+        st.session_state.nav_initialized = True
+    elif active not in SCREENS or (not show_all and not can_access(active, capabilities)):
+        active = landing_screen(access["role"], capabilities, screens)
+        st.session_state.active_screen = active
+
+    tenant = access.get("tenant") or {}
+    if access["ok"]:
+        scope = f"{tenant.get('id', 'default')} / {tenant.get('workspace', 'default')}"
+        suffix = "" if access["enabled"] else " (RBAC off)"
+        st.sidebar.caption(f"Role **{role_label(access['role'])}**{suffix}  \nTenant `{scope}`")
+    else:
+        st.sidebar.warning("Access info unavailable - showing all screens.")
+
+    st.sidebar.checkbox(
+        "Show all screens",
+        key="show_all_screens",
+        help="Reveal screens outside your role's capabilities.",
+    )
+    show_all = bool(st.session_state.show_all_screens)
+
+    for group in grouped_screens(screens, capabilities, show_all=show_all):
+        with st.sidebar.expander(group.label, expanded=active in group.screens):
+            st.caption(group.description)
+            for screen in group.screens:
+                if st.button(
+                    screen,
+                    key=f"nav::{screen}",
+                    use_container_width=True,
+                    type="primary" if screen == active else "secondary",
+                ):
+                    _navigate(screen)
+
+    hidden = hidden_screens(screens, capabilities, show_all=show_all)
+    if hidden and not show_all:
+        st.sidebar.caption(
+            f"{len(hidden)} screen(s) hidden by role. Tick **Show all screens** to reveal."
+        )
+
+    actions = quick_actions_for(capabilities)
+    if actions:
+        st.sidebar.subheader("Quick actions")
+        for action in actions:
+            if st.sidebar.button(
+                action.label, key=f"quick::{action.label}", help=action.help
+            ):
+                _navigate(action.screen)
+
+
+def _render_get_started(backend_ok: bool) -> None:
+    """A short, click-through onboarding checklist for first-run users (#130)."""
+    st.divider()
+    st.subheader("Get started")
+    if st.session_state.get("checklist_hidden"):
+        if st.button("Show checklist", key="show_checklist"):
+            st.session_state.checklist_hidden = False
+            st.rerun()
+        return
+
+    done = {
+        "backend": backend_ok,
+        "query": bool(st.session_state.get("last_request_id")),
+        "trace": bool(st.session_state.get("last_trace_request_id")),
+        "evaluate": bool(st.session_state.get("last_evaluation_at")),
+        "governance": bool(st.session_state.get("last_governance_seen")),
+    }
+    statuses = checklist_status(done)
+    completed = sum(1 for _, is_done in statuses if is_done)
+    st.progress(
+        completed / len(statuses),
+        text=f"{completed} of {len(statuses)} steps complete",
+    )
+    st.dataframe(
+        [
+            {
+                "status": "Done" if is_done else "To do",
+                "step": step.label,
+                "what you get": step.detail,
+                "go to": step.screen or "sidebar",
+            }
+            for step, is_done in statuses
+        ],
+        use_container_width=True,
+        hide_index=True,
+    )
+
+    next_steps = [step for step, is_done in statuses if not is_done and step.screen]
+    if next_steps:
+        nxt = next_steps[0]
+        if st.button(f"Continue: {nxt.label}", key=f"checklist::{nxt.key}", type="primary"):
+            _navigate(nxt.screen or "Overview / Health")
+    if completed == len(statuses):
+        st.success("You have exercised the whole console: query, trace, evaluation and governance.")
+    if st.button("Hide checklist", key="hide_checklist"):
+        st.session_state.checklist_hidden = True
+        st.rerun()
 
 
 # --------------------------------------------------------------------------- #
@@ -97,6 +255,8 @@ def screen_overview() -> None:
             else:
                 st.metric(label, "unavailable")
 
+    _render_get_started(health.ok and ready.ok)
+
 
 def _active_label(label: str, data: Dict[str, Any]) -> str:
     if label == "Active model":
@@ -131,6 +291,7 @@ def screen_query_studio() -> None:
                 result = api.query(query, top_k=top_k, include_trace=include_trace)
             if require_ok(result):
                 st.session_state.last_request_id = result.data.get("request_id") or result.request_id or ""
+                st.session_state.last_query = query
                 _render_query_result(result.data)
             else:
                 _failure_taxonomy(result)
@@ -259,6 +420,7 @@ def screen_evaluation() -> None:
             ground_truth=ground_truth or None,
         )
         if require_ok(result):
+            st.session_state.last_evaluation_at = "completed"
             st.write(f"Evaluator: `{result.data.get('evaluator')}`")
             st.caption(
                 f"docs_source: {result.data.get('docs_source')} | "
@@ -301,6 +463,7 @@ def screen_governance() -> None:
 
     status = api.governance_status()
     if require_ok(status):
+        st.session_state.last_governance_seen = True
         c1, c2, c3 = st.columns(3)
         c1.metric("Governance", "enabled" if status.data.get("enabled") else "disabled")
         c2.metric("Max cost / request", status.data.get("max_cost_per_request_usd"))
@@ -592,6 +755,7 @@ def screen_traces() -> None:
     if request_id and st.button("Look up trace"):
         result = api.trace(request_id)
         if require_ok(result):
+            st.session_state.last_trace_request_id = request_id
             otel = result.data.get("otel") or {}
             if otel.get("trace_id"):
                 st.caption(
@@ -665,10 +829,13 @@ def main() -> None:
     )
     if st.sidebar.button("Take the tour"):
         start_tour()
+    api = client()
+    access = _access_context(api)
+    _render_sidebar_navigation(access)
     render_help_expander()
     render_tour()
-    choice = st.sidebar.radio("Screen", list(SCREENS.keys()))
-    SCREENS[choice]()
+    active = st.session_state.get("active_screen", "Overview / Health")
+    SCREENS.get(active, screen_overview)()
 
 
 if __name__ == "__main__":
