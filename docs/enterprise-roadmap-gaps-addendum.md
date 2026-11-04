@@ -28,7 +28,7 @@ Workstream F** (enterprise console build-out): F delivers capabilities, M makes 
 | Issue | Title | Priority | Goal |
 |---|---|---|---|
 | #130 | UX1: IA simplification + role-based nav | P0 | **Landed** - Reduce cognitive load, role-based landing, Get started checklist |
-| #131 | UX2: Query Studio workflow polish | P0 | Templates, history, compare with last run, result tabs |
+| #131 | UX2: Query Studio workflow polish | P0 | **Landed** - Templates, bounded history + restore, compare with last run, six result tabs, copy/share Markdown |
 | #132 | UX3: Evaluation UX improvements | P0 | Dataset picker, GT helper, comparison matrix/charts, metric explanations |
 | #133 | UX4: Traces timeline/waterfall view | P1 | Timeline by stage, span filtering, redaction-safe view |
 | #134 | UX5: Governance/metrics filters & export | P1 | Time range, filters, CSV/JSON export, alerts preview |

@@ -11,7 +11,8 @@ API surface is sufficient for a real front-end. See ``docs/ux-and-api.md`` §6.
 import argparse
 import json
 import sys
-from typing import Any, Dict
+from datetime import datetime, timezone
+from typing import Any, Dict, Optional
 
 import streamlit as st
 
@@ -26,6 +27,16 @@ from ui.navigation import (
     landing_screen,
     quick_actions_for,
     role_label,
+)
+from ui.query_studio import (
+    DEFAULT_QUERY,
+    QUERY_TEMPLATES,
+    add_history,
+    build_history_entry,
+    comparison_rows,
+    find_baseline,
+    history_rows,
+    result_markdown,
 )
 from ui.tour import render_help_expander, render_tour, start_tour
 
@@ -70,6 +81,20 @@ def _bootstrap() -> None:
         st.session_state.last_evaluation_at = ""
     if "last_governance_seen" not in st.session_state:
         st.session_state.last_governance_seen = False
+    if "qs_query" not in st.session_state:
+        st.session_state.qs_query = DEFAULT_QUERY
+    if "qs_top_k" not in st.session_state:
+        st.session_state.qs_top_k = 3
+    if "qs_include_trace" not in st.session_state:
+        st.session_state.qs_include_trace = True
+    if "qs_batch" not in st.session_state:
+        st.session_state.qs_batch = False
+    if "query_history" not in st.session_state:
+        st.session_state.query_history = []
+    if "qs_last_entry" not in st.session_state:
+        st.session_state.qs_last_entry = None
+    if "qs_last_baseline" not in st.session_state:
+        st.session_state.qs_last_baseline = None
     if "tour_state" not in st.session_state:
         st.session_state.tour_state = "idle"
     if "tour_step" not in st.session_state:
@@ -268,96 +293,286 @@ def _active_label(label: str, data: Dict[str, Any]) -> str:
     return str(data.get("active_evaluator") or ("disabled" if not data.get("enabled", True) else "-"))
 
 
+def _render_query_templates() -> None:
+    history = st.session_state.get("query_history") or []
+    with st.expander("Query templates", expanded=not history):
+        st.caption(
+            "Task-focused starting points. Applying a template fills the query and top_k; "
+            "edit either before running."
+        )
+        columns = st.columns(2)
+        for index, template in enumerate(QUERY_TEMPLATES):
+            with columns[index % 2]:
+                if st.button(
+                    template.label,
+                    key=f"qs_template::{template.label}",
+                    help=template.description,
+                    use_container_width=True,
+                ):
+                    st.session_state.qs_query = template.query
+                    st.session_state.qs_top_k = max(1, min(10, template.top_k))
+                    st.rerun()
+
+
+def _history_label(entry: Dict[str, Any]) -> str:
+    return (
+        f"{entry.get('timestamp') or '-'} | {entry.get('outcome') or '-'} | "
+        f"{str(entry.get('query') or '')[:48]} | {entry.get('request_id') or '-'}"
+    )
+
+
+def _render_query_history() -> None:
+    history = st.session_state.get("query_history") or []
+    with st.expander(f"Recent runs (this session) - {len(history)}", expanded=False):
+        if not history:
+            st.caption(
+                "No runs yet. The last 20 single-query runs appear here; select one to restore "
+                "it or compare against it."
+            )
+            return
+        st.dataframe(history_rows(history), use_container_width=True, hide_index=True)
+        if st.session_state.get("qs_history_index", 0) >= len(history):
+            st.session_state.qs_history_index = 0
+        index = st.selectbox(
+            "Restore a run",
+            options=list(range(len(history))),
+            format_func=lambda position: _history_label(history[position]),
+            key="qs_history_index",
+        )
+        load_col, clear_col = st.columns(2)
+        if load_col.button("Load selected run", key="qs_load_run", type="primary"):
+            selected = history[index]
+            st.session_state.qs_query = selected.get("query") or ""
+            st.session_state.qs_top_k = max(1, min(10, int(selected.get("top_k") or 3)))
+            st.session_state.qs_last_entry = selected
+            st.session_state.qs_last_baseline = find_baseline(
+                history,
+                selected.get("query") or "",
+                exclude_request_id=selected.get("request_id") or None,
+            )
+            st.session_state.last_request_id = selected.get("request_id") or ""
+            st.session_state.last_query = selected.get("query") or ""
+            st.rerun()
+        if clear_col.button("Clear history", key="qs_clear_history"):
+            st.session_state.query_history = []
+            st.session_state.qs_last_entry = None
+            st.session_state.qs_last_baseline = None
+            st.rerun()
+
+
+def _record_query_run(
+    query: str, top_k: int, item: Dict[str, Any], fallback_request_id: str = ""
+) -> None:
+    if not item.get("request_id") and fallback_request_id:
+        item = {**item, "request_id": fallback_request_id}
+    history = st.session_state.get("query_history") or []
+    entry = build_history_entry(
+        query,
+        top_k,
+        item,
+        datetime.now(timezone.utc).isoformat(timespec="seconds"),
+    )
+    baseline = find_baseline(
+        history, query, exclude_request_id=entry.get("request_id") or None
+    )
+    st.session_state.query_history = add_history(history, entry)
+    st.session_state.qs_last_entry = entry
+    st.session_state.qs_last_baseline = baseline
+    st.session_state.last_request_id = entry.get("request_id") or ""
+    st.session_state.last_query = query
+
+
+def _render_run_comparison(
+    previous: Optional[Dict[str, Any]], current: Dict[str, Any]
+) -> None:
+    st.subheader("Compare with last run")
+    if not previous:
+        st.caption(
+            "No earlier run yet. Run a query twice (or restore an older run) to see latency, "
+            "cost, retrieval, guardrail and answer deltas."
+        )
+        return
+    st.dataframe(
+        comparison_rows(previous, current), use_container_width=True, hide_index=True
+    )
+    st.caption(
+        f"Baseline request_id `{previous.get('request_id') or '-'}` from "
+        f"{previous.get('timestamp') or '-'}."
+    )
+
+
 def screen_query_studio() -> None:
     st.header("Query Studio")
     api = client()
 
-    query = st.text_area("Query", value="What is retrieval augmented generation?")
-    top_k = st.slider("top_k", min_value=1, max_value=10, value=3)
-    include_trace = st.checkbox("Include redacted trace", value=True)
-    use_batch = st.checkbox("Batch mode (one query per line)", value=False)
+    _render_query_templates()
+    _render_query_history()
 
+    query = st.text_area(
+        "Query",
+        key="qs_query",
+        height=120,
+        help="Use a template above or write your own. Batch mode expects one query per line.",
+    )
+    top_k = st.slider("top_k", min_value=1, max_value=10, key="qs_top_k")
+    include_col, batch_col = st.columns(2)
+    include_trace = include_col.checkbox("Include redacted trace", key="qs_include_trace")
+    use_batch = batch_col.checkbox("Batch mode (one query per line)", key="qs_batch")
+
+    just_ran = False
     if st.button("Run query", type="primary"):
         if use_batch:
             queries = [line.strip() for line in query.splitlines() if line.strip()]
             with st.spinner("Running batch..."):
                 result = api.batch_query(queries, top_k=top_k, include_trace=include_trace)
             if require_ok(result):
+                just_ran = True
                 st.json(result.data.get("summary", {}))
-                for item in result.data.get("results", []):
-                    _render_query_result(item)
+                st.caption("Batch items are shown inline; history records single-query runs.")
+                for index, item in enumerate(result.data.get("results", []), start=1):
+                    label = str(item.get("query") or f"item {index}")[:60]
+                    with st.expander(f"{index}. {label}", expanded=index == 1):
+                        _render_query_result(item, item.get("query") or query)
         else:
             with st.spinner("Running..."):
                 result = api.query(query, top_k=top_k, include_trace=include_trace)
-            if require_ok(result):
-                st.session_state.last_request_id = result.data.get("request_id") or result.request_id or ""
-                st.session_state.last_query = query
-                _render_query_result(result.data)
-            else:
+            ok = require_ok(result)
+            if result.data:
+                _record_query_run(query, top_k, result.data, result.request_id)
+                just_ran = True
+                if ok:
+                    _render_query_result(result.data, query)
+                _render_run_comparison(
+                    st.session_state.get("qs_last_baseline"),
+                    st.session_state.get("qs_last_entry") or {},
+                )
+            if not ok:
                 _failure_taxonomy(result)
 
+    if not just_ran:
+        last_entry = st.session_state.get("qs_last_entry")
+        if last_entry:
+            st.divider()
+            st.subheader("Last run (this session)")
+            _render_query_result(last_entry.get("result") or {}, last_entry.get("query") or "")
+            _render_run_comparison(st.session_state.get("qs_last_baseline"), last_entry)
 
-def _render_query_result(item: Dict[str, Any]) -> None:
-    if item.get("error"):
-        st.error(f"{item.get('failure_type')}: {item.get('error')}")
+
+def _render_query_result(item: Dict[str, Any], query: str = "") -> None:
+    if item.get("error") and not item.get("failure_type"):
+        st.error(str(item.get("error")))
         return
     obs = item.get("observability") or {}
-    st.subheader("Answer")
-    st.write(item.get("response"))
-    st.caption(f"request_id: {item.get('request_id')}")
-
     cost = item.get("cost") or {}
     latency = item.get("latency") or {}
-    c1, c2, c3 = st.columns(3)
-    c1.metric("Cost (USD)", cost.get("estimated_cost_usd", 0.0))
-    c2.metric("Latency (ms)", latency.get("total_ms", 0.0))
-    c3.metric("Failure tags", len(item.get("failure_tags") or []))
-
-    flags = st.columns(4)
-    flags[0].metric("Response cache", "hit" if item.get("cache_hit") else "miss")
-    flags[1].metric("Guardrails", "enabled" if obs.get("guardrails_enabled") else "disabled")
-    flags[2].metric("Input redaction", "on" if obs.get("redaction_enabled") else "off")
-    flags[3].metric("Expanded queries", len(obs.get("expanded_queries") or []))
-
-    docs = item.get("retrieved_docs_with_scores") or []
-    if docs:
-        st.subheader("Retrieved documents")
-        st.dataframe(
-            [
-                {"score": d.get("score"), "content": (d.get("content") or "")[:200]}
-                for d in docs
-            ],
-            use_container_width=True,
-        )
-
-    if obs.get("expanded_queries"):
-        st.subheader("Query expansion")
-        st.write(obs["expanded_queries"])
-
     decisions = item.get("guardrail_decisions") or obs.get("guardrail_decisions") or []
-    if decisions:
-        st.subheader("Guardrail decisions")
+    resilience = obs.get("resilience")
+    otel = obs.get("otel") or {}
+    request_id = item.get("request_id") or ""
+    tabs = st.tabs(
+        ["Answer", "Documents", "Trace", "Guardrails", "Resilience", "Cache"]
+    )
+
+    with tabs[0]:
+        st.subheader("Answer")
+        if item.get("failure_type"):
+            st.warning(
+                f"`{item.get('failure_type')}`: {item.get('error') or 'request failed'}"
+            )
+        else:
+            st.write(item.get("response"))
+        st.caption(f"request_id: {request_id or '-'}")
+        if item.get("failure_tags"):
+            st.caption("failure_tags: " + ", ".join(item.get("failure_tags") or []))
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Cost (USD)", cost.get("estimated_cost_usd", 0.0))
+        c2.metric("Latency (ms)", latency.get("total_ms", 0.0))
+        c3.metric("Retrieved docs", len(item.get("retrieved_docs_with_scores") or []))
+        markdown = result_markdown(query, item)
+        with st.expander("Copy / share (Markdown)"):
+            st.code(markdown, language="markdown")
+            st.caption(
+                "Review before sharing: the trace is redacted, but the answer reflects your data."
+            )
+            st.download_button(
+                "Download Markdown",
+                data=markdown,
+                file_name=f"query-{request_id or 'latest'}.md",
+                mime="text/markdown",
+                key=f"qs_download::{request_id or 'latest'}",
+            )
+
+    with tabs[1]:
+        docs = item.get("retrieved_docs_with_scores") or []
+        if docs:
+            st.dataframe(
+                [
+                    {
+                        "rank": index,
+                        "score": doc.get("score"),
+                        "content": (doc.get("content") or "")[:300],
+                    }
+                    for index, doc in enumerate(docs, start=1)
+                ],
+                use_container_width=True,
+                hide_index=True,
+            )
+        else:
+            st.info(
+                "No retrieved documents on this response "
+                "(for example, a cache hit or a blocked request)."
+            )
+
+    with tabs[2]:
+        if obs:
+            if otel.get("trace_id"):
+                st.caption(
+                    f"OTel trace_id={otel.get('trace_id')} span_id={otel.get('span_id')}"
+                )
+            stages = latency_rows(latency)
+            if stages:
+                st.dataframe(stages, use_container_width=True)
+            st.json(obs)
+        else:
+            st.info(
+                "No trace on this response. Tick **Include redacted trace** before running."
+            )
+
+    with tabs[3]:
+        flags = st.columns(3)
+        flags[0].metric(
+            "Guardrails", "enabled" if obs.get("guardrails_enabled") else "disabled"
+        )
+        flags[1].metric(
+            "Input redaction", "on" if obs.get("redaction_enabled") else "off"
+        )
+        flags[2].metric(
+            "Guardrail blocks",
+            sum(
+                1
+                for decision in decisions
+                if str(decision.get("decision")).lower() == "block"
+            ),
+        )
         _render_guardrail_decisions(decisions)
 
-    resilience = obs.get("resilience")
-    if resilience:
-        st.subheader("Provider resilience")
-        st.json(resilience)
+    with tabs[4]:
+        if resilience:
+            st.json(resilience)
+        else:
+            st.info("No provider resilience events on this request.")
 
-    otel = obs.get("otel") or {}
-    if otel.get("trace_id"):
-        st.subheader("Trace correlation (OTel)")
-        st.code(f"trace_id={otel.get('trace_id')}  span_id={otel.get('span_id')}")
-        st.caption("Use the trace id to open this request in your OTel backend (e.g. Jaeger).")
-
-    stages = latency_rows(latency)
-    if stages:
-        st.subheader("Per-stage latency")
-        st.dataframe(stages, use_container_width=True)
-
-    if item.get("observability"):
-        st.subheader("Raw redacted trace")
-        st.json(item["observability"])
+    with tabs[5]:
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Response cache", "hit" if item.get("cache_hit") else "miss")
+        c2.metric("Expanded queries", len(obs.get("expanded_queries") or []))
+        c3.metric("Failure tags", len(item.get("failure_tags") or []))
+        if item.get("cache_hit"):
+            st.caption(
+                "Served from cache: retrieval, guardrails and generation were not re-run."
+            )
+        if obs.get("expanded_queries"):
+            st.write(obs["expanded_queries"])
 
 
 def screen_compare() -> None:
@@ -383,7 +598,7 @@ def screen_compare() -> None:
         st.json(rebuild.data.get("components", {}))
         after = api.query(query, include_trace=False)
         if require_ok(after):
-            _render_query_result(after.data)
+            _render_query_result(after.data, query)
 
 
 def _evaluator_options(api: ApiClient) -> list:
