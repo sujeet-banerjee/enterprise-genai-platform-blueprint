@@ -50,6 +50,14 @@ milestone **H2**, and keep the HTTP-only rule with AST + client tests per change
 Workstream **M** is deliberately separate from **F**: F builds out the enterprise console;
 M makes the existing console adoptable (IA, workflows, trace/waterfall, filters, a11y).
 
+## Delivery Status
+- **#130 UX1 - shipped (2026-11-04):** grouped sidebar navigation, role/capability-aware
+  landing, role-filtered screens with a **Show all screens** override, Quick actions, and a
+  five-step **Get started** checklist derived from completed actions. The pure contract lives
+  in `ui/navigation.py` and is covered by `tests/test_ux_navigation.py`; the tour gained a
+  checklist step (13 total).
+- #131-#136 remain open.
+
 ## Implementation Notes
 - Stay HTTP-only (enforced by `tests/test_ui_console.py`).
 - Prefer additive components in `ui/` (no `app.*`/`core.*` imports).

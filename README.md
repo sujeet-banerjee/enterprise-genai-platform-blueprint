@@ -186,6 +186,13 @@ decisions, and reports hit-rate. **Audit** reads the redacted trail (`limit`/`ev
 filters) and **Access / RBAC** shows the calling persona's role/capabilities. API failures
 render as the failure taxonomy (`failure_type` + `failure_tags`), not stack traces.
 
+The sidebar groups screens by job (Start here / Experiment / Governance & security /
+Operate / Reference), resolves your role through `GET /v1/access`, lands you on the
+screen that role usually needs, and hides screens your capabilities cannot open (the
+**Show all screens** box previews the full surface). The **Get started** checklist on
+Overview walks connect -> query -> trace -> evaluate -> governance and tracks real
+actions, while **Quick actions** jump straight to the next task.
+
 First-time users: click **Take the tour** in the sidebar for a guided, step-by-step
 walkthrough of every screen (Back / Next / Skip), or open the always-available
 **Help & tour guide** expander for the same reference at any time.
@@ -206,12 +213,12 @@ in `config/retrieval.yaml` under `evaluation.active_evaluator`.
    `http://localhost:8000`). Leave **API key (optional)** blank unless auth is enabled.
    Click **Take the tour** if this is your first time.
 
-2. **Overview / Health** (sidebar `Screen` = *Overview / Health*).
+2. **Overview / Health** (sidebar *Start here* -> *Overview / Health*).
    Confirm the tiles read `Health: ok`, `Ready: ready`, and that the four metrics show
    **Active model**, **Retriever**, **Reranker**, **Evaluator**. Note the evaluator tile
    value - that is your *active* evaluator for step 4.
 
-3. **Run a real retrieval** (sidebar `Screen` = *Query Studio*).
+3. **Run a real retrieval** (sidebar *Start here* -> *Query Studio*).
    - **Query**: `What is retrieval augmented generation?`
    - **top_k**: `3`
    - Keep **Include redacted trace** checked.
@@ -220,7 +227,7 @@ in `config/retrieval.yaml` under `evaluation.active_evaluator`.
    `content`), a **Per-stage latency** table, cost/latency/failure tiles, the **raw redacted
    trace**, and a `request_id` caption. Copy that `request_id` - you will use it in step 6.
 
-4. **Score it with the LLM-as-judge** (sidebar `Screen` = *Evaluation*).
+4. **Score it with the LLM-as-judge** (sidebar *Experiment* -> *Evaluation*).
    - **Query**: `What is retrieval augmented generation?`
    - **Response**: paste the answer from step 3 (or type
      `RAG grounds an LLM on retrieved documents that are fetched for the question.`).
@@ -249,14 +256,14 @@ in `config/retrieval.yaml` under `evaluation.active_evaluator`.
    - Paste the id into **Experiment id** and click **Poll experiment** until its status is
      `completed`, then inspect the per-variant metrics.
 
-6. **Inspect the trace & governance** (sidebar `Screen` = *Traces*, then *Governance & Cost*).
+6. **Inspect the trace & governance** (sidebar *Operate* -> *Traces*, then *Governance & security* -> *Governance & Cost*).
    - *Traces*: paste the `request_id` from step 3 and click **Look up trace** to see the exact
      redacted trace the server logged plus a per-stage latency table.
    - *Governance & Cost*: confirm **Governance** = `enabled`, the **Max cost / request** cap,
      and the rolling **spend window**; the **Metrics** block shows the running totals
      (`Total runs`, `Successes`, `Failures`, `Failure rate`) and `Failures by type`.
 
-7. **Read back the effective config** (sidebar `Screen` = *Settings (read-only)*).
+7. **Read back the effective config** (sidebar *Reference* -> *Settings (read-only)*).
    Expand **Evaluators** to confirm `llm_judge` is configured and that secrets render as
    `[REDACTED]`. YAML files in `config/` remain the source of truth.
 
@@ -330,7 +337,7 @@ api:
 
 A missing referenced secret fails fast. In production, mount secrets with Vault (Agent
 Injector) or a Kubernetes `secretKeyRef` so the value is present in the process environment
-— the same `${ENV_VAR}` syntax works unchanged. Set `config_version` at the top of a file to
+â€” the same `${ENV_VAR}` syntax works unchanged. Set `config_version` at the top of a file to
 pin the schema; a newer version warns (with migration note) rather than failing.
 
 ## Development notes

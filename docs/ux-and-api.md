@@ -98,8 +98,9 @@ non-trivial consumer and living proof that the contract is sufficient.
 - **Implementations behind the contract** — registries/factories for models,
   embedders, retrievers (vector, FAISS, hybrid, knowledge-graph), rerankers,
   evaluators, chunkers, query expanders and guardrails, all selected by config.
-- **Console** — 11 screens (§6), a dependency-free 12-step tour, and a client that
-  wraps every documented endpoint (HTTP only).
+- **Console** — 11 screens (§6) in a role-aware grouped navigation, a dependency-free
+  13-step tour, a Get started checklist, and a client that wraps every documented
+  endpoint (HTTP only).
 
 ## 5. API surface v1 — endpoint matrix
 
@@ -157,7 +158,7 @@ from §3.2 applies to every UI: HTTP only, no `core.*` imports.
 
 | Screen | User interactions | Endpoints |
 |---|---|---|
-| **Overview / Health** | status, readiness + config revision, active model/retriever/reranker/evaluator | `/health`, `/ready`, `/v1/models`, `/v1/embedding-models`, `/v1/retrievers`, `/v1/rerankers`, `/v1/evaluators` |
+| **Overview / Health** | status, readiness + config revision, active model/retriever/reranker/evaluator, Get started checklist | `/health`, `/ready`, `/v1/models`, `/v1/embedding-models`, `/v1/retrievers`, `/v1/rerankers`, `/v1/evaluators` |
 | **Query Studio** | enter query (or batch lines); `top_k`, rerank/include-trace; view answer, docs + scores, per-stage latency, cost, cache/guardrail/redaction/query-expansion flags, decisions table, resilience block, OTel ids, raw redacted trace | `/v1/query`, `/v1/query:batch`, `/v1/config` |
 | **Compare (what-if)** | pick config overrides (metric, retriever, model); rebuild then run A/B queries | `/v1/pipeline:rebuild`, `/v1/query` |
 | **Evaluation** | evaluator dropdown, optional ground truth, auto-retrieved docs; launch + poll experiments | `/v1/evaluators`, `/v1/evaluate`, `/v1/experiments`, `/v1/experiments/{exp_id}` |
@@ -171,8 +172,28 @@ from §3.2 applies to every UI: HTTP only, no `core.*` imports.
 
 No config-editing UI in v1 (write path = files in `config/`); `pipeline:rebuild` in the
 UI is expressed as preset "what-if" selections, keeping humans as the owners of YAML.
-The sidebar also exposes the API base URL and the optional API key, and
-`ui/tour.py` guides a first-run user through 12 steps (one per screen + connect).
+The sidebar also exposes the API base URL and the optional API key.
+
+### Role-aware navigation and onboarding (#130)
+
+The sidebar is grouped rather than a flat list: **Start here** (Overview, Query Studio),
+**Experiment** (Evaluation, Compare), **Governance & security** (Governance & Cost,
+Guardrails, Audit, Access), **Operate** (Traces, Admin) and **Reference** (Settings).
+The console resolves the caller via `GET /v1/access` and uses the reported role and
+capabilities to:
+
+- **land on the right screen** - admin -> Overview, analyst/evaluator -> Evaluation,
+  security/compliance -> Guardrails, ops/finops -> Governance & Cost, query-only -> Query Studio;
+- **hide screens the role cannot open** (with a count and a **Show all screens** override
+  that previews the full surface);
+- show a **Role / tenant** caption and capability-filtered **Quick actions**.
+
+**Overview** carries a five-step **Get started** checklist (connect -> query -> trace ->
+evaluate -> governance) whose progress is derived from completed actions in the session,
+not just from visiting a screen. `ui/navigation.py` holds the pure navigation contract
+(groups, capabilities, landing rules, checklist) so it is unit-tested without Streamlit.
+`ui/tour.py` guides a first-run user through 13 steps (connect, overview, checklist, then
+one per screen).
 
 ## 7. Delivery record (was: proposed issues)
 

@@ -35,12 +35,25 @@ TOUR_STEPS: List[TourStep] = [
         screen="Overview / Health",
         body=(
             "Shows service **health** and **readiness** (with a config revision), plus "
-            "the currently active model, retriever, reranker and evaluator as metric tiles."
+            "the currently active model, retriever, reranker and evaluator as metric tiles. "
+            "The sidebar groups screens and lands you on the one that matches your role and "
+            "capabilities; the **Role** caption shows your tenant/workspace scope."
         ),
         try_it="Check that Active model = `local-qwen` and Evaluator = `semantic`.",
     ),
     TourStep(
-        title="3. Query Studio",
+        title="3. Get started checklist",
+        screen="Overview / Health",
+        body=(
+            "A five-step onboarding checklist tracks the path from connecting to the backend "
+            "through query, trace, evaluation and governance. Progress is derived from what you "
+            "actually ran in this session, and **Continue** jumps to the next screen. Hide it "
+            "once you are comfortable - it can always be shown again."
+        ),
+        try_it="Follow **Continue** from start to finish; the progress bar reaches 5 of 5.",
+    ),
+    TourStep(
+        title="4. Query Studio",
         screen="Query Studio",
         body=(
             "Type a question, set **top_k**, and optionally keep the redacted **trace**. "
@@ -51,7 +64,7 @@ TOUR_STEPS: List[TourStep] = [
         try_it="Run `What is retrieval augmented generation?` with top_k = 3.",
     ),
     TourStep(
-        title="4. Compare (what-if)",
+        title="5. Compare (what-if)",
         screen="Compare (what-if)",
         body=(
             "Pick config overrides (similarity metric, retriever) and click **Apply "
@@ -61,7 +74,7 @@ TOUR_STEPS: List[TourStep] = [
         try_it="Requires `api.allow_rebuild: true` in `config/api.yaml`.",
     ),
     TourStep(
-        title="5. Evaluation",
+        title="6. Evaluation",
         screen="Evaluation",
         body=(
             "Score a query/response pair with the **Evaluator** dropdown (e.g. `llm_judge`). "
@@ -71,7 +84,7 @@ TOUR_STEPS: List[TourStep] = [
         try_it="Select `llm_judge`, then click **Evaluate** and read the metric tiles.",
     ),
     TourStep(
-        title="6. Governance & Cost",
+        title="7. Governance & Cost",
         screen="Governance & Cost",
         body=(
             "Shows whether governance is enabled, the per-request cost cap and safety "
@@ -81,7 +94,7 @@ TOUR_STEPS: List[TourStep] = [
         try_it="After a few queries, watch Total runs increase.",
     ),
     TourStep(
-        title="7. Guardrails",
+        title="8. Guardrails",
         screen="Guardrails",
         body=(
             "Shows the **resolved** input/output guardrail chains, the selected `profile` "
@@ -92,7 +105,7 @@ TOUR_STEPS: List[TourStep] = [
         try_it="Run the default injection probe and confirm it blocks with `guardrail_input_blocked`.",
     ),
     TourStep(
-        title="8. Audit",
+        title="9. Audit",
         screen="Audit",
         body=(
             "Read the append-only, redacted audit trail (`GET /v1/audit`) with `limit` and "
@@ -102,7 +115,7 @@ TOUR_STEPS: List[TourStep] = [
         try_it="Enable `config/audit.yaml`, run a query, then filter by `event_type = governance`.",
     ),
     TourStep(
-        title="9. Access / RBAC",
+        title="10. Access / RBAC",
         screen="Access / RBAC",
         body=(
             "Shows the calling persona's **role** and effective **capabilities** (plus `top_k_max` "
@@ -112,7 +125,7 @@ TOUR_STEPS: List[TourStep] = [
         try_it="Compare capabilities with and without the API key configured.",
     ),
     TourStep(
-        title="10. Admin",
+        title="11. Admin",
         screen="Admin",
         body=(
             "Tenant list and users (identity directory) plus a proposal form to update tenant budgets. "
@@ -121,7 +134,7 @@ TOUR_STEPS: List[TourStep] = [
         try_it="List tenants/users if your role has admin capability.",
     ),
     TourStep(
-        title="11. Traces",
+        title="12. Traces",
         screen="Traces",
         body=(
             "Paste a `request_id` (from a Query Studio result) and click **Look up trace** "
@@ -132,7 +145,7 @@ TOUR_STEPS: List[TourStep] = [
         try_it="Look up the request_id shown after your Query Studio run.",
     ),
     TourStep(
-        title="12. Settings (read-only)",
+        title="13. Settings (read-only)",
         screen="Settings (read-only)",
         body=(
             "View the redacted **effective configuration** and expand the provider lists "
@@ -181,7 +194,7 @@ def render_tour() -> None:
         return
 
     if state == "done":
-        st.success("Tour complete. Use the sidebar **Screen** list to explore, or reopen Help & tour guide.")
+        st.success("Tour complete. Use the grouped sidebar navigation to explore, or reopen Help & tour guide.")
         if st.button("Restart tour"):
             _set_step(0)
             _set_state("running")
