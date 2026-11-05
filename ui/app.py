@@ -19,6 +19,7 @@ import streamlit as st
 from ui.client import ApiClient
 from ui.common import api_base_url, latency_rows, metric_rows, require_ok
 from ui.evaluation import available_datasets, build_comparison_matrix, ground_truth_hint, metric_table_with_tooltips
+from ui.traces import build_timeline, redaction_safe_view, span_filters, trace_context
 from ui.navigation import (
     can_access,
     checklist_status,
@@ -1003,12 +1004,22 @@ def screen_traces() -> None:
         result = api.trace(request_id)
         if require_ok(result):
             st.session_state.last_trace_request_id = request_id
+            ctx = trace_context(result.data)
+            if ctx:
+                st.caption(" | ".join(f"{k}={v}" for k, v in ctx.items()))
             otel = result.data.get("otel") or {}
-            if otel.get("trace_id"):
+            if otel.get("trace_id") and not ctx.get("trace_id"):
                 st.caption(
                     f"OTel correlation: trace_id={otel.get('trace_id')} "
                     f"span_id={otel.get('span_id')}"
                 )
+            tl = build_timeline(result.data)
+            if tl:
+                st.subheader("Timeline / waterfall")
+                st.dataframe(tl, use_container_width=True, hide_index=True)
+                stages = span_filters(tl)
+                if stages:
+                    st.caption("Spans: " + ", ".join(stages))
             resilience = result.data.get("resilience")
             if resilience:
                 st.subheader("Provider resilience")
@@ -1017,7 +1028,8 @@ def screen_traces() -> None:
             if decisions:
                 st.subheader("Guardrail decisions")
                 _render_guardrail_decisions(decisions)
-            st.json(result.data)
+            st.subheader("Trace (redaction-safe view)")
+            st.json(redaction_safe_view(result.data))
             latency = result.data.get("latency", {})
             rows = latency_rows(latency)
             if rows:
