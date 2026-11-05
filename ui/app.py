@@ -18,6 +18,7 @@ import streamlit as st
 
 from ui.client import ApiClient
 from ui.common import api_base_url, latency_rows, metric_rows, require_ok
+from ui.evaluation import available_datasets, build_comparison_matrix, ground_truth_hint, metric_table_with_tooltips
 from ui.navigation import (
     can_access,
     checklist_status,
@@ -618,6 +619,15 @@ def screen_evaluation() -> None:
         "Score a query/response pair with an evaluator. `retrieved_docs` is auto-retrieved "
         "from the live pipeline, so the evaluator judges your response against real context."
     )
+
+    datasets = available_datasets()
+    ds_map = {ds.label: ds for ds in datasets}
+    dataset_choice = st.selectbox("Dataset", list(ds_map.keys()))
+    chosen = ds_map[dataset_choice]
+    with st.expander("Dataset details"):
+        st.write(chosen.description)
+        st.caption(f"docs: {chosen.docs_count} | cases: {chosen.cases_count}")
+
     query = st.text_input("Query", value="What is retrieval augmented generation?")
     response = st.text_area("Response", value="RAG grounds an LLM on retrieved documents.")
     options = _evaluator_options(api)
@@ -626,6 +636,8 @@ def screen_evaluation() -> None:
         evaluator = st.selectbox("Evaluator", options)
     with gt_col:
         ground_truth = st.text_input("Ground truth (optional)", value="")
+
+    st.caption(ground_truth_hint(evaluator))
 
     if st.button("Evaluate"):
         result = api.evaluate(
@@ -636,6 +648,7 @@ def screen_evaluation() -> None:
         )
         if require_ok(result):
             st.session_state.last_evaluation_at = "completed"
+            st.session_state.last_evaluation_result = result.data
             st.write(f"Evaluator: `{result.data.get('evaluator')}`")
             st.caption(
                 f"docs_source: {result.data.get('docs_source')} | "
@@ -644,6 +657,8 @@ def screen_evaluation() -> None:
             )
             metrics = result.data.get("metrics", {})
             if metrics:
+                with st.expander("Metrics with explanations"):
+                    st.dataframe(metric_table_with_tooltips(metrics), use_container_width=True, hide_index=True)
                 st.dataframe(metric_rows(metrics), use_container_width=True)
             else:
                 st.info("The selected evaluator returned no metrics.")
@@ -653,6 +668,23 @@ def screen_evaluation() -> None:
                     "support ground-truth scoring. Use `semantic` or `llm_judge` to score "
                     "against a reference answer."
                 )
+
+    st.divider()
+    st.subheader("Comparison matrix")
+    runs = st.session_state.get("evaluation_runs") or []
+    if st.session_state.get("last_evaluation_result"):
+        runs = list(runs) + [st.session_state["last_evaluation_result"]]
+        # dedupe by request_id if present
+        dedup = {}
+        for run in runs:
+            key = run.get("request_id") or run.get("id") or len(dedup)
+            dedup[key] = run
+        runs = list(dedup.values())[-10:]
+        st.session_state.evaluation_runs = runs
+    if runs:
+        st.dataframe(build_comparison_matrix(runs), use_container_width=True, hide_index=True)
+    else:
+        st.caption("Run evaluations above to build a comparison matrix.")
 
     st.divider()
     st.subheader("Launch experiment")
