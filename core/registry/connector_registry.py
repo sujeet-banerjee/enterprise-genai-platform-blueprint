@@ -27,6 +27,28 @@ class ConnectorRegistry:
     def _register_default_providers(self) -> None:
         self.register("noop", self._build_noop)
         self.register("filesystem", self._build_filesystem)
+        self.register("sharepoint", self._build_sharepoint)
+        self.register("confluence", self._build_confluence)
+
+    @staticmethod
+    def _build_sharepoint(name: str = "sharepoint", config: Dict[str, Any] | None = None, **kwargs: Any) -> BaseConnector:
+        from core.implementations.connectors.sharepoint import SharePointConnector
+
+        merged = dict(config or {})
+        merged.pop("type", None)
+        merged.pop("provider", None)
+        merged.update(kwargs)
+        return SharePointConnector(name=name, config=config, **merged)
+
+    @staticmethod
+    def _build_confluence(name: str = "confluence", config: Dict[str, Any] | None = None, **kwargs: Any) -> BaseConnector:
+        from core.implementations.connectors.confluence import ConfluenceConnector
+
+        merged = dict(config or {})
+        merged.pop("type", None)
+        merged.pop("provider", None)
+        merged.update(kwargs)
+        return ConfluenceConnector(name=name, config=config, **merged)
 
     @staticmethod
     def _build_noop(name: str = "noop", **kwargs: Any) -> BaseConnector:
