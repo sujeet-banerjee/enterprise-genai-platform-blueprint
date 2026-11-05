@@ -19,6 +19,7 @@ import streamlit as st
 from ui.client import ApiClient
 from ui.common import api_base_url, latency_rows, metric_rows, require_ok
 from ui.evaluation import available_datasets, build_comparison_matrix, ground_truth_hint, metric_table_with_tooltips
+from ui.governance import alerts_preview, filter_metrics, metrics_to_csv, metrics_to_json, time_windows
 from ui.traces import build_timeline, redaction_safe_view, span_filters, trace_context
 from ui.navigation import (
     can_access,
@@ -720,18 +721,37 @@ def screen_governance() -> None:
         st.subheader("Spend window")
         st.json(window)
 
-    metrics = api.metrics()
-    if require_ok(metrics):
+    metrics_res = api.metrics()
+    if require_ok(metrics_res):
+        metrics = metrics_res.data
+        st.session_state.last_metrics = metrics
+        st.subheader("Metrics filters & export")
+        f1, f2, f3, f4 = st.columns(4)
+        tw = f1.selectbox("Time range", time_windows())
+        tenant = f2.text_input("Tenant (filter)", value="")
+        app = f3.text_input("App (filter)", value="")
+        user = f4.text_input("User (filter)", value="")
+        _ = filter_metrics(metrics, tenant=tenant, app=app, user=user)
+        st.caption(f"Time range: {tw} | filters: tenant={tenant or '*'} app={app or '*'} user={user or '*'}")
+        alerts = alerts_preview(metrics)
+        if alerts:
+            st.subheader("Alerts preview")
+            for a in alerts:
+                st.warning(f"[{a['level']}] {a['name']}: {a['message']}")
+        e1, e2 = st.columns(2)
+        e1.download_button("Download JSON", data=metrics_to_json(metrics), file_name="metrics.json", mime="application/json")
+        e2.download_button("Download CSV", data=metrics_to_csv(metrics), file_name="metrics.csv", mime="text/csv")
+
         st.subheader("Metrics")
         c1, c2, c3, c4 = st.columns(4)
-        c1.metric("Total runs", metrics.data.get("total_runs"))
-        c2.metric("Successes", metrics.data.get("success_count"))
-        c3.metric("Failures", metrics.data.get("failure_count"))
-        c4.metric("Failure rate", metrics.data.get("failure_rate"))
+        c1.metric("Total runs", metrics.get("total_runs"))
+        c2.metric("Successes", metrics.get("success_count"))
+        c3.metric("Failures", metrics.get("failure_count"))
+        c4.metric("Failure rate", metrics.get("failure_rate"))
         st.subheader("Failures by type")
-        st.json(metrics.data.get("failures_by_type", {}))
+        st.json(metrics.get("failures_by_type", {}))
 
-        guardrails = metrics.data.get("guardrails") or {}
+        guardrails = metrics.get("guardrails") or {}
         st.subheader("Guardrail hit rate")
         g1, g2, g3 = st.columns(3)
         g1.metric("Decisions", guardrails.get("total_decisions", 0))
