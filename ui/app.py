@@ -21,6 +21,7 @@ from ui.common import api_base_url, latency_rows, metric_rows, require_ok
 from ui.admin import audit_export_rows, confirm_action, scope_indicator
 from ui.evaluation import available_datasets, build_comparison_matrix, ground_truth_hint, metric_table_with_tooltips
 from ui.governance import alerts_preview, filter_metrics, metrics_to_csv, metrics_to_json, time_windows
+from ui.polish import a11y_label, empty_state, error_remediation, tooltip
 from ui.traces import build_timeline, redaction_safe_view, span_filters, trace_context
 from ui.navigation import (
     can_access,
@@ -106,11 +107,14 @@ def _bootstrap() -> None:
 
 
 def _failure_taxonomy(result) -> None:
+    rem = error_remediation(getattr(result, "status_code", 0) or 0, getattr(result, "failure_type", "") or "")
     if result.failure_type:
         st.warning(
-            f"Failure taxonomy: `{result.failure_type}` | tags: "
-            f"{', '.join(result.failure_tags) or '-'}"
+            f"{rem['title']}: `{result.failure_type}` | tags: "
+            f"{', '.join(result.failure_tags) or '-'} | {rem['hint']} — {rem['action']}"
         )
+    elif getattr(result, "status_code", 0):
+        st.warning(f"{rem['title']} ({result.status_code}): {rem['hint']} — {rem['action']}")
 
 
 def _access_context(api: ApiClient) -> Dict[str, Any]:
