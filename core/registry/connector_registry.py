@@ -29,6 +29,39 @@ class ConnectorRegistry:
         self.register("filesystem", self._build_filesystem)
         self.register("sharepoint", self._build_sharepoint)
         self.register("confluence", self._build_confluence)
+        self.register("s3", self._build_s3)
+        self.register("azure_blob", self._build_azure_blob)
+        self.register("gcs", self._build_gcs)
+
+    @staticmethod
+    def _build_s3(name: str = "s3", config: Dict[str, Any] | None = None, **kwargs: Any) -> BaseConnector:
+        from core.implementations.connectors.s3 import S3Connector
+
+        merged = dict(config or {})
+        merged.pop("type", None)
+        merged.pop("provider", None)
+        merged.update(kwargs)
+        return S3Connector(name=name, config=config, **merged)
+
+    @staticmethod
+    def _build_azure_blob(name: str = "azure_blob", config: Dict[str, Any] | None = None, **kwargs: Any) -> BaseConnector:
+        from core.implementations.connectors.azure_blob import AzureBlobConnector
+
+        merged = dict(config or {})
+        merged.pop("type", None)
+        merged.pop("provider", None)
+        merged.update(kwargs)
+        return AzureBlobConnector(name=name, config=config, **merged)
+
+    @staticmethod
+    def _build_gcs(name: str = "gcs", config: Dict[str, Any] | None = None, **kwargs: Any) -> BaseConnector:
+        from core.implementations.connectors.gcs import GCSConnector
+
+        merged = dict(config or {})
+        merged.pop("type", None)
+        merged.pop("provider", None)
+        merged.update(kwargs)
+        return GCSConnector(name=name, config=config, **merged)
 
     @staticmethod
     def _build_sharepoint(name: str = "sharepoint", config: Dict[str, Any] | None = None, **kwargs: Any) -> BaseConnector:
