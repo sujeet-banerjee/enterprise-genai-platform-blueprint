@@ -52,7 +52,11 @@ def _serialize_value(value: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def build_store(config_path: Optional[str] = None, **overrides: Any) -> BaseStore:
-    """Build store from config (memory default)."""
+    """Build store from config (memory default).
+
+    Supports cross-region strategy via optional `region` and `replication` config
+    (Workstream I #118): namespace keys by region and expose region in health.
+    """
     from pathlib import Path
 
     import yaml
@@ -74,16 +78,25 @@ def build_store(config_path: Optional[str] = None, **overrides: Any) -> BaseStor
     if backend == "memory":
         from core.services.store_backends import MemoryStore
 
-        return MemoryStore(**config)
-    if backend == "postgres":
+        store: BaseStore = MemoryStore(**config)
+    elif backend == "postgres":
         from core.services.store_backends import PostgresStore
 
-        return PostgresStore(**config)
-    if backend == "sqlite":
+        store = PostgresStore(**config)
+    elif backend == "sqlite":
         from core.services.store_backends import SQLiteStore
 
-        return SQLiteStore(**config)
+        store = SQLiteStore(**config)
+    else:
+        from core.services.store_backends import MemoryStore
 
-    from core.services.store_backends import MemoryStore
+        store = MemoryStore(**config)
 
-    return MemoryStore(**config)
+    # Optional cross-region namespace wrapper (config-driven; default off)
+    region = config.get("region")
+    replication = config.get("replication") or {}
+    if region or replication:
+        from core.services.store_backends import RegionalStore
+
+        store = RegionalStore(store, region=region, replication=replication)
+    return store

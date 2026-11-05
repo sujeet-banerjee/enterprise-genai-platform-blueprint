@@ -194,6 +194,57 @@ class SQLiteStore(BaseStore):
         self._conn.commit()
 
 
+class RegionalStore(BaseStore):
+    """Namespace wrapper for cross-region persistence strategy (#118).
+
+    - Prefixes keys by region when configured (prevents collisions)
+    - Exposes region/replication in health
+    - Delegates to underlying store; replication is a config signal (future hook)
+    """
+
+    def __init__(self, inner: BaseStore, region: Any = None, replication: Dict[str, Any] | None = None):
+        self._inner = inner
+        self._region = str(region) if region not in (None, "") else ""
+        self._replication = dict(replication) if replication else {}
+
+    def _k(self, key: str) -> str:
+        if not self._region:
+            return key
+        if key.startswith(f"{self._region}:"):
+            return key
+        return f"{self._region}:{key}"
+
+    def get(self, key: str) -> Optional[Dict[str, Any]]:
+        return self._inner.get(self._k(key))
+
+    def set(self, key: str, value: Dict[str, Any], ttl_seconds: Optional[float] = None) -> None:
+        v = _serialize_value(value)
+        if self._region:
+            v.setdefault("_region", self._region)
+        return self._inner.set(self._k(key), v, ttl_seconds=ttl_seconds)
+
+    def list(self, prefix: str = "", limit: int = 1000, **filters: Any) -> List[Dict[str, Any]]:
+        pfx = self._k(prefix) if prefix else (f"{self._region}:" if self._region else "")
+        return self._inner.list(prefix=pfx, limit=limit, **filters)
+
+    def delete(self, key: str) -> bool:
+        return self._inner.delete(self._k(key))
+
+    def health(self) -> Dict[str, Any]:
+        h = dict(self._inner.health() or {})
+        if self._region:
+            h["region"] = self._region
+        if self._replication:
+            h["replication"] = self._replication
+        return h
+
+    def close(self) -> None:
+        self._inner.close()
+
+    def clear(self) -> None:
+        self._inner.clear()
+
+
 class PostgresStore(BaseStore):
     def __init__(self, **config: Any):
         try:
