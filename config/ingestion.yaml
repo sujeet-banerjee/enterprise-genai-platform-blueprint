@@ -1,0 +1,12 @@
+enabled: false
+default_connector: null
+state_path: "data/ingestion_state.json"
+connectors: {}
+# Example (disabled by default):
+# connectors:
+#   local_docs:
+#     type: filesystem
+#     path: data/docs.json
+#     incremental: true
+#     acl:
+#       allowed_tenants: ["default"]

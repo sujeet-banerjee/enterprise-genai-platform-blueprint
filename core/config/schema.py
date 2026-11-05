@@ -398,6 +398,17 @@ class AclConfig(_StrictModel):
     bypass_roles: List[str] = Field(default_factory=list)
 
 
+class ConnectorEntry(_OpenModel):
+    pass
+
+
+class IngestionConfig(_StrictModel):
+    enabled: bool = False
+    default_connector: Optional[str] = None
+    state_path: Optional[str] = None
+    connectors: Dict[str, Any] = Field(default_factory=dict)
+
+
 
 #: Map of config file stem -> (schema, human label).
 SCHEMAS: Dict[str, Any] = {
@@ -416,4 +427,5 @@ SCHEMAS: Dict[str, Any] = {
     "guardrails": GuardrailsConfig,
     "persistence": PersistenceConfig,
     "audit": AuditConfig,
+    "ingestion": IngestionConfig,
 }
