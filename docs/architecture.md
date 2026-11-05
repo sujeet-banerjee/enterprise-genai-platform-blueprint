@@ -71,7 +71,7 @@ root** (see §6).
 | Orchestration Layer | Executes the request lifecycle, enforces stage ordering, emits structured traces | `app/pipeline.py` (`RAGPipeline`) |
 | Service Interfaces (contracts) | Stable, swappable contracts for each capability | `core/interfaces/*` |
 | Implementation Layer (extension points) | Concrete, replaceable vendors/backends | `core/implementations/*` |
-| Registries & Services | Config-driven factories + orthogonal utilities (governance, observability) | `core/registry/*`, `core/services/*` |
+| Registries & Services | Config-driven factories + orthogonal utilities (governance, observability, ingestion) | `core/registry/*`, `core/services/*` |
 
 ## 2.2 Component diagram
 
