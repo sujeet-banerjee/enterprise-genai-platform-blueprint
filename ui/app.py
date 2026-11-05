@@ -18,6 +18,7 @@ import streamlit as st
 
 from ui.client import ApiClient
 from ui.common import api_base_url, latency_rows, metric_rows, require_ok
+from ui.admin import audit_export_rows, confirm_action, scope_indicator
 from ui.evaluation import available_datasets, build_comparison_matrix, ground_truth_hint, metric_table_with_tooltips
 from ui.governance import alerts_preview, filter_metrics, metrics_to_csv, metrics_to_json, time_windows
 from ui.traces import build_timeline, redaction_safe_view, span_filters, trace_context
@@ -984,14 +985,17 @@ def screen_admin() -> None:
         st.warning("Admin capability required.")
         return
 
-    st.subheader("Tenants")
     t_res = api.admin_list_tenants()
     if require_ok(t_res):
+        st.subheader("Tenants")
         tenants = t_res.data.get("tenants") or []
         if tenants:
             st.dataframe(tenants, use_container_width=True)
         else:
             st.info("No tenants returned")
+        ind = scope_indicator({"enabled": True, "default_tenant": tenants[0].get("tenant") if tenants else "default"})
+        st.warning(ind["warning"])
+        st.caption(confirm_action("update tenant configuration"))
 
     st.subheader("Users (identity directory)")
     u_res = api.admin_list_users()
@@ -1001,6 +1005,21 @@ def screen_admin() -> None:
             st.dataframe(users, use_container_width=True)
         else:
             st.info("No users returned or identity disabled")
+
+    audit = api.audit(limit=20)
+    if require_ok(audit):
+        st.subheader("Recent audit (export)")
+        rows = audit_export_rows(audit.data.get("events") or [])
+        if rows:
+            st.dataframe(rows, use_container_width=True, hide_index=True)
+            import csv
+            import io
+
+            buf = io.StringIO()
+            w = csv.DictWriter(buf, fieldnames=["timestamp", "event_type", "action", "outcome", "request_id", "tenant"])
+            w.writeheader()
+            w.writerows(rows)
+            st.download_button("Download audit CSV", data=buf.getvalue(), file_name="audit.csv", mime="text/csv")
 
     st.subheader("Tenant updates (proposal)")
     tenant_id = st.text_input("Tenant ID")
