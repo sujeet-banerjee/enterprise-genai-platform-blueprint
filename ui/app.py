@@ -16,13 +16,22 @@ from typing import Any, Dict, Optional
 
 import streamlit as st
 
+from ui.admin import audit_export_rows, confirm_action, scope_indicator
 from ui.client import ApiClient
 from ui.common import api_base_url, latency_rows, metric_rows, require_ok
-from ui.admin import audit_export_rows, confirm_action, scope_indicator
-from ui.evaluation import available_datasets, build_comparison_matrix, ground_truth_hint, metric_table_with_tooltips
-from ui.governance import alerts_preview, filter_metrics, metrics_to_csv, metrics_to_json, time_windows
-from ui.polish import a11y_label, empty_state, error_remediation, tooltip
-from ui.traces import build_timeline, redaction_safe_view, span_filters, trace_context
+from ui.evaluation import (
+    available_datasets,
+    build_comparison_matrix,
+    ground_truth_hint,
+    metric_table_with_tooltips,
+)
+from ui.governance import (
+    alerts_preview,
+    filter_metrics,
+    metrics_to_csv,
+    metrics_to_json,
+    time_windows,
+)
 from ui.navigation import (
     can_access,
     checklist_status,
@@ -33,6 +42,7 @@ from ui.navigation import (
     quick_actions_for,
     role_label,
 )
+from ui.polish import error_remediation
 from ui.query_studio import (
     DEFAULT_QUERY,
     QUERY_TEMPLATES,
@@ -44,6 +54,7 @@ from ui.query_studio import (
     result_markdown,
 )
 from ui.tour import render_help_expander, render_tour, start_tour
+from ui.traces import build_timeline, redaction_safe_view, span_filters, trace_context
 
 st.set_page_config(page_title="Enterprise GenAI RAG Console", layout="wide")
 
