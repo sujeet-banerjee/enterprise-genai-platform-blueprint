@@ -20,10 +20,19 @@ from ui.admin import audit_export_rows, confirm_action, scope_indicator
 from ui.client import ApiClient
 from ui.common import api_base_url, latency_rows, metric_rows, require_ok
 from ui.evaluation import (
+    CUSTOM_DATASET_TEMPLATE,
+    MAX_DATASET_CASES,
     available_datasets,
     build_comparison_matrix,
+    compare_metric_averages,
+    dataset_preview_rows,
     ground_truth_hint,
+    load_benchmark_cases,
+    metric_matrix,
+    metric_summary,
     metric_table_with_tooltips,
+    parse_dataset_json,
+    run_dataset_evaluation,
 )
 from ui.governance import (
     alerts_preview,
@@ -686,6 +695,119 @@ def screen_evaluation() -> None:
                     "support ground-truth scoring. Use `semantic` or `llm_judge` to score "
                     "against a reference answer."
                 )
+
+    st.divider()
+    st.subheader("Dataset evaluation")
+    st.caption(
+        "Run every dataset case through `POST /v1/query` and then score the answer with "
+        "`POST /v1/evaluate`. A failing case is reported without stopping the run."
+    )
+    source = st.radio(
+        "Dataset source",
+        ("Built-in benchmark", "Paste JSON"),
+        horizontal=True,
+        key="evaluation_dataset_source",
+    )
+    cases = []
+    if source == "Built-in benchmark":
+        cases = load_benchmark_cases()
+        if cases:
+            st.caption(f"Loaded {len(cases)} labeled cases from `data/benchmark.json`.")
+        else:
+            st.warning("Built-in benchmark is unavailable; paste a dataset instead.")
+    else:
+        if "evaluation_dataset_json" not in st.session_state:
+            st.session_state.evaluation_dataset_json = CUSTOM_DATASET_TEMPLATE
+        raw_dataset = st.text_area(
+            "Dataset JSON",
+            height=220,
+            key="evaluation_dataset_json",
+        )
+        try:
+            cases = parse_dataset_json(raw_dataset)
+        except ValueError as exc:
+            st.error(str(exc))
+
+    if cases:
+        if len(cases) > MAX_DATASET_CASES:
+            st.caption(f"Only the first {MAX_DATASET_CASES} cases will run.")
+        with st.expander("Preview cases"):
+            st.dataframe(
+                dataset_preview_rows(cases[:MAX_DATASET_CASES]),
+                use_container_width=True,
+                hide_index=True,
+            )
+        dataset_col, top_k_col = st.columns([1, 1])
+        with dataset_col:
+            dataset_evaluator = st.selectbox(
+                "Dataset evaluator", options, key="dataset_evaluator"
+            )
+        with top_k_col:
+            dataset_top_k = st.slider("Top k per case", 1, 10, 3, key="dataset_top_k")
+        st.caption(ground_truth_hint(dataset_evaluator))
+
+        if st.button("Run dataset evaluation"):
+            progress = st.progress(0.0)
+
+            def _progress(done: int, total: int) -> None:
+                progress.progress(done / max(total, 1))
+
+            with st.spinner("Running dataset..."):
+                dataset_rows = run_dataset_evaluation(
+                    cases,
+                    api,
+                    evaluator=dataset_evaluator,
+                    top_k=dataset_top_k,
+                    on_progress=_progress,
+                )
+            st.session_state.dataset_evaluation_previous = (
+                st.session_state.get("dataset_evaluation_rows") or []
+            )
+            st.session_state.dataset_evaluation_rows = dataset_rows
+            progress.empty()
+
+        dataset_rows = st.session_state.get("dataset_evaluation_rows") or []
+        if dataset_rows:
+            succeeded = sum(1 for row in dataset_rows if row.get("status") == "ok")
+            failed = len(dataset_rows) - succeeded
+            c1, c2, c3 = st.columns(3)
+            c1.metric("Cases", len(dataset_rows))
+            c2.metric("Succeeded", succeeded)
+            c3.metric("Failed", failed)
+            st.dataframe(
+                metric_matrix(dataset_rows), use_container_width=True, hide_index=True
+            )
+            summary = metric_summary(dataset_rows)
+            if summary:
+                st.bar_chart(summary)
+                st.dataframe(
+                    [{"metric": key, "average": value} for key, value in summary.items()],
+                    use_container_width=True,
+                    hide_index=True,
+                )
+            previous_rows = st.session_state.get("dataset_evaluation_previous") or []
+            if previous_rows:
+                st.subheader("Change vs previous dataset run")
+                st.dataframe(
+                    compare_metric_averages(previous_rows, dataset_rows),
+                    use_container_width=True,
+                    hide_index=True,
+                )
+            failed_rows = [row for row in dataset_rows if row.get("status") == "error"]
+            if failed_rows:
+                with st.expander("Failed cases"):
+                    st.dataframe(
+                        [
+                            {
+                                "case": row.get("case"),
+                                "query": row.get("query"),
+                                "error": row.get("error"),
+                            }
+                            for row in failed_rows
+                        ],
+                        use_container_width=True,
+                        hide_index=True,
+                    )
 
     st.divider()
     st.subheader("Comparison matrix")

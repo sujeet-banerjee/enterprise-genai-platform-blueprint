@@ -161,7 +161,7 @@ from §3.2 applies to every UI: HTTP only, no `core.*` imports.
 | **Overview / Health** | status, readiness + config revision, active model/retriever/reranker/evaluator, Get started checklist | `/health`, `/ready`, `/v1/models`, `/v1/embedding-models`, `/v1/retrievers`, `/v1/rerankers`, `/v1/evaluators` |
 | **Query Studio** | task templates; enter query (or batch lines); `top_k`, rerank/include-trace; tabbed results (Answer, Documents, Trace, Guardrails, Resilience, Cache); copy/share Markdown + download; bounded local history with restore and **Compare with last run** deltas | `/v1/query`, `/v1/query:batch`, `/v1/config` |
 | **Compare (what-if)** | pick config overrides (metric, retriever, model); rebuild then run A/B queries | `/v1/pipeline:rebuild`, `/v1/query` |
-| **Evaluation** | dataset picker (built-in benchmark summary or custom query/response), evaluator dropdown, ground-truth guidance, metric explanations, run comparison matrix, optional ground truth, auto-retrieved docs; launch + poll experiments | `/v1/evaluators`, `/v1/evaluate`, `/v1/experiments`, `/v1/experiments/{exp_id}` |
+| **Evaluation** | dataset picker (built-in benchmark or pasted JSON), dataset execution (query + evaluate per case with failure isolation), case-by-metric matrix, average-score chart, delta vs previous run, evaluator dropdown, ground-truth guidance, metric explanations, run comparison matrix, optional ground truth, auto-retrieved docs; launch + poll experiments | `/v1/evaluators`, `/v1/query`, `/v1/evaluate`, `/v1/experiments`, `/v1/experiments/{exp_id}` |
 | **Governance & Cost** | budget limits, spend window, per-request cost, guardrail hit-rate, time range + tenant/app/user filters, alerts preview, CSV/JSON metric export, raw Prometheus scrape | `/v1/governance/status`, `/v1/metrics`, `/metrics` |
 | **Guardrails** | profile/enabled/providers, resolved chains, probe query decisions, hit-rate | `/v1/guardrails`, `/metrics` |
 | **Audit** | filter by `limit`/`event_type`; inspect redacted events | `/v1/audit` |
@@ -224,8 +224,12 @@ The pure workflow contract lives in `ui/query_studio.py` and is covered by
 - **Evaluation (#132):** a dataset picker summarizes the built-in `data/benchmark.json`
   corpus (docs/cases) or the ad-hoc query/response; the screen explains which evaluators use
   ground truth, shows metric explanations next to results, and accumulates runs in a
-  **comparison matrix**. Dataset *execution* and average-score charts remain a follow-up
-  (see the K workstream); #132 does not invent results.
+  **comparison matrix**.
+- **Dataset execution (#145):** the Evaluation screen now runs the built-in benchmark or a
+  pasted JSON dataset end-to-end. Each case calls `POST /v1/query` and then
+  `POST /v1/evaluate` (reference answers become `ground_truth`); query/evaluation failures are
+  isolated per case. Results render as a case-by-metric matrix, average-score bar chart and a
+  delta table against the previous run.
 - **Traces (#133):** traces render a stage-ordered **timeline/waterfall** (milliseconds and
   percent of total), a span list for filtering, OTel `trace_id`/`span_id` context and a
   defensive redaction-safe view alongside the raw trace.
@@ -238,9 +242,9 @@ The pure workflow contract lives in `ui/query_studio.py` and is covered by
 
 These helpers are pure and Streamlit-free (`ui/evaluation.py`, `ui/traces.py`,
 `ui/governance.py`, `ui/admin.py`, `ui/polish.py`) and covered by
-`tests/test_ui_evaluation_ux.py`, `tests/test_ui_traces_timeline.py`,
-`tests/test_ui_governance_filters.py`, `tests/test_ui_admin_safety.py` and
-`tests/test_ui_polish.py`.
+`tests/test_ui_evaluation_ux.py`, `tests/test_ui_dataset_evaluation.py`,
+`tests/test_ui_traces_timeline.py`, `tests/test_ui_governance_filters.py`,
+`tests/test_ui_admin_safety.py` and `tests/test_ui_polish.py`.
 
 ## 7. Delivery record (was: proposed issues)
 
@@ -263,6 +267,7 @@ These helpers are pure and Streamlit-free (`ui/evaluation.py`, `ui/traces.py`,
 | (added during delivery) | multi-tenant admin API + console **Admin** screen | #57 `8234b06`, `325d025` |
 | (added during delivery) | UX polish: role-aware navigation + checklist; Query Studio templates/history/compare/tabs/share | #130, #131 |
 | (added during delivery) | UX polish: evaluation dataset/GT/comparison; traces timeline; governance filters/export; admin safety; a11y/error remediation | #132-#136 |
+| (added during delivery) | evaluation dataset execution: per-case query + evaluate, failure isolation, matrix, averages, run delta | #145 |
 
 The forward roadmap (horizons H0-H4, workstreams A-M) is tracked in
 [enterprise-roadmap.md](enterprise-roadmap.md) and the GitHub Project board; API/UX
@@ -279,7 +284,8 @@ workstream F there.
   quickstart, a guided tour and the capability-gated **Admin** screen (#57). Done.
 - **P3.1 — UX polish (workstream M):** grouped/role-aware navigation and onboarding
   (#130), Query Studio templates/history/compare/tabs/share (#131), evaluation
-  dataset/GT/comparison UX (#132), trace timeline (#133), governance filters/export
-  (#134), admin safety (#135) and a11y/empty-state/error remediation (#136). Done.
+  dataset/GT/comparison UX (#132), dataset execution + averages (#145), trace timeline
+  (#133), governance filters/export (#134), admin safety (#135) and
+  a11y/empty-state/error remediation (#136). Done.
 - **P4 (optional, later)** — React/Next.js product frontend reusing the same OpenAPI
   contract; tracked as workstream F in the enterprise roadmap (not committed).

@@ -64,9 +64,12 @@ M makes the existing console adoptable (IA, workflows, trace/waterfall, filters,
 - **#132 UX3 - shipped (2026-11-05):** dataset picker (built-in `data/benchmark.json`
   summary + custom query/response), evaluator ground-truth guidance, metric explanations,
   and a run **comparison matrix**. The pure contract lives in `ui/evaluation.py` and is
-  covered by `tests/test_ui_evaluation_ux.py`. End-to-end dataset execution and
-  average-score charts were **not** part of the shipped slice; they remain a follow-up
-  (Workstream K eval expansion).
+  covered by `tests/test_ui_evaluation_ux.py`.
+- **#145 UX3 follow-up - shipped (2026-11-06):** end-to-end dataset execution from the
+  console. Built-in or pasted cases run through `POST /v1/query` and `POST /v1/evaluate`
+  with reference answers passed as ground truth; failures are isolated per case. Results
+  render as a case-by-metric matrix, average-score bar chart and delta table against the
+  previous run. Covered by `tests/test_ui_dataset_evaluation.py`.
 - **#133 UX4 - shipped (2026-11-05):** stage-ordered trace timeline/waterfall with
   span filtering, OTel context and a defensive redaction-safe view
   (`ui/traces.py`, `tests/test_ui_traces_timeline.py`).

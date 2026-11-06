@@ -187,11 +187,14 @@ input/output chains (and the selected `profile`), runs a probe query to show per
 decisions, and reports hit-rate. **Audit** reads the redacted trail (`limit`/`event_type`
 filters) and **Access / RBAC** shows the calling persona's role/capabilities. The
 **Evaluation** screen adds a dataset picker (built-in benchmark summary or custom
-query/response), ground-truth guidance, metric explanations and a run comparison matrix;
-**Traces** renders a stage timeline/waterfall; **Governance & Cost** adds time/tenant/app/user
-filters, alert previews and CSV/JSON export; **Admin** adds scope indicators, confirmation
-prompts and audit export. API failures render as the failure taxonomy plus a remediation
-hint (`failure_type` + `failure_tags`), not stack traces.
+query/response), ground-truth guidance, metric explanations and a run comparison matrix. Its
+**Dataset evaluation** panel executes every built-in or pasted case through `/v1/query` and
+`/v1/evaluate`, isolates per-case failures, and shows a case-by-metric matrix, average-score
+bar chart and delta against the previous run. **Traces** renders a stage timeline/waterfall;
+**Governance & Cost** adds time/tenant/app/user filters, alert previews and CSV/JSON export;
+**Admin** adds scope indicators, confirmation prompts and audit export. API failures render as
+the failure taxonomy plus a remediation hint (`failure_type` + `failure_tags`), not stack
+traces.
 
 The sidebar groups screens by job (Start here / Experiment / Governance & security /
 Operate / Reference), resolves your role through `GET /v1/access`, lands you on the
@@ -258,6 +261,12 @@ in `config/retrieval.yaml` under `evaluation.active_evaluator`.
    `answer_correctness`). Other evaluators (e.g. `dummy`) cannot use a reference, so the
    value is echoed for traceability with `ground_truth_used=false` - the console tells you
    this explicitly.
+
+   **Dataset evaluation** (same screen): choose **Built-in benchmark** or **Paste JSON**,
+   pick the evaluator and `top_k`, then click **Run dataset evaluation**. Each case calls
+   `/v1/query` and scores its answer with `/v1/evaluate`; a failed case is listed without
+   stopping the run. Results include a case-by-metric matrix, average-score bar chart and a
+   delta table against the previous dataset run.
 
 5. **Compare embedding models / chunking** (same *Evaluation* screen, **Launch experiment**).
    - **kind**: `compare_embedding_models` (or `compare_chunking_strategies`).
