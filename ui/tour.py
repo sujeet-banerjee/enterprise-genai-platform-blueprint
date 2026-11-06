@@ -78,11 +78,16 @@ TOUR_STEPS: List[TourStep] = [
         title="6. Evaluation",
         screen="Evaluation",
         body=(
-            "Score a query/response pair with the **Evaluator** dropdown (e.g. `llm_judge`). "
-            "Retrieved docs are auto-fetched from the live pipeline. Optionally add "
-            "**Launch experiment** below to compare embedding models or chunking strategies."
+            "Score one query/response pair with the **Evaluator** dropdown (e.g. `llm_judge`), "
+            "or run a whole **Dataset evaluation** (built-in benchmark or pasted JSON) through "
+            "the API. Dataset results include per-case failures, a metric matrix, averages and "
+            "a delta against the previous run. **Launch experiment** compares embedding models "
+            "or chunking strategies."
         ),
-        try_it="Select `llm_judge`, then click **Evaluate** and read the metric tiles.",
+        try_it=(
+            "Select `llm_judge`, click **Evaluate**, then run the built-in dataset and compare "
+            "the average-score chart."
+        ),
     ),
     TourStep(
         title="7. Governance & Cost",

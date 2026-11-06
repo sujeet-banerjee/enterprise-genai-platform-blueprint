@@ -34,7 +34,8 @@ Workstream F** (enterprise console build-out): F delivers capabilities, M makes 
 |---|---|---|---|
 | #130 | UX1: IA simplification + role-based nav | P0 | **Landed** - Reduce cognitive load, role-based landing, Get started checklist |
 | #131 | UX2: Query Studio workflow polish | P0 | **Landed** - Templates, bounded history + restore, compare with last run, six result tabs, copy/share Markdown |
-| #132 | UX3: Evaluation UX improvements | P0 | **Landed** - Dataset picker/summary, GT helper, comparison matrix, metric explanations (dataset execution/charts deferred) |
+| #132 | UX3: Evaluation UX improvements | P0 | **Landed** - Dataset picker/summary, GT helper, comparison matrix, metric explanations |
+| #145 | UX3 follow-up: execute evaluation datasets | P0 | **Landed** - Per-case query + evaluate, failure isolation, case-by-metric matrix, average-score chart, delta vs previous run |
 | #133 | UX4: Traces timeline/waterfall view | P1 | **Landed** - Timeline by stage, span list, redaction-safe view |
 | #134 | UX5: Governance/metrics filters & export | P1 | **Landed** - Time range, filters, CSV/JSON export, alerts preview |
 | #135 | UX6: Admin/tenancy safety UX | P1 | **Landed** - Tenant warnings, confirmations, audit export, scope indicators |
