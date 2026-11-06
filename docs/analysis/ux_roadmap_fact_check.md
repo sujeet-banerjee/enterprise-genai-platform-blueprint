@@ -61,7 +61,21 @@ M makes the existing console adoptable (IA, workflows, trace/waterfall, filters,
   guardrail decisions/blocks, answer), six result tabs (Answer/Documents/Trace/Guardrails/
   Resilience/Cache), and a copy/share + download Markdown export. The pure contract lives in
   `ui/query_studio.py` and is covered by `tests/test_query_studio.py`.
-- #132-#136 remain open.
+- **#132 UX3 - shipped (2026-11-05):** dataset picker (built-in `data/benchmark.json`
+  summary + custom query/response), evaluator ground-truth guidance, metric explanations,
+  and a run **comparison matrix**. The pure contract lives in `ui/evaluation.py` and is
+  covered by `tests/test_ui_evaluation_ux.py`. End-to-end dataset execution and
+  average-score charts were **not** part of the shipped slice; they remain a follow-up
+  (Workstream K eval expansion).
+- **#133 UX4 - shipped (2026-11-05):** stage-ordered trace timeline/waterfall with
+  span filtering, OTel context and a defensive redaction-safe view
+  (`ui/traces.py`, `tests/test_ui_traces_timeline.py`).
+- **#134 UX5 - shipped (2026-11-05):** time-range and tenant/app/user filters, alerts
+  preview, CSV/JSON export (`ui/governance.py`, `tests/test_ui_governance_filters.py`).
+- **#135 UX6 - shipped (2026-11-05):** tenancy scope indicators, confirmation prompts,
+  audit export (`ui/admin.py`, `tests/test_ui_admin_safety.py`).
+- **#136 UX7 - shipped (2026-11-05):** tooltips, accessible labels, empty states and
+  failure-specific error remediation (`ui/polish.py`, `tests/test_ui_polish.py`).
 
 ## Implementation Notes
 - Stay HTTP-only (enforced by `tests/test_ui_console.py`).

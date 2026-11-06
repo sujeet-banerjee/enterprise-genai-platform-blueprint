@@ -122,9 +122,15 @@ the ones above. The current source of truth is
   `is_document_allowed` and `filter_documents`; pipeline `run`/`run_batch` accept
   `role`/`groups`, over-fetch then filter, and report
   `access_control.enabled`/`filtered_documents` on traces and results.
+- **Ingestion** - `core/interfaces/connector.py`: `BaseConnector` (`validate`,
+  `discover`, `fetch`, `sync`, `to_documents`), `RawItem` and `SyncCursor`. Connectors are
+  registry-selected (`ConnectorRegistry`), preserve ACL metadata, and are driven by
+  `IngestionService` for incremental cursor state. Built-ins cover filesystem, SharePoint/
+  Confluence and S3/Azure Blob/GCS (#115-#117).
 - **Config** — per-concern YAML files (`models`, `prompt_config`, `retrieval`,
   `governance`, `observability`, `guardrails`, `audit`, `resilience`, `api`,
-  `access_control`, `tenants`, `identity`, `attribution`, `acl`) validated by strict schemas with
+  `access_control`, `tenants`, `identity`, `attribution`, `acl`, `persistence`,
+  `ingestion`, `residency`, `dr`) validated by strict schemas with
   `${VAR}`/`env:` secret resolution at load time.
 
 Nothing above replaced an existing method contract; additions are optional parameters,

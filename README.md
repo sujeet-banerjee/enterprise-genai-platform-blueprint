@@ -185,8 +185,13 @@ raw Prometheus `/metrics` panel. **Compare (what-if)** rebuilds the
 pipeline with overrides when `api.allow_rebuild=true`. **Guardrails** previews the resolved
 input/output chains (and the selected `profile`), runs a probe query to show per-request
 decisions, and reports hit-rate. **Audit** reads the redacted trail (`limit`/`event_type`
-filters) and **Access / RBAC** shows the calling persona's role/capabilities. API failures
-render as the failure taxonomy (`failure_type` + `failure_tags`), not stack traces.
+filters) and **Access / RBAC** shows the calling persona's role/capabilities. The
+**Evaluation** screen adds a dataset picker (built-in benchmark summary or custom
+query/response), ground-truth guidance, metric explanations and a run comparison matrix;
+**Traces** renders a stage timeline/waterfall; **Governance & Cost** adds time/tenant/app/user
+filters, alert previews and CSV/JSON export; **Admin** adds scope indicators, confirmation
+prompts and audit export. API failures render as the failure taxonomy plus a remediation
+hint (`failure_type` + `failure_tags`), not stack traces.
 
 The sidebar groups screens by job (Start here / Experiment / Governance & security /
 Operate / Reference), resolves your role through `GET /v1/access`, lands you on the
@@ -306,8 +311,12 @@ All behaviour is driven by YAML in config/:
 - config/guardrails.yaml - pluggable input/output guardrail chains, incl. `injection` and `pii` providers, plus adoptable `standard`/`strict` profiles (disabled by default)
 - config/tenants.yaml - tenant/workspace model: identity, per-tenant budget caps/retrieval depth/model allow-lists, config overlays (disabled by default => implicit `default` tenant)
 - config/identity.yaml - OIDC/OAuth2 JWT bearer auth, IdP-group -> RBAC role mapping, SCIM provisioning; SAML via OIDC bridge (disabled by default => API-key stub)
-  - config/attribution.yaml - request attribution dimensions (tenant/workspace/app/user/cost_center) on traces, metrics and cost records; per-user/cost-center reporting is opt-in (disabled by default => privacy-preserving default)
-  - config/acl.yaml - permission-aware retrieval: per-document tenant/group/user/role ACLs filtered before reranking and prompting, with open-ACL default and over-fetch (disabled by default)
+- config/attribution.yaml - request attribution dimensions (tenant/workspace/app/user/cost_center) on traces, metrics and cost records; per-user/cost-center reporting is opt-in (disabled by default => privacy-preserving default)
+- config/acl.yaml - permission-aware retrieval: per-document tenant/group/user/role ACLs filtered before reranking and prompting, with open-ACL default and over-fetch (disabled by default)
+- config/persistence.yaml - store backend: memory/SQLite/Postgres
+- config/ingestion.yaml - pluggable connectors + incremental sync (disabled by default)
+- config/residency.yaml - multi-region/residency routing (disabled by default)
+- config/dr.yaml - disaster recovery backup/restore (disabled by default)
 
 The composition root (`app/main.py::build_pipeline()`) reads these configs and wires
 components via registries:
@@ -783,14 +792,9 @@ With `redact_sensitive_data: true`, API responses and traces replace secret valu
 See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the trunk-based workflow (protected `main`,
 `feature/<issue>-<slug>` branches, PR checklist, release tags) and
 [`docs/enterprise-roadmap.md`](docs/enterprise-roadmap.md) for the post-blueprint roadmap
-tracked by milestones `H0`-`H3` (umbrella issue #43). Progressive delivery and config
+tracked by milestones `H0`-`H4` (umbrella issue #43). Progressive delivery and config
 rollback are covered in the [deployment playbook](docs/deployment.md) (G4 #69).
 
 ## License
 
 MIT
-
-- config/persistence.yaml (store backend: memory/SQLite/Postgres)
-- config/ingestion.yaml (pluggable connectors + incremental sync; disabled by default)
-- config/residency.yaml (multi-region/residency routing, disabled by default)
-- config/dr.yaml (disaster recovery backup/restore, disabled by default)

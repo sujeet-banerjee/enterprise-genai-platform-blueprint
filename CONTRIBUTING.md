@@ -110,12 +110,13 @@ era complete).
   and is tracked by umbrella issue **#43**.
 - Work is organized into **horizons** (GitHub milestones):
   `H0 - Observability & hardening`, `H1 - Multi-tenant & governed`,
-  `H2 - Product surface`, `H3 - Enterprise scale & compliance`.
-- Pick up an open issue from the active horizon. H0 (observability, config validation,
-  resilience, deployment playbook and delivery artifacts, plus the first guardrail slices)
-  is complete; the current focus is **H1 - Multi-tenant & governed** (#48-#57), with
-  Workstream G follow-ups (#64, #68-#71) after that. The roadmap document and the GitHub
-  Project board are the source of truth for ordering.
+  `H2 - Product surface`, `H3 - Enterprise scale & compliance`,
+  `H4 - Post-G6 hardening & UX`.
+- H0/H1, Workstream G (deployment/delivery), Workstream H (ingestion #115-#117) and
+  workstream M UX polish (#130-#136) are complete. The open bridge is workstreams
+  I-L (#118-#129: multi-region/DR operations, policy-as-code, eval expansion/CI gates,
+  onboarding/golden paths). Pick an open issue from that set; the roadmap document and
+  the GitHub Project board are the source of truth for ordering.
 
 ## License
 

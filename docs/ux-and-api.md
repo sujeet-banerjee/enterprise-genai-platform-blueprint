@@ -1,9 +1,9 @@
 # UX & API Architecture — Fronting UI Plan
 
-> **Status: DELIVERED (reconciled 2026-10-22, #81).** The API surface and the Streamlit
-> console described here shipped in the P2/P3 series; §7 is now a delivery record rather
-> than a proposal. The forward-looking roadmap (multi-tenancy, guardrails depth,
-> observability, deployment, product UI) lives in
+> **Status: DELIVERED (reconciled 2026-11-06).** The API surface, Streamlit console and
+> UX polish workstream M (#130-#136) described here have shipped; §7 is a delivery record
+> rather than a proposal. The forward-looking roadmap (multi-region/DR operations,
+> policy-as-code, eval expansion, golden paths, product UI) lives in
 > [enterprise-roadmap.md](enterprise-roadmap.md).
 
 ## 1. Purpose
@@ -161,13 +161,13 @@ from §3.2 applies to every UI: HTTP only, no `core.*` imports.
 | **Overview / Health** | status, readiness + config revision, active model/retriever/reranker/evaluator, Get started checklist | `/health`, `/ready`, `/v1/models`, `/v1/embedding-models`, `/v1/retrievers`, `/v1/rerankers`, `/v1/evaluators` |
 | **Query Studio** | task templates; enter query (or batch lines); `top_k`, rerank/include-trace; tabbed results (Answer, Documents, Trace, Guardrails, Resilience, Cache); copy/share Markdown + download; bounded local history with restore and **Compare with last run** deltas | `/v1/query`, `/v1/query:batch`, `/v1/config` |
 | **Compare (what-if)** | pick config overrides (metric, retriever, model); rebuild then run A/B queries | `/v1/pipeline:rebuild`, `/v1/query` |
-| **Evaluation** | evaluator dropdown, optional ground truth, auto-retrieved docs; launch + poll experiments | `/v1/evaluators`, `/v1/evaluate`, `/v1/experiments`, `/v1/experiments/{exp_id}` |
-| **Governance & Cost** | budget limits, spend window, per-request cost, guardrail hit-rate, raw Prometheus scrape | `/v1/governance/status`, `/v1/metrics`, `/metrics` |
+| **Evaluation** | dataset picker (built-in benchmark summary or custom query/response), evaluator dropdown, ground-truth guidance, metric explanations, run comparison matrix, optional ground truth, auto-retrieved docs; launch + poll experiments | `/v1/evaluators`, `/v1/evaluate`, `/v1/experiments`, `/v1/experiments/{exp_id}` |
+| **Governance & Cost** | budget limits, spend window, per-request cost, guardrail hit-rate, time range + tenant/app/user filters, alerts preview, CSV/JSON metric export, raw Prometheus scrape | `/v1/governance/status`, `/v1/metrics`, `/metrics` |
 | **Guardrails** | profile/enabled/providers, resolved chains, probe query decisions, hit-rate | `/v1/guardrails`, `/metrics` |
 | **Audit** | filter by `limit`/`event_type`; inspect redacted events | `/v1/audit` |
 | **Access / RBAC** | roles, capabilities, request caps, allowed models | `/v1/access` |
-| **Admin** | tenant policy view/update + identity directory users; requires `admin`/`rebuild` capability | `/v1/admin/tenants`, `/v1/admin/tenants/{tenant_id}`, `/v1/admin/users`, `/v1/access` |
-| **Traces** | look up `request_id`; stage latencies, failure taxonomy, guardrail decisions, resilience, OTel ids, raw trace | `/v1/traces/{request_id}`, `/v1/metrics` |
+| **Admin** | tenant scope indicator, confirmation prompts for sensitive updates, tenant policy view/update + identity directory users, audit export; requires `admin`/`rebuild` capability | `/v1/admin/tenants`, `/v1/admin/tenants/{tenant_id}`, `/v1/admin/users`, `/v1/access`, `/v1/audit` |
+| **Traces** | look up `request_id`; stage latency timeline/waterfall with span list, failure taxonomy, guardrail decisions, resilience, OTel ids, redaction-safe and raw trace views | `/v1/traces/{request_id}`, `/v1/metrics` |
 | **Settings (read-only)** | effective config viewer (redacted), model/provider/guardrail lists | `/v1/config`, `/v1/models`, `/v1/embedding-models`, `/v1/retrievers`, `/v1/rerankers`, `/v1/evaluators`, `/v1/guardrails` |
 
 No config-editing UI in v1 (write path = files in `config/`); `pipeline:rebuild` in the
@@ -219,6 +219,29 @@ The query screen is now a complete workflow rather than a single form:
 The pure workflow contract lives in `ui/query_studio.py` and is covered by
 `tests/test_query_studio.py`; the tour step and README scenario were updated to match.
 
+### Evaluation, trace and operations polish (#132-#136)
+
+- **Evaluation (#132):** a dataset picker summarizes the built-in `data/benchmark.json`
+  corpus (docs/cases) or the ad-hoc query/response; the screen explains which evaluators use
+  ground truth, shows metric explanations next to results, and accumulates runs in a
+  **comparison matrix**. Dataset *execution* and average-score charts remain a follow-up
+  (see the K workstream); #132 does not invent results.
+- **Traces (#133):** traces render a stage-ordered **timeline/waterfall** (milliseconds and
+  percent of total), a span list for filtering, OTel `trace_id`/`span_id` context and a
+  defensive redaction-safe view alongside the raw trace.
+- **Governance & Cost (#134):** time-range and tenant/app/user filters, an alerts preview
+  derived from failure/guardrail rates, and CSV/JSON export of the metrics payload.
+- **Admin (#135):** scope indicators show whether tenancy is active, sensitive updates require
+  an explicit confirmation prompt, and recent audit events can be exported as CSV.
+- **Polish (#136):** shared tooltips, empty states, accessible labels and failure-specific
+  remediation hints replace bare error output.
+
+These helpers are pure and Streamlit-free (`ui/evaluation.py`, `ui/traces.py`,
+`ui/governance.py`, `ui/admin.py`, `ui/polish.py`) and covered by
+`tests/test_ui_evaluation_ux.py`, `tests/test_ui_traces_timeline.py`,
+`tests/test_ui_governance_filters.py`, `tests/test_ui_admin_safety.py` and
+`tests/test_ui_polish.py`.
+
 ## 7. Delivery record (was: proposed issues)
 
 | Proposed | Delivered as | Where |
@@ -239,8 +262,9 @@ The pure workflow contract lives in `ui/query_studio.py` and is covered by
 | (added during delivery) | pluggable persistence (`BaseStore`: memory/SQLite/Postgres) | #56 `94de739` |
 | (added during delivery) | multi-tenant admin API + console **Admin** screen | #57 `8234b06`, `325d025` |
 | (added during delivery) | UX polish: role-aware navigation + checklist; Query Studio templates/history/compare/tabs/share | #130, #131 |
+| (added during delivery) | UX polish: evaluation dataset/GT/comparison; traces timeline; governance filters/export; admin safety; a11y/error remediation | #132-#136 |
 
-The forward roadmap (H0-H3, workstreams A-G) is tracked in
+The forward roadmap (horizons H0-H4, workstreams A-M) is tracked in
 [enterprise-roadmap.md](enterprise-roadmap.md) and the GitHub Project board; API/UX
 items beyond v1 (React console, pipeline composer, graph visualizations) are
 workstream F there.
@@ -254,7 +278,8 @@ workstream F there.
 - **P3 — UX console:** G above, kept strictly over the API (§3.2), plus README
   quickstart, a guided tour and the capability-gated **Admin** screen (#57). Done.
 - **P3.1 — UX polish (workstream M):** grouped/role-aware navigation and onboarding
-  (#130), and the Query Studio templates/history/compare/tabs/share workflow (#131).
-  In progress; #132-#136 follow.
+  (#130), Query Studio templates/history/compare/tabs/share (#131), evaluation
+  dataset/GT/comparison UX (#132), trace timeline (#133), governance filters/export
+  (#134), admin safety (#135) and a11y/empty-state/error remediation (#136). Done.
 - **P4 (optional, later)** — React/Next.js product frontend reusing the same OpenAPI
   contract; tracked as workstream F in the enterprise roadmap (not committed).
