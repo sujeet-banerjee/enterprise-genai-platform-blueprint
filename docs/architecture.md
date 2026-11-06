@@ -573,6 +573,17 @@ sees everything. Traces and results gain `access_control
 (tenant/groups/roles) to prevent cross-caller reuse, and the API forwards
 `role`/`groups` to the pipeline only when ACLs are enabled.
 
+**Ingestion connectors (roadmap H, #115-#117).** `config/ingestion.yaml` drives
+`ConnectorRegistry` and `IngestionService` (disabled by default). Providers are
+`noop`, `filesystem`, `sharepoint`, `confluence`, `s3`, `azure_blob` and `gcs`;
+each implements `BaseConnector` (`validate`, `discover`, `fetch`, `sync`) and
+emits `RawItem`s. `to_documents` preserves connector/source ids and ACL metadata
+(`allowed_tenants`, `allowed_users`, `allowed_groups`, `allowed_roles`), which the
+ACL layer above consumes unchanged. `IngestionService` is the incremental-sync
+hook: it tracks per-connector cursors in `state_path` and normalizes documents
+before indexing. Ingestion is currently library/service plumbing, not a public
+API endpoint.
+
 ### `config/governance.yaml`
 
 | Key | Consumed by | Effect |

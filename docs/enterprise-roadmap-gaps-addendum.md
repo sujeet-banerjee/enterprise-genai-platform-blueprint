@@ -9,7 +9,7 @@
 4. **Larger/domain-specific eval datasets** - Benchmark exists but orgs need domain-specific labeled sets, regression gates in CI, continuous eval, and eval-as-product dashboards.
 5. **Simplified onboarding / golden paths** - Many configs; need opinionated "golden path" templates, CLI scaffolding, and improved UX to lower learning curve.
 
-## Proposed Additional Workstreams (H4 / new)
+## Additional Workstreams & Delivery (H4 / new)
 
 | Workstream | Goal | Priority | Issues | Acceptance (high-level) |
 |---|---|---|---|---|
@@ -18,6 +18,11 @@
 | J - Policy-as-Code | Declarative policies (CEL/Rego), bundles, dry-run, HITL | P1 | `#121` Policy engine interface, `#122` CEL evaluator + bundles, `#123` HITL approval workflow | Policies in git, versioned bundles, dry-run in audit, HITL gating for sensitive actions |
 | K - Eval Expansion & CI Gates | Domain eval sets, regression gates, continuous eval | P1 | `#124` Eval dataset schema + loaders, `#125` CI regression gates, `#126` Eval dashboard enhancements | PR blocks on regression thresholds, domain sets pluggable, trend tracking in metrics |
 | L - Onboarding & Golden Paths | Templates, scaffolding CLI, improved docs/UX | P2 | `#127` Golden path templates, `#128` `genai init` CLI, `#129` Onboarding guide + validation | `genai init` scaffolds valid config set, golden paths pass smoke tests, docs updated |
+
+**H delivery status (landed 2026-11-05):** `#115` framework + base connector (`a17a5cf`,
+PR #140), `#116` SharePoint/Confluence (`abcd4a9`), `#117` S3/Azure Blob/GCS (`9bcd911`).
+`config/ingestion.yaml` ships disabled by default; connectors are registry-selected and
+preserve ACL metadata for permission-aware retrieval. I/J/K/L remain open.
 
 ## Workstream M: UX Polish & Adoption (new)
 *(From UX fact-check: docs/analysis/ux_roadmap_fact_check.md / .pdf)*
@@ -29,11 +34,11 @@ Workstream F** (enterprise console build-out): F delivers capabilities, M makes 
 |---|---|---|---|
 | #130 | UX1: IA simplification + role-based nav | P0 | **Landed** - Reduce cognitive load, role-based landing, Get started checklist |
 | #131 | UX2: Query Studio workflow polish | P0 | **Landed** - Templates, bounded history + restore, compare with last run, six result tabs, copy/share Markdown |
-| #132 | UX3: Evaluation UX improvements | P0 | Dataset picker, GT helper, comparison matrix/charts, metric explanations |
-| #133 | UX4: Traces timeline/waterfall view | P1 | Timeline by stage, span filtering, redaction-safe view |
-| #134 | UX5: Governance/metrics filters & export | P1 | Time range, filters, CSV/JSON export, alerts preview |
-| #135 | UX6: Admin/tenancy safety UX | P1 | Tenant warnings, confirmations, audit export, scope indicators |
-| #136 | UX7: UX polish, a11y, empty states, error remediation | P2 | Tooltips, keyboard nav, empty states, clearer errors |
+| #132 | UX3: Evaluation UX improvements | P0 | **Landed** - Dataset picker/summary, GT helper, comparison matrix, metric explanations (dataset execution/charts deferred) |
+| #133 | UX4: Traces timeline/waterfall view | P1 | **Landed** - Timeline by stage, span list, redaction-safe view |
+| #134 | UX5: Governance/metrics filters & export | P1 | **Landed** - Time range, filters, CSV/JSON export, alerts preview |
+| #135 | UX6: Admin/tenancy safety UX | P1 | **Landed** - Tenant warnings, confirmations, audit export, scope indicators |
+| #136 | UX7: UX polish, a11y, empty states, error remediation | P2 | **Landed** - Tooltips, accessible labels, empty states, clearer errors |
 
 **Notes:** Keep HTTP-only (`ui/` never imports `app.*`/`core.*`), extend `ui/client.py`/`ui/common.py`, add AST + client tests. Link to #43, Workstream M, milestone H2. Do not fold M into F.
 
@@ -51,5 +56,5 @@ Workstream F** (enterprise console build-out): F delivers capabilities, M makes 
 - [x] Create GitHub issues `#115-#129` (H-L)
 - [x] Create GitHub issues `#130-#136` (M)
 - [x] Update memory.md and TODO tracking
-- [ ] Add to Project #8 (workstream field H-M) - deferred for a later decision
+- [x] Add to Project #8 (Workstream field H-M; options + items assigned 2026-11-04)
 - [x] Keep CI green and docs reconciled
