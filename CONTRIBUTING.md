@@ -71,25 +71,26 @@ Reference the issue number in the body (`Refs #44` / `Closes #44`).
 
 ## Commit attribution
 
-Agent-authored commits are co-attributed via a tracked git hook. The hook lives in
-`.githooks/prepare-commit-msg` and appends:
+Agent commits are authored by a dedicated GitHub App bot identity, not by the human
+maintainer. Each agent should use its own GitHub App installed on this repository with only
+the permissions it needs.
 
-```
-Co-authored-by: ai-opencode-big-pickle <agent-smith@opencode.local>
-```
+The bot identity is configured in that agent's dedicated working copy:
 
-It is **idempotent** (skips if the trailer is already present) so amends and rebase replays do
-not stack duplicates. The human author/committer identity is unchanged — this only adds the
-agent's co-authorship to the commit metadata.
+- `user.name`: `<app-slug>[bot]`
+- `user.email`: `<bot-user-id>+<app-slug>[bot]@users.noreply.github.com`
 
-Git does **not** run committed hooks automatically (a deliberate security decision), so after
-cloning, opt in **once**:
+Installation tokens are minted locally from the App private key and expire after one hour.
+Private keys and installation tokens are never committed, pasted into issues or pull
+requests, or stored in the repository. The human maintainer owns the App and can revoke its
+keys or installation at any time.
 
-```bash
-git config --local core.hooksPath .githooks
-```
+GitHub links these commits to the App's bot account. They are not signed or marked
+**Verified** unless they are created through GitHub's API; this repository does not require
+signed commits.
 
-CI only checks out and tests, so the hook never fires there and the pipeline is unaffected.
+The previous fake co-author hook (`.githooks/prepare-commit-msg`) has been removed. Commits
+that already contain the historical co-author trailer should not be rewritten.
 
 ## Releases
 
