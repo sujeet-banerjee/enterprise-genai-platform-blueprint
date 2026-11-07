@@ -16,6 +16,12 @@ Failover mode defaults to **manual** for safety.
 
 Run via documented procedures; automate in future per schedule.
 
+## Backup/Restore Automation (BaseStore)
+- Export: `core.services.backup_restore.export_store(store, "backups/store.json")` (SHA-256 checksum, manifest with timestamp/prefixes/health).
+- Verify: `verify_backup(path)` must return ok before restore.
+- Restore: `restore_store(store, path, clear=True, verify=True)`; refuses tampered backups by default.
+- Schedule backups per RPO; store backups in durable, access-controlled storage.
+
 ## Restore
 1. Provision secondary region infrastructure (Terraform modules)
 2. Restore data to secondary (verify integrity)
