@@ -324,6 +324,7 @@ All behaviour is driven by YAML in config/:
 - config/acl.yaml - permission-aware retrieval: per-document tenant/group/user/role ACLs filtered before reranking and prompting, with open-ACL default and over-fetch (disabled by default)
 - config/persistence.yaml - store backend: memory/SQLite/Postgres
 - config/ingestion.yaml - pluggable connectors + incremental sync (disabled by default)
+- config/policies.yaml - Policy-as-Code engine/bundles (CEL/Rego), dry-run and HITL hooks (disabled by default)
 - config/residency.yaml - multi-region/residency routing (disabled by default)
 - config/dr.yaml - disaster recovery backup/restore (disabled by default)
 
