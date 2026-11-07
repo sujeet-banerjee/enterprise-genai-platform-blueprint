@@ -5,6 +5,7 @@ from __future__ import annotations
 import ast
 import json
 import operator
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional
 
@@ -25,7 +26,7 @@ _CMP = {
     ast.IsNot: operator.is_not,
 }
 _BOOL = {ast.And: all, ast.Or: any}
-_UNARY = {ast.Not: operator.not_, ast.USub: operator.neg, ast.UAdd: operator.pos}
+_UNARY: Dict[type, Callable[[Any], Any]] = {ast.Not: operator.not_, ast.USub: operator.neg, ast.UAdd: operator.pos}
 
 
 class _Ctx(dict):
@@ -76,20 +77,20 @@ def _eval(node: ast.AST, ctx: Any) -> Any:
         except Exception:
             return None
     if isinstance(node, ast.BoolOp):
-        fn = _BOOL.get(type(node.op), all)
-        values = (_eval(v, ctx) for v in node.values)
-        return fn(bool(v) for v in values)
+        use_all = not isinstance(node.op, ast.Or)
+        values = (bool(_eval(v, ctx)) for v in node.values)
+        return all(values) if use_all else any(values)
     if isinstance(node, ast.UnaryOp):
-        fn = _UNARY.get(type(node.op))
-        if fn is None:
+        unary_fn = _UNARY.get(type(node.op))
+        if unary_fn is None:
             return False
-        return fn(_eval(node.operand, ctx))
+        return unary_fn(_eval(node.operand, ctx))
     if isinstance(node, ast.Compare):
         left = _eval(node.left, ctx)
         for op_node, comp in zip(node.ops, node.comparators):
-            fn = _CMP.get(type(op_node))
+            cmp_fn = _CMP.get(type(op_node))
             right = _eval(comp, ctx)
-            if fn is None or not fn(left, right):
+            if cmp_fn is None or not cmp_fn(left, right):
                 return False
             left = right
         return True
