@@ -5,7 +5,7 @@ Reconciled 2026-11-07 from `origin/main` @ `86f5fc0` (PR #159 merged). No open P
 - **enterprise-gen-ai-bot-uni[bot]** (this agent) — GitHub user id `353626911`, App `enterprise-gen-ai-bot-uni` (App ID `5652767`, Client ID `Iv23liwXdRBYiE8NXU8d`, installation `179480668` on `sujeet-banerjee/enterprise-genai-platform-blueprint`). Git author/committer: `enterprise-gen-ai-bot-uni[bot] <353626911+enterprise-gen-ai-bot-uni[bot]@users.noreply.github.com>`. Auth via installation token (JWT signed with key outside repo). Co-author hook kept.
 - **enterprise-gen-ai-bot-win** (parallel agent) — author of PR #159 (`docs/ux8-ux15-roadmap`); confirm its canonical git/app identity from its own session before it commits.
 
-## Work items for enterprise-gen-ai-bot-uni (me) — platform/backend (low `ui/*` conflict)
+## Work items for enterprise-gen-ai-bot-uni  — platform/backend (low `ui/*` conflict)
 | Order | Item | Notes |
 |---|---|---|
 | 1 | **#122 J - CEL evaluator + policy bundles** (H4, security/platform/roadmap) | Builds on #121 interface; backend/policy core. Local branch `feature/122-cel-policy-bundles` exists — rebase onto `origin/main` (`86f5fc0`) before work. |
@@ -17,7 +17,7 @@ Reconciled 2026-11-07 from `origin/main` @ `86f5fc0` (PR #159 merged). No open P
 | 7 | **#129 L - Onboarding guide + validation** (H4) | Docs + config validation hooks (coordinate if docs PRs appear). |
 | 8 | **Backend support for UX where needed (split, by agreement)** | e.g. APIs/persistence hooks required by **#152** background eval jobs — prefer bot-win owns UX surface; I take narrowly-scoped backend contract PR only if agreed up front in the issue. |
 
-## Work items for enterprise-gen-ai-bot-win (preferred) — UX/console, docs polish, cross-link UI
+## Work items for enterprise-gen-ai-bot-win — UX/console, docs polish, cross-link UI
 | Order | Item | Notes |
 |---|---|---|
 | 1 | **#151 UX8 - Persistent workspace + shareable deep links** (H4, P0, ui/ux) | `ui/*` heavy; foundation for other UX. |
