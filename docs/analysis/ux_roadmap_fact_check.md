@@ -1,91 +1,116 @@
 # UX Roadmap Fact-Check & Plan
-*(Generated 2026-11-03. Streamlit console at `ui/`, HTTP-only, API-driven.)*
+
+*Updated 2026-11-07. Streamlit console at `ui/`, HTTP-only, API-driven.*
+
+> **Status: UX1-UX7 delivered and closed.** Workstream M (UX polish) shipped in
+> #130-#136, with the Evaluation dataset-runner follow-up #145. This document now
+> (a) records the delivered state, and (b) tracks the next UX/UI tranche,
+> **UX8-UX15**, opened as #151-#158 and mapped to Project #8 Workstream M.
 
 ## Assessment: "Don't make me think"
 
-### What works well
-- **HTTP-only client**: Clean separation (`ui/client.py`), testable, matches backend API contract.
-- **Information architecture**: Screens cover Overview/Health, Query Studio, Compare (what-if), Evaluation, Governance & Cost, Guardrails, Audit, Access/RBAC, Admin, Traces, Settings (read-only).
-- **Guided tour + help**: `ui/tour.py` helps first-time users discover features.
-- **API-first introspection**: Settings pulls from real endpoints; redaction respected.
-- **Failure taxonomy**: Errors surfaced with failure types and tags.
-- **Feature parity**: Guardrails/Audit/Access/Admin added to match shipped backend capabilities.
+### What works well after UX1-UX7
 
-### Friction / gaps
-- **Cognitive load**: 11 screens; no role-based defaults, no progressive disclosure.
-- **Discoverability**: No guided workflows ("run query → see trace → check governance/cost/guardrails").
-- **Query Studio**: Lacks templates, history, "compare with last run", inline hints for tenancy/ACL/guardrails/resilience/cache.
-- **Evaluation**: Needs dataset browser, better GT guidance, run comparison matrix/charts, metric explanations.
-- **Governance & Cost**: Has Prometheus/raw + breakdown but no time range/filtering/CSV export/alerts preview.
-- **Traces**: Dense JSON; needs timeline/waterfall, span filtering, copy/share, link to metrics.
-- **Admin/Tenancy**: Useful but needs confirmations/scope warnings and safer defaults.
-- **Error handling**: 503/401 need clearer remediation steps and links to docs.
-- **Accessibility/responsiveness**: Streamlit constraints; missing keyboard shortcuts, empty states, better tooltips.
-- **Persistence**: No saved views/bookmarks/favorites or recent runs across sessions.
+- **HTTP-only client**: clean separation (`ui/client.py`), testable, and aligned
+  with the public API contract.
+- **Information architecture**: 11 screens grouped into Start here, Experiment,
+  Governance & security, Operate and Reference; role-aware landing and capability
+  filtering reduce the default surface.
+- **Guided onboarding**: a 13-step tour, a Get started checklist derived from real
+  completed actions, filtered quick actions and in-context help.
+- **Query Studio**: six task templates, bounded session history, restore/clear,
+  Compare with last run, six result tabs (Answer, Documents, Trace, Guardrails,
+  Resilience, Cache), and copy/share/download.
+- **Evaluation**: built-in benchmark or pasted dataset execution, per-case failure
+  isolation, case-by-metric matrix, averages, delta vs the previous run, evaluator
+  dropdown and ground-truth guidance.
+- **Observability**: trace timeline/waterfall, span filtering, redaction-safe view,
+  OTel context, latency/cost/failure correlations.
+- **Governance and security**: time-range and tenant/app/user filters, alerts
+  preview, CSV/JSON export, guardrail hit-rate, audit filtering and admin safety
+  confirmations.
+- **Error handling**: failure taxonomy plus remediation hints instead of raw errors.
+- **Contract safety**: the HTTP-only rule and UI screens are covered by AST/client
+  tests, so the console cannot drift into importing backend modules.
 
-## Proposed UX Workstreams
+### Remaining friction / gaps
 
-| ID | Workstream | Priority | Goal | Key Deliverables | Acceptance |
-|---|---|---|---|---|---|
-| UX1 | Simplify IA & onboarding | P0 | Reduce cognitive load, role-based defaults | Collapsible nav/groups, role-based landing, "Get started" checklist, quick actions | New users complete first query in <2 min; reduced clicks to core flows |
-| UX2 | Query Studio workflow polish | P0 | Make "don't make me think" real | Templates, local history, "compare with last run", result tabs (Answer/Documents/Trace/Guardrails/Resilience/Cache), copy/share | Common flow guided; guardrail/resilience/cache visible inline |
-| UX3 | Evaluation UX improvements | P0 | Make eval approachable | Dataset picker (benchmark/local), GT helper, comparison matrix/charts, metric tooltips/explain, run links to traces | Non-expert can run eval + compare; ground-truth guidance clear |
-| UX4 | Traces timeline/waterfall | P1 | Debuggability | Timeline/waterfall by stage, span filtering, redaction-safe view, link to metrics/governance, shareable trace view | Time-to-insight improved; stages/latency/cost visible at a glance |
-| UX5 | Governance/metrics filters & export | P1 | FinOps/ops readiness | Time range, filters (tenant/app/user), CSV/JSON export, alerts preview, guardrail hit-rate focus | Exportable reports; SRE/FinOps can answer spend/cost questions |
-| UX6 | Admin/tenancy safety UX | P1 | Prevent mistakes | Tenant switcher with context/warnings, confirmations, audit export, policy preview, scope indicators | Safer multi-tenant ops; mistakes harder to make |
-| UX7 | Polish, a11y, empty states | P2 | Professional UX | Remediation on errors, empty states, tooltips, keyboard nav, theme considerations, loading states | Better error recovery; consistent UX across screens |
+- **Persistence and continuity**: history, filters, comparisons and saved datasets
+  are session-bound; reloads and shared links do not reproduce a workspace.
+- **Long-running work**: dataset evaluation is synchronous, capped at 20 cases, and
+  has no progress, cancel, resume or background-job view.
+- **Dataset authoring**: cases are built-in or pasted as JSON; there is no structured
+  editor, inline validation, doc authoring, save/duplicate, or round-trip export.
+- **Cross-object navigation**: trace, audit, metrics and governance evidence are
+  separate screens; there is no universal request-id search or trace-to-trace diff.
+- **Accessibility and responsiveness**: a formal WCAG 2.2 AA audit, keyboard-first
+  navigation, focus management, high-contrast mode and mobile/compact layouts are
+  still missing.
+- **Power-user speed**: no command palette or keyboard shortcuts to jump to screens,
+  request ids, tenants or actions.
+- **Role-specific journeys**: one generic tour serves architects, analysts, security
+  reviewers and operators; there is no demo mode or safe reset.
+- **Collaboration and feedback**: bad answers cannot be annotated, flagged, or
+  promoted into an evaluation case from the console.
+- **Executive/ops views**: no saved dashboard layouts, budget forecast, SLO/error
+  budget, or scheduled/exportable evidence packs.
 
-## Suggested GitHub Issues
-- #130 UX1: IA simplification + role-based nav
-- #131 UX2: Query Studio workflow polish (templates/history/compare)
-- #132 UX3: Evaluation UX improvements (dataset/GT/comparison/charts)
-- #133 UX4: Traces timeline/waterfall view
-- #134 UX5: Governance/metrics filters, time range, export
-- #135 UX6: Admin/tenancy safety UX + confirmations
-- #136 UX7: UX polish, a11y, empty states, error remediation
+## Delivered UX workstreams (closed)
 
-All issues: label `ux`, link to umbrella #43, add to Project #8 with **Workstream M** (UX polish),
-milestone **H2**, and keep the HTTP-only rule with AST + client tests per change.
+| ID | Workstream | Issue | Status | Evidence |
+|---|---|---|---|---|
+| UX1 | Simplify IA and onboarding | #130 | Shipped 2026-11-04 | `ui/navigation.py`, `tests/test_ux_navigation.py`, tour with checklist step |
+| UX2 | Query Studio workflow polish | #131 | Shipped 2026-11-04 | `ui/query_studio.py`, `tests/test_query_studio.py` |
+| UX3 | Evaluation UX improvements | #132 | Shipped 2026-11-05 | `ui/evaluation.py`, `tests/test_ui_evaluation_ux.py` |
+| UX3b | Dataset execution follow-up | #145 | Shipped 2026-11-06 | `ui/evaluation.py`, `tests/test_ui_dataset_evaluation.py` |
+| UX4 | Traces timeline/waterfall | #133 | Shipped 2026-11-05 | `ui/traces.py`, `tests/test_ui_traces_timeline.py` |
+| UX5 | Governance/metrics filters and export | #134 | Shipped 2026-11-05 | `ui/governance.py`, `tests/test_ui_governance_filters.py` |
+| UX6 | Admin/tenancy safety UX | #135 | Shipped 2026-11-05 | `ui/admin.py`, `tests/test_ui_admin_safety.py` |
+| UX7 | Polish, a11y, empty states | #136 | Shipped 2026-11-05 | `ui/polish.py`, `tests/test_ui_polish.py` |
 
-Workstream **M** is deliberately separate from **F**: F builds out the enterprise console;
-M makes the existing console adoptable (IA, workflows, trace/waterfall, filters, a11y).
+The delivered scope is also recorded in `docs/ux-and-api.md` section 6 and the
+delivery record in section 7.
 
-## Delivery Status
-- **#130 UX1 - shipped (2026-11-04):** grouped sidebar navigation, role/capability-aware
-  landing, role-filtered screens with a **Show all screens** override, Quick actions, and a
-  five-step **Get started** checklist derived from completed actions. The pure contract lives
-  in `ui/navigation.py` and is covered by `tests/test_ux_navigation.py`; the tour gained a
-  checklist step (13 total).
-- **#131 UX2 - shipped (2026-11-04):** six task templates, a bounded session history with
-  restore/clear, a **Compare with last run** delta table (latency, cost, docs, cache,
-  guardrail decisions/blocks, answer), six result tabs (Answer/Documents/Trace/Guardrails/
-  Resilience/Cache), and a copy/share + download Markdown export. The pure contract lives in
-  `ui/query_studio.py` and is covered by `tests/test_query_studio.py`.
-- **#132 UX3 - shipped (2026-11-05):** dataset picker (built-in `data/benchmark.json`
-  summary + custom query/response), evaluator ground-truth guidance, metric explanations,
-  and a run **comparison matrix**. The pure contract lives in `ui/evaluation.py` and is
-  covered by `tests/test_ui_evaluation_ux.py`.
-- **#145 UX3 follow-up - shipped (2026-11-06):** end-to-end dataset execution from the
-  console. Built-in or pasted cases run through `POST /v1/query` and `POST /v1/evaluate`
-  with reference answers passed as ground truth; failures are isolated per case. Results
-  render as a case-by-metric matrix, average-score bar chart and delta table against the
-  previous run. Covered by `tests/test_ui_dataset_evaluation.py`.
-- **#133 UX4 - shipped (2026-11-05):** stage-ordered trace timeline/waterfall with
-  span filtering, OTel context and a defensive redaction-safe view
-  (`ui/traces.py`, `tests/test_ui_traces_timeline.py`).
-- **#134 UX5 - shipped (2026-11-05):** time-range and tenant/app/user filters, alerts
-  preview, CSV/JSON export (`ui/governance.py`, `tests/test_ui_governance_filters.py`).
-- **#135 UX6 - shipped (2026-11-05):** tenancy scope indicators, confirmation prompts,
-  audit export (`ui/admin.py`, `tests/test_ui_admin_safety.py`).
-- **#136 UX7 - shipped (2026-11-05):** tooltips, accessible labels, empty states and
-  failure-specific error remediation (`ui/polish.py`, `tests/test_ui_polish.py`).
+## New UX/UI proposals (UX8-UX15, opened)
 
-## Implementation Notes
+Opened as #151-#158. Tracking: label `ux`, link to umbrella #43, Project #8
+**Workstream M**, milestone **H4**, and keep the HTTP-only rule plus AST/client
+tests for every change.
+
+| ID | Proposal | Priority | User problem | Key deliverables | Acceptance | Dependencies |
+|---|---|---|---|---|---|---|
+| UX8 (#151) | Persistent workspace and shareable deep links | P0 | Reloading or sharing a screen loses query history, filters, selected runs, datasets and comparisons. | URL state for screen/request id/tenant/filters; saved views and saved runs; recent-runs panel; copy-link; export/import workspace JSON. | Reload resumes the same screen and filters; a deep link reproduces a trace or governance view; no secrets in URLs; bounded saved-item cap. | Possible `/v1/runs` list or client-side persistence; URL/state contract. |
+| UX9 (#152) | Background evaluation jobs with progress, cancel and resume | P0 | Dataset runs block the UI, stop at 20 cases, and cannot be cancelled or resumed after a failure. | Job submission, per-case progress, cancel, retry failed cases, partial results, job history, >20-case runs, export. | 100-case run stays responsive; cancel takes effect within one case; resume retries only failures; results survive refresh; failures remain isolated. | Backend job/queue or an extension of `/v1/experiments`; HTTP-only client. |
+| UX10 (#153) | Dataset Studio authoring | P1 | Users must hand-write JSON; there is no way to edit cases, references, docs, tags or validation errors in the console. | Case table editor; add/remove/reorder; document editor; reference/GT field; tags; inline validation; preview; import/export; save/duplicate. | Author a 20-case/10-doc dataset without JSON; validation is inline; export round-trips; no secrets or raw config leakage. | UX8 saved datasets; optional dataset persistence API. |
+| UX11 (#154) | Cross-link and compare operational evidence | P1 | Trace, audit, metrics and governance views are disconnected; comparing two requests is manual. | Universal request-id search/copy; trace -> audit -> metrics -> governance links; two-trace side-by-side diff; saved filter context; evidence-pack export. | Reach audit/metrics from a trace in <=2 clicks; trace diff highlights stage latency/failure/document/guardrail deltas; links preserve tenant/role scope. | Possible audit filter by request id; trace search/list endpoint. |
+| UX12 (#155) | Command palette and accessibility hardening | P1 | Navigation is mouse-first; keyboard/screen-reader flows and WCAG 2.2 AA are not formally verified. | Ctrl/Cmd+K palette for screens, request ids, tenants and actions; shortcuts and help overlay; skip link; focus states; ARIA labels; reduced motion; contrast fixes; WCAG checklist. | All primary flows work keyboard-only; no critical/serious automated a11y findings; usable at 200% zoom; palette actions are keyboard-completable. | UX8 for deep-link targets. |
+| UX13 (#156) | Responsive, compact and theme system | P2 | Wide desktop layouts break on small screens; tables and colors are inconsistent across screens. | Responsive breakpoints; compact/density mode; sticky actions; table-to-card degradation; light/dark/high-contrast themes; semantic chart colors. | 375/768/1280 px layouts have no horizontal scroll on core flows; contrast >=4.5:1; themes pass checks; tables degrade without losing actions. | UX12 accessibility tokens. |
+| UX14 (#157) | Role-based guided journeys and demo mode | P2 | One generic tour serves every persona; there is no safe sample data or reset for demos and onboarding. | Tours for architect, analyst, security, ops and admin; guided sample scenario; demo mode with seeded state and reset; checklist extended to guardrails/audit/admin; doc deep links. | Each persona completes its journey in <10 minutes; reset returns a clean state; tour covers new screens; no production data is touched. | UX8/UX10; demo config/API fixtures. |
+| UX15 (#158) | Collaboration and feedback capture | P2 | Bad answers cannot be annotated or promoted into evaluation data; sharing evidence is copy/paste. | Run annotations/flags; comments/notes; "promote to dataset" from a bad answer; evidence-pack export (Markdown/JSON); optional review queue; share link. | Flagging a run creates an evaluation case in one click; annotations survive reload with UX8; exports are redacted; no PII or secrets. | UX8/UX10; optional annotation store. |
+
+### Recommended execution order
+
+1. **UX8** - persistence and deep links unlock the rest.
+2. **UX9** - removes the biggest evaluation workflow blocker.
+3. **UX12** - accessibility and keyboard access are enterprise adoption gates.
+4. **UX10** - dataset authoring turns evaluation into a repeatable workflow.
+5. **UX11** - cross-object evidence reduces debugging time.
+6. **UX13-UX15** - presentation, persona onboarding and collaboration polish.
+
+## Implementation notes
+
 - Stay HTTP-only (enforced by `tests/test_ui_console.py`).
-- Prefer additive components in `ui/` (no `app.*`/`core.*` imports).
-- Reuse `ui/client.py`, `ui/common.py`; extend schemas only if API changes needed.
-- Add structural tests for new screens/components.
-- Keep tour in sync (`ui/tour.py`).
+- Prefer additive components in `ui/`; never import `app.*` or `core.*`.
+- Put pure workflow logic in Streamlit-free helpers so it can be unit-tested.
+- Extend `ui/client.py` only for documented API endpoints; if the API is
+  insufficient, extend the API first.
+- Add structural tests for new screens/components and keep `ui/tour.py` in sync.
+- Do not put secrets, raw config values or unredacted traces in URLs, exports or
+  screenshots.
 
-## Bottom Line
-The console is functional and API-aligned. With focused polish (IA simplification, guided workflows, better observability views, safer admin UX), it becomes significantly more intuitive for enterprise architects and speeds up adoption of the platform's evaluation/governance/observability capabilities.
+## Bottom line
+
+UX1-UX7 turned the console from a functional API demo into a role-aware, guided
+workflow surface. The next tranche should make it persistent, asynchronous,
+accessible and collaborative: UX8 and UX9 are the highest-value changes, with UX12
+as the enterprise accessibility gate.

@@ -1,5 +1,5 @@
 # Fact Analysis: Usability & Value for Enterprise Architects
-*(Generated 2026-11-02. Reconciled 2026-11-04. Grounded in repository state.)*
+*(Generated 2026-11-02. Reconciled 2026-11-07. Grounded in repository state.)*
 
 ## 1) Market Pain Points vs. What This Project Addresses
 
@@ -11,7 +11,7 @@
 | RAG workflow complexity | Chunking, retrieval strategy, reranking, and query expansion are ad-hoc and hard to compare. | Config-driven registries for chunkers, retrievers (FAISS/Simple/Dummy/KG/Hybrid), rerankers, query expanders, response cache, batching/parallel inference. `whatif` endpoint to swap components without redeploy. | Strong - implemented. |
 | Knowledge Graph adoption friction | KGs are powerful but hard to integrate with vector search and evaluate. | `KGRetriever` (triple rendering + embedding ranking + optional 1-hop expansion), hybrid retrieval (BM25 + vector fusion), benchmark runner to measure retrieval quality. | Good - implemented, but needs more real-world connectors/eval data to be enterprise-grade. |
 | Vendor lock-in & cost control | Teams want to swap models/providers without rewriting code, but also need cost governance. | Vendor-neutral interfaces + registries, OpenAI + local/HF providers, per-model pricing in `CostTracker`, budget caps (governance), tenant budgets, cost attribution, and what-if to compare models. | Strong - implemented. |
-| Deployment & operations | Moving from notebook to prod requires HA, rollbacks, secrets, and validation. | Helm/Kustomize/GitOps, HPA/KEDA, Argo Rollouts (canary/blue-green), config validation + secrets resolution, Codespaces demo, health/ready, persistence (BaseStore memory/sqlite/postgres), immutable audit, multi-region/residency/DR foundations (`config/dr.yaml`, `config/residency.yaml`, `docs/dr-runbook.md`), cloud Terraform modules (G5/G6, landed 2026-11-03). | Good - implemented; remaining work is operational DR hardening (cross-region persistence, backup/restore automation, chaos) tracked as Workstream I (#118-#120). |
+| Deployment & operations | Moving from notebook to prod requires HA, rollbacks, secrets, and validation. | Helm/Kustomize/GitOps, HPA/KEDA, Argo Rollouts (canary/blue-green), config validation + secrets resolution, Codespaces demo, health/ready, persistence (BaseStore memory/sqlite/postgres), immutable audit, multi-region/residency/DR foundations (`config/dr.yaml`, `config/residency.yaml`, `docs/dr-runbook.md`), cloud Terraform modules (G5/G6, landed 2026-11-03), and operational DR hardening (cross-region persistence, backup/restore automation, chaos verification - #118-#120, landed 2026-11-07). | Strong - implemented; the next step is proving the runbooks in each target environment rather than building the automation. |
 
 ## 2) Usability for Enterprise Architects
 
@@ -21,12 +21,13 @@
 - **Introspection-first**: `/v1/config`, `/v1/models`, `/v1/retrievers`, `/v1/guardrails`, `/v1/tenants`, etc. allow architects to understand the running system without reading code.
 - **Evaluation as a first-class concern**: The ability to run experiments and compare strategies (chunking, embedding, retrieval) is exactly what's missing in most RAG implementations.
 - **Security by design**: Defense-in-depth (guardrails, PII, ACL, tenancy, audit) is implemented, not just documented.
+- **Console workflows are now real**: UX1-UX7 and #145 shipped role-aware navigation, guided onboarding, Query Studio templates/history/compare, dataset evaluation, trace waterfall, governance filters/export, admin safety and error remediation. The console is no longer just a single-query demo.
 
 ### Friction points
-- **Complexity**: The system has many moving parts (registries, guardrails, tenancy, etc.). Without the docs, it's overwhelming. The docs are being reconciled, but the learning curve is steep.
+- **Complexity**: The system has many moving parts (registries, guardrails, tenancy, etc.). Without the docs, it's overwhelming. The docs are reconciled, but the learning curve is still steep.
 - **Local development**: Running the full suite requires model downloads and is slow. The smoke configs help, but architects need to understand the dummy vs real providers.
-- **Connector ecosystem**: Data ingestion/connectors aren't heavily implemented. Most orgs need to connect to SharePoint, Confluence, S3, etc. This is called out as future work.
-- **UI vs API**: The Streamlit console is great for demos, but enterprise architects will want to integrate via API. The API surface is comprehensive, but some advanced workflows may need custom integration.
+- **Connector breadth**: SharePoint, Confluence, S3, Azure Blob and GCS connectors landed (#115-#117), but the catalog and ingestion operations still need to grow for broad enterprise coverage.
+- **UI vs API**: The console now covers the main architect, analyst, security and ops workflows over HTTP only. Remaining UI gaps are persistence/deep links, long-running jobs, dataset authoring, formal accessibility, cross-object evidence navigation and collaboration (opened as #151-#158; see `docs/analysis/ux_roadmap_fact_check.md`).
 
 ## 3) Value Assessment (Assuming Near Completion)
 
@@ -34,9 +35,9 @@
 |---|---|---|
 | Platform/AI Architects | Very High | This is one of the few open implementations that treats evaluation, governance, and observability as non-negotiable. The config-driven architecture is reference-quality. |
 | Security/Compliance Architects | Very High | Guardrails, PII, ACL, tenancy, immutable audit, and attribution directly address enterprise requirements. |
-| Data/ML Architects (RAG/KG) | High | Hybrid + KG retrieval, experiment framework, and benchmarks are strong. Needs more connector support and larger eval datasets. |
-| SRE/Platform Engineers | High | OTel, Prometheus, Helm/Kustomize, HPA, rollouts, health checks, config validation, and multi-region/residency/DR foundations are production-aligned. Operational DR automation is the remaining gap. |
-| Product/Business Stakeholders | Medium-High | Cost attribution and governance help, but the value is more architectural than user-facing. The UI is functional but not a polished enterprise product. |
+| Data/ML Architects (RAG/KG) | High | Hybrid + KG retrieval, experiment framework, benchmarks and connector groundwork are strong. Needs broader connector catalog and larger domain-specific eval datasets. |
+| SRE/Platform Engineers | High | OTel, Prometheus, Helm/Kustomize, HPA, rollouts, health checks, config validation, multi-region/residency/DR foundations and backup/restore/chaos automation (#118-#120) are production-aligned. The next step is proving the runbooks per environment. |
+| Product/Business Stakeholders | Medium-High | Cost attribution, governance and the role-aware console make the value visible. Remaining product polish is persistence, long-running jobs, accessibility, dashboards and collaboration (UX8-UX15, #151-#158). |
 
 ## 4) Concrete Verdict
 
@@ -49,10 +50,11 @@
 - **Production operations**: The deployment artifacts (Helm, GitOps, rollouts, observability) show real operational thinking.
 
 ### Remaining gaps to be truly "enterprise-ready"
-- **Data connectors**: Need ingestion pipelines for common enterprise sources.
-- **Scalability hardening**: Multi-region/DR foundations landed (G5/G6); operational hardening (cross-region persistence, backup/restore automation, chaos) remains.
-- **Policy as code**: The guardrail framework exists, but a more declarative policy engine would help.
-- **Larger eval datasets**: The benchmark is good, but orgs need domain-specific eval sets.
-- **Simplified onboarding**: The sheer number of configs can be intimidating; more "golden path" templates would help.
+- **Connector breadth and ingestion operations**: SharePoint, Confluence, S3, Azure Blob and GCS connectors landed (#115-#117); the next step is a broader catalog, ingestion scheduling and operational runbooks.
+- **DR proof per environment**: Multi-region/DR foundations and operational automation landed (G5/G6 and #118-#120); organizations still need to run the documented restore/chaos drills in their own environments.
+- **Policy as code**: The guardrail framework exists; the declarative policy engine, CEL evaluator and approval workflow are tracked as #121-#123.
+- **Larger eval datasets and CI gates**: The benchmark is good; dataset schema/loaders, regression gates and dashboard enhancements are tracked as #124-#126.
+- **Simplified onboarding and golden paths**: The config surface is still large; templates, `genai init` and the onboarding guide are tracked as #127-#129.
+- **Next UX/UI tranche**: persistence/deep links, background evaluation jobs, dataset authoring, cross-object evidence navigation, WCAG 2.2 AA/keyboard access, responsive/theming, persona journeys and collaboration are opened as #151-#158 and documented in `docs/analysis/ux_roadmap_fact_check.md`.
 
-**Bottom line:** With G5/G6 landed and the remaining roadmap items (connectors, operational DR, policy-as-code, eval expansion, onboarding) in progress, this is an excellent reference architecture and a viable foundation for an internal platform. For architects building enterprise RAG systems, this project fills critical gaps that are currently holding back wider adoption of agentic AI. It's not just a demo - it's a serious attempt at solving the "productionization" problem.
+**Bottom line:** UX1-UX7 and #145 turned the console into a credible role-aware workflow surface, and G5/G6 plus #118-#120 closed the largest operational gaps. The remaining roadmap work is breadth and proof (connectors, DR drills, policy-as-code, eval expansion, golden paths) plus the UX8-UX15 tranche (#151-#158). This is an excellent reference architecture and a viable foundation for an internal platform, not just a demo.

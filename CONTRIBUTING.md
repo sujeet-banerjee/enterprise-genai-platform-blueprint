@@ -113,11 +113,12 @@ era complete).
   `H0 - Observability & hardening`, `H1 - Multi-tenant & governed`,
   `H2 - Product surface`, `H3 - Enterprise scale & compliance`,
   `H4 - Post-G6 hardening & UX`.
-- H0/H1, Workstream G (deployment/delivery), Workstream H (ingestion #115-#117) and
-  workstream M UX polish (#130-#136) are complete. The open bridge is workstreams
-  I-L (#118-#129: multi-region/DR operations, policy-as-code, eval expansion/CI gates,
-  onboarding/golden paths). Pick an open issue from that set; the roadmap document and
-  the GitHub Project board are the source of truth for ordering.
+- H0/H1, Workstream G (deployment/delivery), Workstream H (ingestion #115-#117),
+  operational DR (#118-#120) and workstream M UX polish (#130-#136, #145) are complete.
+  The open bridge is workstreams I-L (#121-#129: policy-as-code, eval expansion/CI gates,
+  onboarding/golden paths) plus the next UX tranche (#151-#158). Pick an open issue from
+  that set; the roadmap document and the GitHub Project board are the source of truth for
+  ordering.
 
 ## License
 

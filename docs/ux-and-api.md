@@ -1,10 +1,10 @@
 # UX & API Architecture — Fronting UI Plan
 
-> **Status: DELIVERED (reconciled 2026-11-06).** The API surface, Streamlit console and
-> UX polish workstream M (#130-#136) described here have shipped; §7 is a delivery record
-> rather than a proposal. The forward-looking roadmap (multi-region/DR operations,
-> policy-as-code, eval expansion, golden paths, product UI) lives in
-> [enterprise-roadmap.md](enterprise-roadmap.md).
+> **Status: DELIVERED (reconciled 2026-11-07).** The API surface, Streamlit console and
+> UX polish workstream M (#130-#136, #145) described here have shipped; §7 is a delivery
+> record rather than a proposal. The next UX tranche (#151-#158) and the forward-looking
+> roadmap (multi-region/DR operations, policy-as-code, eval expansion, golden paths,
+> product UI) live in [enterprise-roadmap.md](enterprise-roadmap.md).
 
 ## 1. Purpose
 
@@ -287,5 +287,9 @@ workstream F there.
   dataset/GT/comparison UX (#132), dataset execution + averages (#145), trace timeline
   (#133), governance filters/export (#134), admin safety (#135) and
   a11y/empty-state/error remediation (#136). Done.
+- **P3.2 — Next UX tranche (workstream M):** persistence/deep links (#151), background
+  evaluation jobs (#152), Dataset Studio (#153), cross-object evidence (#154), command
+  palette/WCAG 2.2 AA (#155), responsive/theming (#156), persona journeys/demo mode
+  (#157) and collaboration/feedback (#158). Open on H4.
 - **P4 (optional, later)** — React/Next.js product frontend reusing the same OpenAPI
   contract; tracked as workstream F in the enterprise roadmap (not committed).
