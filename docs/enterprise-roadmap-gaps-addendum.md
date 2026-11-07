@@ -41,11 +41,24 @@ Workstream F** (enterprise console build-out): F delivers capabilities, M makes 
 | #135 | UX6: Admin/tenancy safety UX | P1 | **Landed** - Tenant warnings, confirmations, audit export, scope indicators |
 | #136 | UX7: UX polish, a11y, empty states, error remediation | P2 | **Landed** - Tooltips, accessible labels, empty states, clearer errors |
 
-**Notes:** Keep HTTP-only (`ui/` never imports `app.*`/`core.*`), extend `ui/client.py`/`ui/common.py`, add AST + client tests. Link to #43, Workstream M, milestone H2. Do not fold M into F.
+### Next UX tranche (opened 2026-11-07)
+
+| Issue | Title | Priority | Goal |
+|---|---|---|---|
+| #151 | UX8: Persistent workspace and shareable deep links | P0 | URL/saved state for screens, queries, filters, runs, datasets and comparisons |
+| #152 | UX9: Background evaluation jobs | P0 | Progress, cancel, resume/retry, partial results and job history beyond 20 cases |
+| #153 | UX10: Dataset Studio authoring | P1 | Structured case/doc editor, validation, preview, save/duplicate and round-trip export |
+| #154 | UX11: Cross-link and compare operational evidence | P1 | Request-id search, trace/audit/metrics/governance links and two-trace diff |
+| #155 | UX12: Command palette and WCAG 2.2 AA hardening | P1 | Keyboard-first navigation, shortcuts, focus/ARIA, contrast and 200% zoom |
+| #156 | UX13: Responsive, compact and theme system | P2 | Breakpoints, density, table-to-card, light/dark/high-contrast themes |
+| #157 | UX14: Role-based journeys and demo mode | P2 | Persona tours, seeded demo data, reset and expanded onboarding checklist |
+| #158 | UX15: Collaboration and feedback capture | P2 | Annotations/flags, promote-to-dataset, evidence-pack export, optional review queue |
+
+**Notes:** Keep HTTP-only (`ui/` never imports `app.*`/`core.*`), extend `ui/client.py`/`ui/common.py`, add AST + client tests. Link to #43, Workstream M. Delivered M work (#130-#136, #145) targeted milestone H2; the next tranche (#151-#158) targets milestone H4. Do not fold M into F.
 
 ## Tracking Updates
 - Add to `docs/enterprise-roadmap.md` as Workstreams H-L and M (post-G6/H4)
-- Issues `#115-#129` (H-L) target milestone `H4`; `#130-#136` (M) target milestone `H2`
+- Issues `#115-#129` (H-L) target milestone `H4`; `#130-#136` (M) target milestone `H2`; `#151-#158` (M) target milestone `H4`
 - Update `~/.config/opencode/memory.md` with this addendum reference
 - Update TODOs in memory/session context to reflect these items
 - Ensure Project #8 board gets new items/workstream options if needed
@@ -56,6 +69,7 @@ Workstream F** (enterprise console build-out): F delivers capabilities, M makes 
 - [x] Update enterprise-roadmap.md with H-L and M
 - [x] Create GitHub issues `#115-#129` (H-L)
 - [x] Create GitHub issues `#130-#136` (M)
+- [x] Create GitHub issues `#151-#158` (next UX tranche, 2026-11-07)
 - [x] Update memory.md and TODO tracking
-- [x] Add to Project #8 (Workstream field H-M; options + items assigned 2026-11-04)
+- [x] Add to Project #8 (Workstream field H-M; options + items assigned 2026-11-04; #151-#158 mapped to M)
 - [x] Keep CI green and docs reconciled
