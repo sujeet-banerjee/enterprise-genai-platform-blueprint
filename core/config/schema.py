@@ -409,12 +409,17 @@ class IngestionConfig(_StrictModel):
     connectors: Dict[str, Any] = Field(default_factory=dict)
 
 
+class PoliciesHitlConfig(_OpenModel):
+    enabled: bool = False
+    require_approval_for: List[str] = Field(default_factory=list)
+
+
 class PoliciesConfig(_StrictModel):
     enabled: bool = False
     engine: str = "noop"
     bundles: List[Any] = Field(default_factory=list)
     dry_run: bool = False
-    hitl: Dict[str, Any] = Field(default_factory=dict)
+    hitl: PoliciesHitlConfig = Field(default_factory=PoliciesHitlConfig)
 
 
 

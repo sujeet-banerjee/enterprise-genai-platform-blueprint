@@ -1,6 +1,7 @@
 enabled: false
-engine: noop
-bundles: []
+engine: cel
+bundles:
+  - policy_bundles/example-v1.yaml
 dry_run: false
 hitl:
   enabled: false
