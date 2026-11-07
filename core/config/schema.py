@@ -409,6 +409,14 @@ class IngestionConfig(_StrictModel):
     connectors: Dict[str, Any] = Field(default_factory=dict)
 
 
+class PoliciesConfig(_StrictModel):
+    enabled: bool = False
+    engine: str = "noop"
+    bundles: List[Any] = Field(default_factory=list)
+    dry_run: bool = False
+    hitl: Dict[str, Any] = Field(default_factory=dict)
+
+
 
 #: Map of config file stem -> (schema, human label).
 SCHEMAS: Dict[str, Any] = {
@@ -428,4 +436,5 @@ SCHEMAS: Dict[str, Any] = {
     "persistence": PersistenceConfig,
     "audit": AuditConfig,
     "ingestion": IngestionConfig,
+    "policies": PoliciesConfig,
 }
