@@ -1,0 +1,11 @@
+name: example-bundle
+version: "1"
+policies:
+  - id: deny-delete
+    actions: [delete, purge]
+    effect: deny
+    reason: destructive_action
+  - id: allow-query
+    actions: [query]
+    when: "true"
+    effect: allow
