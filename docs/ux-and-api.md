@@ -125,6 +125,7 @@ Legend: **[E]**xisting. Every row is asserted by `tests/test_api_contract.py`
 | 10e | `GET /v1/admin/tenants` | Admin | tenant list with policy/limits; requires the `admin` (or `rebuild`) capability (#57) |
 | 10f | `POST /v1/admin/tenants/{tenant_id}` | Admin | apply a tenant policy update (budget cap etc.); returns the updated tenant list (#57) |
 | 10g | `GET /v1/admin/users` | Admin | identity/SCIM directory users; empty when identity is disabled (#57) |
+| 10h | `GET /v1/approvals`, `GET /v1/approvals/{request_id}`, `POST /v1/approvals/{request_id}/decision` | Governance / HITL | config-driven HITL approval workflow (off by default): list/get requests, submit approve/reject decisions; emits `policy/approval_decision` audit events (#123) |
 | 11 | `POST /v1/evaluate` | Evaluation | active or named evaluator; auto-retrieval; ground truth only when supported |
 | 12 | `POST /v1/experiments` | Evaluation | 202; single run or `compare_embedding_models` / `compare_chunking_strategies` |
 | 13 | `GET /v1/experiments/{exp_id}` | Evaluation | status/result from the bounded experiment store |
