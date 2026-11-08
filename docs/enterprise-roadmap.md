@@ -451,3 +451,6 @@ later deployment item.
 - Contribution workflow (branching, PR checklist, release tags) is in
   [`CONTRIBUTING.md`](../CONTRIBUTING.md).
 - **Addendum (fact-check):** [enterprise-roadmap-gaps-addendum.md](enterprise-roadmap-gaps-addendum.md) + [analysis/fact_check_usability_value_for_enterprise_architects.pdf](analysis/fact_check_usability_value_for_enterprise_architects.pdf) define the H4 workstreams H–L (#115–#129) for connectors/ingestion, multi-region/DR operations, policy-as-code, eval expansion/CI gates, and onboarding/golden paths. **UX addendum:** [analysis/ux_roadmap_fact_check.pdf](analysis/ux_roadmap_fact_check.pdf) / [analysis/ux_roadmap_fact_check.md](analysis/ux_roadmap_fact_check.md) define Workstream M — UX polish for the existing console, kept separate from Workstream F (console build-out): delivered #130–#136/#145 plus the next tranche #151–#158.
+
+
+- HITL console UI tracked as #163/#164 (Workstream M), dependent on #123.

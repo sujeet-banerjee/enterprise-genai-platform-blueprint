@@ -53,8 +53,10 @@ Workstream F** (enterprise console build-out): F delivers capabilities, M makes 
 | #156 | UX13: Responsive, compact and theme system | P2 | Breakpoints, density, table-to-card, light/dark/high-contrast themes |
 | #157 | UX14: Role-based journeys and demo mode | P2 | Persona tours, seeded demo data, reset and expanded onboarding checklist |
 | #158 | UX15: Collaboration and feedback capture | P2 | Annotations/flags, promote-to-dataset, evidence-pack export, optional review queue |
+| #163 | UX16: HITL Approvals review & decision console | P0 | **Planned** - HTTP-only Approvals/HITL Review screen consuming #123 (`GET/POST /v1/approvals*`); queue/detail/approve-reject, RBAC/tenant-aware, redaction-safe; depends on #123 backend; owner `ui/` bot-win per split |
+| #164 | UX17: HITL Approvals queue operations, SLA & evidence export | P1 | **Planned follow-on** - filters/pagination/sort, bulk-safe actions where supported, SLA/aging, redacted export, cross-links; depends on #123 + #163 |
 
-**Notes:** Keep HTTP-only (`ui/` never imports `app.*`/`core.*`), extend `ui/client.py`/`ui/common.py`, add AST + client tests. Link to #43, Workstream M. Delivered M work (#130-#136, #145) targeted milestone H2; the next tranche (#151-#158) targets milestone H4. Do not fold M into F.
+**Notes:** Keep HTTP-only (`ui/` never imports `app.*`/`core.*`), extend `ui/client.py`/`ui/common.py`, add AST + client tests. Link to #43, Workstream M. Delivered M work (#130-#136, #145) targeted milestone H2; the next tranche (#151-#158, #163-#164) targets milestone H4. #163/#164 close the roadmap B6 HITL queue/UI gap (backend #121-#123). Do not fold M into F.
 
 ## Tracking Updates
 - Add to `docs/enterprise-roadmap.md` as Workstreams H-L and M (post-G6/H4)
