@@ -1,5 +1,9 @@
 # Domain-specific evaluation datasets (issue #124, Workstream K).
 # Disabled by default; enable and declare datasets to make them pluggable.
+#
+# Regression gates (issue #125): set regression.enabled=true to block when
+# evaluated metrics fall below configured thresholds. CI runs
+# `python -m app.eval_gate` (safe/no-op when disabled).
 enabled: false
 default_dataset: benchmark
 datasets:
@@ -7,3 +11,12 @@ datasets:
     path: data/benchmark.json
     domain: retrieval
     description: "Built-in IR benchmark (query -> relevant doc ids)"
+regression:
+  enabled: false
+  top_k: 3
+  thresholds: {}
+  datasets:
+    benchmark:
+      thresholds:
+        context_precision: 0.0
+        context_recall: 0.0
