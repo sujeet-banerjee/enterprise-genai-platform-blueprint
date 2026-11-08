@@ -422,6 +422,23 @@ class PoliciesConfig(_StrictModel):
     hitl: PoliciesHitlConfig = Field(default_factory=PoliciesHitlConfig)
 
 
+# -- eval_datasets.yaml --------------------------------------------------
+
+
+class EvalDatasetSpec(_OpenModel):
+    path: Optional[str] = None
+    format: Optional[str] = None
+    domain: Optional[str] = None
+    description: Optional[str] = None
+    task: Optional[str] = None
+
+
+class EvalDatasetsConfig(_StrictModel):
+    enabled: bool = False
+    default_dataset: Optional[str] = None
+    datasets: Dict[str, Union[EvalDatasetSpec, str]] = Field(default_factory=dict)
+
+
 
 #: Map of config file stem -> (schema, human label).
 SCHEMAS: Dict[str, Any] = {
@@ -442,4 +459,5 @@ SCHEMAS: Dict[str, Any] = {
     "audit": AuditConfig,
     "ingestion": IngestionConfig,
     "policies": PoliciesConfig,
+    "eval_datasets": EvalDatasetsConfig,
 }

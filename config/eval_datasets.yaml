@@ -1,0 +1,9 @@
+# Domain-specific evaluation datasets (issue #124, Workstream K).
+# Disabled by default; enable and declare datasets to make them pluggable.
+enabled: false
+default_dataset: benchmark
+datasets:
+  benchmark:
+    path: data/benchmark.json
+    domain: retrieval
+    description: "Built-in IR benchmark (query -> relevant doc ids)"
