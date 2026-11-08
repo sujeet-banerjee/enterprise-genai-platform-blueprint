@@ -3,7 +3,7 @@
 > **Status: DELIVERED (reconciled 2026-11-07).** The API surface, Streamlit console and
 > UX polish workstream M (#130-#136, #145) described here have shipped; §7 is a delivery
 > record rather than a proposal. The next UX tranche (#151-#158) and the forward-looking
-> roadmap (multi-region/DR operations, policy-as-code, eval expansion, golden paths,
+> roadmap (multi-region/DR operations, policy-as-code/HITL approvals UI (#163/#164), eval expansion, golden paths,
 > product UI) live in [enterprise-roadmap.md](enterprise-roadmap.md).
 
 ## 1. Purpose
@@ -168,7 +168,8 @@ from §3.2 applies to every UI: HTTP only, no `core.*` imports.
 | **Access / RBAC** | roles, capabilities, request caps, allowed models | `/v1/access` |
 | **Admin** | tenant scope indicator, confirmation prompts for sensitive updates, tenant policy view/update + identity directory users, audit export; requires `admin`/`rebuild` capability | `/v1/admin/tenants`, `/v1/admin/tenants/{tenant_id}`, `/v1/admin/users`, `/v1/access`, `/v1/audit` |
 | **Traces** | look up `request_id`; stage latency timeline/waterfall with span list, failure taxonomy, guardrail decisions, resilience, OTel ids, redaction-safe and raw trace views | `/v1/traces/{request_id}`, `/v1/metrics` |
-| **Settings (read-only)** | effective config viewer (redacted), model/provider/guardrail lists | `/v1/config`, `/v1/models`, `/v1/embedding-models`, `/v1/retrievers`, `/v1/rerankers`, `/v1/evaluators`, `/v1/guardrails` |
+| **Settings (read-only)** | effective config viewer (redacted), model/provider/guardrail lists |
+| **Approvals (planned, #163, depends on #123)** | HITL queue/detail; approve/reject policy-gated actions; status filter; redacted context/policy; audit-linked decisions | `/v1/approvals`, `/v1/approvals/{request_id}`, `/v1/approvals/{request_id}/decision` | `/v1/config`, `/v1/models`, `/v1/embedding-models`, `/v1/retrievers`, `/v1/rerankers`, `/v1/evaluators`, `/v1/guardrails` |
 
 No config-editing UI in v1 (write path = files in `config/`); `pipeline:rebuild` in the
 UI is expressed as preset "what-if" selections, keeping humans as the owners of YAML.
@@ -290,6 +291,8 @@ workstream F there.
 - **P3.2 — Next UX tranche (workstream M):** persistence/deep links (#151), background
   evaluation jobs (#152), Dataset Studio (#153), cross-object evidence (#154), command
   palette/WCAG 2.2 AA (#155), responsive/theming (#156), persona journeys/demo mode
-  (#157) and collaboration/feedback (#158). Open on H4.
+  (#157), collaboration/feedback (#158), HITL Approvals review/decision console (#163,
+  depends on #123 backend; `ui/` owned by bot-win) and approvals queue ops/SLA/evidence
+  follow-on (#164). Open on H4.
 - **P4 (optional, later)** — React/Next.js product frontend reusing the same OpenAPI
   contract; tracked as workstream F in the enterprise roadmap (not committed).
