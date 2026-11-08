@@ -20,6 +20,7 @@ roles:
       - introspect
       - governance
       - audit
+      - approve
   analyst:
     # Can query and run evaluations/experiments, but cannot rebuild, read the
     # audit trail, or change governance.
@@ -29,6 +30,7 @@ roles:
       - evaluate
       - experiment
       - introspect
+      - approve
     # Cap requested retrieval depth for this persona.
     top_k_max: 5
   viewer:

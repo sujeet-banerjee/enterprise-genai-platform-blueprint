@@ -8,6 +8,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
+from app.approval_api import register_approval_routes
 from app.audit_api import register_audit_routes
 from app.bootstrap import (
     assemble_components,
@@ -319,6 +320,8 @@ def create_app(
             _exp_store = build_store(config_path=str(persistence_config_path))
         except Exception:
             _exp_store = None
+        from core.services.approval import ApprovalService
+        application.state.approvals = ApprovalService(config_path=str(_config_dir() / "policies.yaml"))
         application.state.evaluate = EvaluationService(
             models_config_path=models_config_path,
             prompt_config_path=prompt_config_path,
@@ -418,6 +421,8 @@ def create_app(
             return "experiment"
         if path == "/v1/pipeline:rebuild":
             return "rebuild"
+        if path == "/v1/approvals" or path.startswith("/v1/approvals/"):
+            return "approve"
         if path == "/v1/audit/purge":
             return "governance"
         if path == "/v1/audit" or path.startswith("/v1/audit/"):
@@ -1100,6 +1105,7 @@ def create_app(
     register_whatif_routes(application, _error_envelope)
     register_ops_routes(application, _error_envelope)
     register_audit_routes(application, _error_envelope)
+    register_approval_routes(application, _error_envelope)
     register_scim_routes(application, _error_envelope)
 
     return application
