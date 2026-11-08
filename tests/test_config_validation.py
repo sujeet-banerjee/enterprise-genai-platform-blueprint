@@ -51,6 +51,7 @@ def test_all_shipped_configs_validate():
         "access_control.yaml",
         "api.yaml",
         "audit.yaml",
+        "eval_datasets.yaml",
         "governance.yaml",
         "guardrails.yaml",
         "models.yaml",
