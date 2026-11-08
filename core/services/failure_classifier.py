@@ -42,6 +42,10 @@ class FailureType(str, Enum):
     # guardrail blocked the request/response.
     GUARDRAIL_INPUT_BLOCKED = "guardrail_input_blocked"
     GUARDRAIL_OUTPUT_BLOCKED = "guardrail_output_blocked"
+    # HITL approval workflow (issue #123).
+    APPROVAL_REQUIRED = "approval_required"
+    APPROVAL_NOT_FOUND = "approval_not_found"
+    APPROVAL_INVALID = "approval_invalid"
 
 
 class FailureClassifier:

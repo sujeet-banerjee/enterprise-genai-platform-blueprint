@@ -253,6 +253,33 @@ class AuditPurgeRequest(BaseModel):
     now: Optional[Union[float, str]] = None
 
 
+class ApprovalDecisionRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    decision: Literal["approved", "rejected"]
+    decided_by: Optional[str] = None
+    note: Optional[str] = None
+
+
+class ApprovalRequestResponse(BaseModel):
+    request_id: str
+    action: str
+    status: str
+    reason: str = ""
+    context: Dict[str, Any] = {}
+    policy: Dict[str, Any] = {}
+    created_at: float
+    decided_at: Optional[float] = None
+    decided_by: Optional[str] = None
+    decision_note: Optional[str] = None
+
+
+class ApprovalListResponse(BaseModel):
+    enabled: bool = False
+    count: int = 0
+    requests: List[ApprovalRequestResponse] = []
+    request_id: Optional[str] = None
+
+
 class AttributionStats(BaseModel):
     """Spend/request counters for one attribution dimension value (#50)."""
 
