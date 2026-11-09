@@ -61,6 +61,7 @@ SCREENS = [
     "Evaluation",
     "Governance & Cost",
     "Guardrails",
+    "Approvals",
     "Audit",
     "Access / RBAC",
     "Admin",
@@ -134,6 +135,7 @@ def test_empty_workspace_is_versioned_and_bounded():
         "evaluation",
         "governance",
         "audit",
+        "approvals",
         "traces",
     }
 

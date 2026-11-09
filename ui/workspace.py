@@ -45,6 +45,7 @@ SAVED_VIEW_KINDS: Tuple[str, ...] = (
     "evaluation",
     "governance",
     "audit",
+    "approvals",
     "traces",
 )
 
@@ -54,6 +55,7 @@ VIEW_SCREENS: Dict[str, str] = {
     "evaluation": "Evaluation",
     "governance": "Governance & Cost",
     "audit": "Audit",
+    "approvals": "Approvals",
     "traces": "Traces",
 }
 
@@ -63,6 +65,7 @@ VIEW_SECTIONS: Dict[str, str] = {
     "evaluation": "evaluation",
     "governance": "governance",
     "audit": "audit",
+    "approvals": "approvals",
     "traces": "traces",
 }
 
@@ -90,6 +93,8 @@ DIRECT_PARAMS: Tuple[str, ...] = (
     "gov_user",
     "audit_limit",
     "audit_event",
+    "approval_status",
+    "approval_request",
     "traces_request_id",
 )
 
@@ -114,6 +119,7 @@ _RESERVED_KEYS = frozenset(
         "evaluation",
         "governance",
         "audit",
+        "approvals",
         "traces",
         "activity",
         "recent_runs",
@@ -247,6 +253,17 @@ def _normalize_audit(value: Any) -> Dict[str, Any]:
     }
 
 
+def _normalize_approvals(value: Any) -> Dict[str, Any]:
+    data = value if isinstance(value, Mapping) else {}
+    status = _clean_text(data.get("status"), 40).lower()
+    if status not in ("pending", "approved", "rejected", "all"):
+        status = "pending"
+    return {
+        "status": status,
+        "request_id": _clean_id(data.get("request_id")),
+    }
+
+
 def _normalize_traces(value: Any) -> Dict[str, Any]:
     data = value if isinstance(value, Mapping) else {}
     return {"request_id": _clean_id(data.get("request_id"))}
@@ -274,6 +291,8 @@ def _normalize_section(kind: str, value: Any) -> Dict[str, Any]:
         return _normalize_governance(value)
     if kind == "audit":
         return _normalize_audit(value)
+    if kind == "approvals":
+        return _normalize_approvals(value)
     if kind == "traces":
         return _normalize_traces(value)
     raise WorkspaceError(f"Unknown saved-view kind: {kind}")
@@ -366,6 +385,7 @@ def empty_workspace() -> Dict[str, Any]:
         "evaluation": _normalize_evaluation({}),
         "governance": _normalize_governance({}),
         "audit": _normalize_audit({}),
+        "approvals": _normalize_approvals({}),
         "traces": _normalize_traces({}),
         "activity": _normalize_activity({}),
         "recent_runs": [],
@@ -390,6 +410,7 @@ def normalize_workspace(value: Any) -> Dict[str, Any]:
         "evaluation": _normalize_evaluation(value.get("evaluation")),
         "governance": _normalize_governance(value.get("governance")),
         "audit": _normalize_audit(value.get("audit")),
+        "approvals": _normalize_approvals(value.get("approvals")),
         "traces": _normalize_traces(value.get("traces")),
         "activity": _normalize_activity(value.get("activity")),
         "recent_runs": _dedupe_runs(value.get("recent_runs"), MAX_RECENT_RUNS),
@@ -458,6 +479,12 @@ def workspace_from_session(
     )
     workspace["audit"] = _normalize_audit(
         {"limit": state.get("audit_limit"), "event_type": state.get("audit_event_type")}
+    )
+    workspace["approvals"] = _normalize_approvals(
+        {
+            "status": state.get("approval_status"),
+            "request_id": state.get("approval_request_id"),
+        }
     )
     workspace["traces"] = _normalize_traces(
         {"request_id": state.get("trace_request_id") or state.get("last_trace_request_id")}
@@ -542,6 +569,7 @@ def apply_workspace(
     evaluation = safe["evaluation"]
     governance = safe["governance"]
     audit = safe["audit"]
+    approvals = safe["approvals"]
     activity = safe["activity"]
 
     state["active_screen"] = screen
@@ -568,6 +596,8 @@ def apply_workspace(
     state["gov_user"] = governance["user"]
     state["audit_limit"] = audit["limit"]
     state["audit_event_type"] = audit["event_type"]
+    state["approval_status"] = approvals["status"]
+    state["approval_request_id"] = approvals["request_id"]
     state["last_request_id"] = activity["last_request_id"]
     state["last_query"] = activity["last_query"]
     state["last_trace_request_id"] = activity["last_trace_request_id"]
@@ -593,6 +623,7 @@ def _state_defaults() -> Dict[str, Any]:
     evaluation = workspace["evaluation"]
     governance = workspace["governance"]
     audit = workspace["audit"]
+    approvals = workspace["approvals"]
     return {
         "active_screen": DEFAULT_SCREEN,
         "nav_initialized": False,
@@ -620,6 +651,8 @@ def _state_defaults() -> Dict[str, Any]:
         "gov_user": governance["user"],
         "audit_limit": audit["limit"],
         "audit_event_type": audit["event_type"],
+        "approval_status": approvals["status"],
+        "approval_request_id": approvals["request_id"],
         "trace_request_id": "",
         "trace_autoload": False,
         "workspace_scope": {"tenant": "", "workspace": ""},
@@ -820,6 +853,7 @@ def workspace_from_query_params(
     evaluation = workspace["evaluation"]
     governance = workspace["governance"]
     audit = workspace["audit"]
+    approvals = workspace["approvals"]
     scope = workspace["scope"]
 
     def has(key: str) -> bool:
@@ -874,6 +908,12 @@ def workspace_from_query_params(
         audit["limit"] = _as_int(value("audit_limit"), audit["limit"], 1, 1000)
     if has("audit_event"):
         audit["event_type"] = _clean_text(value("audit_event"), 80)
+    if has("approval_status"):
+        approvals["status"] = _normalize_approvals(
+            {"status": value("approval_status")}
+        )["status"]
+    if has("approval_request"):
+        approvals["request_id"] = _clean_id(value("approval_request"))
     if has("tenant"):
         scope["tenant"] = _normalize_scope({"tenant": value("tenant")})["tenant"]
     if has("workspace"):
@@ -896,6 +936,7 @@ def workspace_to_query_params(
     evaluation = normalized["evaluation"]
     governance = normalized["governance"]
     audit = normalized["audit"]
+    approvals = normalized["approvals"]
     scope = normalized["scope"]
     params: Dict[str, str] = {}
     if include_blob:
@@ -944,6 +985,10 @@ def workspace_to_query_params(
         params["audit_limit"] = str(audit["limit"])
     if audit["event_type"]:
         params["audit_event"] = audit["event_type"]
+    if approvals["status"] != "pending":
+        params["approval_status"] = approvals["status"]
+    if normalized["screen"] == "Approvals" and approvals["request_id"]:
+        params["approval_request"] = approvals["request_id"]
     return params
 
 

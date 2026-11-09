@@ -123,7 +123,22 @@ TOUR_STEPS: List[TourStep] = [
         try_it="Run the default injection probe and confirm it blocks with `guardrail_input_blocked`.",
     ),
     TourStep(
-        title="10. Audit",
+        title="10. Approvals (HITL)",
+        screen="Approvals",
+        body=(
+            "Review policy-gated actions waiting for human sign-off. The queue defaults to "
+            "**pending** and shows action, reason, policy id/bundle/labels and request id. "
+            "Select a request to inspect its redacted context/policy and any trace/audit "
+            "correlation ids, then approve or reject with an optional reviewer name and note. "
+            "Decisions are audited and the screen requires the `approve` capability."
+        ),
+        try_it=(
+            "Enable `hitl.enabled` in `config/policies.yaml`, create a gated action, then "
+            "approve it here and confirm the status changes."
+        ),
+    ),
+    TourStep(
+        title="11. Audit",
         screen="Audit",
         body=(
             "Read the append-only, redacted audit trail (`GET /v1/audit`) with `limit` and "
@@ -133,7 +148,7 @@ TOUR_STEPS: List[TourStep] = [
         try_it="Enable `config/audit.yaml`, run a query, then filter by `event_type = governance`.",
     ),
     TourStep(
-        title="11. Access / RBAC",
+        title="12. Access / RBAC",
         screen="Access / RBAC",
         body=(
             "Shows the calling persona's **role** and effective **capabilities** (plus `top_k_max` "
@@ -143,7 +158,7 @@ TOUR_STEPS: List[TourStep] = [
         try_it="Compare capabilities with and without the API key configured.",
     ),
     TourStep(
-        title="12. Admin",
+        title="13. Admin",
         screen="Admin",
         body=(
             "Tenant list and users (identity directory) plus a proposal form to update tenant budgets. "
@@ -152,7 +167,7 @@ TOUR_STEPS: List[TourStep] = [
         try_it="List tenants/users if your role has admin capability.",
     ),
     TourStep(
-        title="13. Traces",
+        title="14. Traces",
         screen="Traces",
         body=(
             "Paste a `request_id` (from a Query Studio result) and click **Look up trace** "
@@ -163,7 +178,7 @@ TOUR_STEPS: List[TourStep] = [
         try_it="Look up the request_id shown after your Query Studio run.",
     ),
     TourStep(
-        title="14. Settings (read-only)",
+        title="15. Settings (read-only)",
         screen="Settings (read-only)",
         body=(
             "View the redacted **effective configuration** and expand the provider lists "

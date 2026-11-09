@@ -18,6 +18,19 @@ from urllib.parse import parse_qsl, urlsplit
 import streamlit as st
 
 from ui.admin import audit_export_rows, confirm_action, scope_indicator
+from ui.approvals import (
+    STATUS_OPTIONS,
+    approval_rows,
+    can_decide,
+    decision_payload,
+    deep_link_params,
+    evidence_links,
+    format_timestamp,
+    normalize_status,
+    redact_approval,
+    status_filter,
+    summary_counts,
+)
 from ui.client import ApiClient
 from ui.common import api_base_url, latency_rows, metric_rows, require_ok
 from ui.evaluation import (
@@ -1350,6 +1363,179 @@ def screen_guardrails() -> None:
             st.info("No guardrail decisions recorded yet.")
 
 
+def _render_approval_decisions(record: Dict[str, Any]) -> None:
+    context = record.get("context")
+    decisions = context.get("decisions") if isinstance(context, dict) else None
+    if decisions:
+        st.subheader("Decision history")
+        st.json(decisions)
+
+
+def screen_approvals() -> None:
+    st.header("Approvals (HITL)")
+    api = client()
+
+    access = api.access()
+    if not require_ok(access):
+        return
+    if access.data.get("enabled") and "approve" not in (access.data.get("capabilities") or []):
+        st.warning("Approvals require the `approve` capability.")
+        return
+
+    st.caption(
+        "Policy-gated actions waiting for human review. Decisions are submitted to "
+        "`POST /v1/approvals/{request_id}/decision` and audited by the backend."
+    )
+    notice = st.session_state.pop("approval_notice", "")
+    if notice:
+        st.success(notice)
+
+    status = normalize_status(st.session_state.get("approval_status"))
+    st.session_state.approval_status = status
+    status = st.selectbox("Status", STATUS_OPTIONS, key="approval_status")
+
+    result = api.approvals(status=status_filter(status))
+    if not require_ok(result):
+        _failure_taxonomy(result)
+        return
+    data = result.data
+    records = [item for item in (data.get("requests") or []) if isinstance(item, dict)]
+    counts = summary_counts(records)
+    if status != "all":
+        all_result = api.approvals()
+        if all_result.ok:
+            all_records = [
+                item for item in (all_result.data.get("requests") or []) if isinstance(item, dict)
+            ]
+            counts = summary_counts(all_records)
+
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("HITL enabled", "yes" if data.get("enabled") else "no")
+    c2.metric("Pending", counts["pending"])
+    c3.metric("Approved", counts["approved"])
+    c4.metric("Rejected", counts["rejected"])
+    if not data.get("enabled"):
+        st.info(
+            "HITL approvals are disabled. Enable `hitl.enabled` in `config/policies.yaml` "
+            "to collect approval requests."
+        )
+
+    rows = approval_rows(records)
+    if rows:
+        st.subheader("Queue")
+        st.dataframe(rows, use_container_width=True, hide_index=True)
+    else:
+        st.info("No approval requests match this status.")
+
+    queue_ids = [row["request_id"] for row in rows if row["request_id"]]
+    current = str(st.session_state.get("approval_request_id") or "")
+    options = list(dict.fromkeys(([current] if current else []) + queue_ids))
+    if options:
+        if current not in options:
+            st.session_state.approval_request_id = options[0]
+        st.selectbox("Approval request", options, key="approval_request_id")
+    else:
+        st.text_input("Approval request id", key="approval_request_id")
+    manual = st.text_input("Open by request id", key="approval_manual_id")
+    if st.button("Open request", key="approval_open") and manual.strip():
+        cleaned = deep_link_params(manual).get("approval_request", "")
+        if cleaned:
+            st.session_state.approval_request_id = cleaned
+            st.rerun()
+        else:
+            st.warning("Enter a valid approval request id.")
+
+    selected = str(st.session_state.get("approval_request_id") or "")
+    if selected:
+        detail = api.approval(selected)
+        if not require_ok(detail):
+            _failure_taxonomy(detail)
+        else:
+            record = redact_approval(detail.data)
+            st.subheader("Request detail")
+            d1, d2, d3 = st.columns(3)
+            d1.metric("Status", record.get("status", "-"))
+            d2.metric("Action", record.get("action", "-"))
+            d3.metric("Created", format_timestamp(record.get("created_at")))
+            st.code(record.get("request_id", selected), language=None)
+            st.write("**Reason:** " + str(record.get("reason") or "-"))
+            policy = record.get("policy") or {}
+            if policy:
+                st.caption(
+                    "Policy: "
+                    + ", ".join(
+                        f"{key}={policy.get(key)}"
+                        for key in ("policy_id", "bundle", "action")
+                        if policy.get(key)
+                    )
+                )
+
+            evidence = evidence_links(record)
+            if evidence:
+                st.subheader("Evidence / correlation ids")
+                st.dataframe(evidence, use_container_width=True, hide_index=True)
+                trace_values = [
+                    item["value"]
+                    for item in evidence
+                    if item["kind"] in ("request_id", "trace_request_id", "run_id")
+                ]
+                if trace_values and st.button("Open trace for request", key="approval_open_trace"):
+                    st.session_state.trace_request_id = trace_values[0]
+                    st.session_state.trace_autoload = True
+                    _navigate("Traces")
+                link = deep_link_params(selected)
+                if link:
+                    st.caption("Copyable workspace deep-link parameters:")
+                    st.code(
+                        "&".join(f"{key}={value}" for key, value in link.items()),
+                        language=None,
+                    )
+            else:
+                st.caption("No trace/audit correlation ids in this request context.")
+
+            st.subheader("Context")
+            st.json(record.get("context") or {})
+            st.subheader("Policy metadata")
+            st.json(policy)
+            _render_approval_decisions(record)
+
+            if can_decide(record) and data.get("enabled"):
+                st.subheader("Decision")
+                reviewer = st.text_input("Decided by", key="approval_decided_by")
+                note = st.text_area("Note (optional)", key="approval_note")
+                decision = st.radio(
+                    "Decision", ("approved", "rejected"), horizontal=True, key="approval_decision"
+                )
+                if st.button("Submit decision", type="primary", key="approval_submit"):
+                    try:
+                        payload = decision_payload(decision, reviewer, note)
+                    except ValueError as exc:
+                        st.error(str(exc))
+                    else:
+                        decided = api.decide_approval(
+                            selected,
+                            payload["decision"],
+                            decided_by=payload.get("decided_by"),
+                            note=payload.get("note"),
+                        )
+                        if require_ok(decided):
+                            st.session_state.approval_notice = (
+                                f"Request {selected} marked {payload['decision']}."
+                            )
+                            st.rerun()
+                        else:
+                            _failure_taxonomy(decided)
+            else:
+                st.success(
+                    f"Decided {format_timestamp(record.get('decided_at'))} "
+                    f"by {record.get('decided_by') or '-'}."
+                )
+                if record.get("decision_note"):
+                    st.write("**Decision note:** " + str(record.get("decision_note")))
+
+    _render_saved_views("approvals")
+
+
 def screen_audit() -> None:
     st.header("Audit")
     api = client()
@@ -1579,6 +1765,7 @@ SCREENS = {
     "Evaluation": screen_evaluation,
     "Governance & Cost": screen_governance,
     "Guardrails": screen_guardrails,
+    "Approvals": screen_approvals,
     "Audit": screen_audit,
     "Access / RBAC": screen_access,
     "Admin": screen_admin,
