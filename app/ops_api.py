@@ -19,6 +19,8 @@ from fastapi.responses import JSONResponse, Response
 
 from app.schemas import (
     AttributionReportResponse,
+    EvalAlertsResponse,
+    EvalTrendsResponse,
     GovernanceStatusResponse,
     MetricsResponse,
 )
@@ -371,6 +373,22 @@ def register_ops_routes(
             )
         return history, None
 
+
+
+    def _eval_trends(request: Request):
+        store = getattr(request.app.state, "eval_trends", None)
+        if store is None:
+            return None, JSONResponse(
+                status_code=503,
+                content=error_envelope(
+                    "Eval trend store is not ready.",
+                    FailureType.NOT_READY.value,
+                    [],
+                    _request_id(request),
+                ),
+            )
+        return store, None
+
     def _request_id(request: Request) -> str:
         return getattr(request.state, "request_id", None) or str(uuid.uuid4())
 
@@ -478,8 +496,49 @@ def register_ops_routes(
         if scope_error is not None:
             return scope_error
         payload = history.metrics(scope)
+        eval_store = getattr(request.app.state, "eval_trends", None)
+        if eval_store is not None:
+            payload["eval"] = {
+                "trends": eval_store.trends(tenant=scope, limit=50),
+                "alerts": eval_store.alerts(tenant=scope),
+            }
         payload["request_id"] = _request_id(request)
         return MetricsResponse(**payload)
+
+
+
+    @application.get("/v1/eval/trends", response_model=EvalTrendsResponse)
+    def eval_trends_endpoint(
+        request: Request,
+        tenant: Optional[str] = None,
+        evaluator: Optional[str] = None,
+        dataset: Optional[str] = None,
+        metric: Optional[str] = None,
+        limit: int = 100,
+    ):
+        store, error = _eval_trends(request)
+        if error is not None:
+            return error
+        scope, scope_error = _tenant_scope(request, tenant)
+        if scope_error is not None:
+            return scope_error
+        payload = store.trends(
+            tenant=scope, evaluator=evaluator, dataset=dataset, metric=metric, limit=limit
+        )
+        payload["request_id"] = _request_id(request)
+        return EvalTrendsResponse(**payload)
+
+    @application.get("/v1/eval/alerts", response_model=EvalAlertsResponse)
+    def eval_alerts_endpoint(request: Request, tenant: Optional[str] = None):
+        store, error = _eval_trends(request)
+        if error is not None:
+            return error
+        scope, scope_error = _tenant_scope(request, tenant)
+        if scope_error is not None:
+            return scope_error
+        payload = store.alerts(tenant=scope)
+        payload["request_id"] = _request_id(request)
+        return EvalAlertsResponse(**payload)
 
     @application.get("/metrics")
     def prometheus_metrics(request: Request):

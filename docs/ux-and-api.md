@@ -130,12 +130,14 @@ Legend: **[E]**xisting. Every row is asserted by `tests/test_api_contract.py`
 | 10g | `GET /v1/admin/users` | Admin | identity/SCIM directory users; empty when identity is disabled (#57) |
 | 10h | `GET /v1/approvals`, `GET /v1/approvals/{request_id}`, `POST /v1/approvals/{request_id}/decision` | Governance / HITL | config-driven HITL approval workflow (off by default): list/get requests, submit approve/reject decisions; emits `policy/approval_decision` audit events (#123) |
 | 11 | `POST /v1/evaluate` | Evaluation | active or named evaluator; auto-retrieval; ground truth only when supported |
+| 11a | `GET /v1/eval/trends` | Evaluation | metric trend series/summaries over recent eval points (tenant-scoped) |
+| 11b | `GET /v1/eval/alerts` | Evaluation | regression alerts derived from `eval_datasets.regression` thresholds (firing/warning/critical) |
 | 12 | `POST /v1/experiments` | Evaluation | 202; single run or `compare_embedding_models` / `compare_chunking_strategies` |
 | 13 | `GET /v1/experiments/{exp_id}` | Evaluation | status/result from the bounded experiment store |
 | 14 | `POST /v1/pipeline:rebuild` | What-if | construct-then-swap overrides; gated by `api.allow_rebuild` |
 | 15 | `GET /v1/governance/status` | Governance | limits from config + spend window + counters (reported even when disabled) |
 | 16 | `GET /v1/traces/{request_id}` | Observability | last-trace store (bounded LRU); 404 `trace_not_found` |
-| 17 | `GET /v1/metrics` | Observability | aggregate stage latencies (mean/p50/p95), failures by type/tag, cost, guardrails, cache |
+| 17 | `GET /v1/metrics` | Observability | aggregate stage latencies (mean/p50/p95), failures by type/tag, cost, guardrails, cache, eval trend/alert summary |
 | 18 | `GET /metrics` | Ops | Prometheus exposition of the same run counters (optional extra) |
 | 19 | `GET /v1/audit` | Governance | audit events with `limit`/`event_type` filters; redacted | `AuditEventsResponse` | `audit` |
 | 20 | `GET /v1/audit/evidence` | Governance | evidence pack for a time window (`start`/`end`/`tenant`) | `EvidencePack` | `audit` |

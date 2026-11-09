@@ -233,9 +233,27 @@ class MetricsResponse(BaseModel):
     failures_by_tag: Dict[str, int] = {}
     cost: Dict[str, Any] = {}
     guardrails: Dict[str, Any] = {}
+    eval: Dict[str, Any] = {}
     tenant: Optional[str] = None
     request_id: Optional[str] = None
 
+
+
+class EvalTrendsResponse(BaseModel):
+    num_points: int = 0
+    series: Dict[str, Any] = {}
+    summaries: Dict[str, Any] = {}
+    tenant: Optional[str] = None
+    request_id: Optional[str] = None
+
+
+class EvalAlertsResponse(BaseModel):
+    num_alerts: int = 0
+    thresholds: Dict[str, Any] = {}
+    alerts: List[Dict[str, Any]] = []
+    regression_enabled: bool = False
+    tenant: Optional[str] = None
+    request_id: Optional[str] = None
 
 class AuditEventsResponse(BaseModel):
     enabled: bool = False

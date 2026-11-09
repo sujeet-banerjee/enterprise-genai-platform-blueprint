@@ -38,6 +38,8 @@ EXPECTED_PATHS = {
     "/v1/evaluators",
     "/v1/guardrails",
     "/v1/evaluate",
+    "/v1/eval/trends",
+    "/v1/eval/alerts",
     "/v1/experiments",
     "/v1/experiments/{exp_id}",
     "/v1/pipeline:rebuild",
