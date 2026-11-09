@@ -18,6 +18,7 @@ ALL_CAPABILITIES = (
     "introspect",
     "governance",
     "audit",
+    "approve",
     "admin",
 )
 
@@ -48,8 +49,8 @@ NAV_GROUPS: Tuple[NavGroup, ...] = (
     NavGroup(
         key="governance",
         label="Governance & security",
-        description="Cost, guardrails, audit evidence and access policy.",
-        screens=("Governance & Cost", "Guardrails", "Audit", "Access / RBAC"),
+        description="Cost, guardrails, HITL approvals, audit evidence and access policy.",
+        screens=("Governance & Cost", "Guardrails", "Approvals", "Audit", "Access / RBAC"),
     ),
     NavGroup(
         key="operate",
@@ -72,6 +73,7 @@ SCREEN_CAPABILITIES: Dict[str, Optional[str]] = {
     "Evaluation": "evaluate",
     "Governance & Cost": "governance",
     "Guardrails": "introspect",
+    "Approvals": "approve",
     "Audit": "audit",
     "Access / RBAC": "introspect",
     "Admin": "rebuild",
@@ -112,6 +114,12 @@ QUICK_ACTIONS: Tuple[QuickAction, ...] = (
         screen="Governance & Cost",
         capability="governance",
         help="Check spend, failures and guardrail decisions.",
+    ),
+    QuickAction(
+        label="Review approvals",
+        screen="Approvals",
+        capability="approve",
+        help="Approve or reject policy-gated actions waiting for review.",
     ),
 )
 

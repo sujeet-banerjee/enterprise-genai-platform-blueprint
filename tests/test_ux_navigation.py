@@ -86,6 +86,7 @@ def test_every_screen_has_a_capability_mapping():
     screens = _screen_names()
     assert set(SCREEN_CAPABILITIES) == set(screens)
     assert SCREEN_CAPABILITIES["Overview / Health"] is None
+    assert SCREEN_CAPABILITIES["Approvals"] == "approve"
     for required in SCREEN_CAPABILITIES.values():
         if required is not None:
             assert required in ALL_CAPABILITIES
@@ -216,6 +217,6 @@ def test_app_navigation_uses_access_api_and_role_controls():
 def test_tour_has_a_get_started_step_and_sequential_numbers():
     payloads = _tour_payloads()
     assert any("Get started" in payload["title"] for payload in payloads)
-    assert len(payloads) == 14
+    assert len(payloads) == 15
     for index, payload in enumerate(payloads, start=1):
         assert payload["title"].startswith(f"{index}."), payload["title"]

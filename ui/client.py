@@ -187,6 +187,30 @@ class ApiClient:
             params["event_type"] = event_type
         return self.get("/v1/audit", params=params or None)
 
+    def approvals(self, status: Optional[str] = None) -> ApiResult:
+        """List HITL approval requests, optionally filtered by status (#123)."""
+        params = {"status": status} if status and status != "all" else None
+        return self.get("/v1/approvals", params=params)
+
+    def approval(self, request_id: str) -> ApiResult:
+        """Fetch one HITL approval request by id (#123)."""
+        return self.get(f"/v1/approvals/{request_id}")
+
+    def decide_approval(
+        self,
+        request_id: str,
+        decision: str,
+        decided_by: Optional[str] = None,
+        note: Optional[str] = None,
+    ) -> ApiResult:
+        """Submit an approve/reject decision for a HITL request (#123)."""
+        payload: Dict[str, Any] = {"decision": decision}
+        if decided_by:
+            payload["decided_by"] = decided_by
+        if note:
+            payload["note"] = note
+        return self.post(f"/v1/approvals/{request_id}/decision", payload)
+
     def admin_list_tenants(self) -> ApiResult:
         return self.get("/v1/admin/tenants")
 

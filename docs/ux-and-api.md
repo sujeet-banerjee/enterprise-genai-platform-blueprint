@@ -2,9 +2,11 @@
 
 > **Status: DELIVERED (reconciled 2026-11-07).** The API surface, Streamlit console and
 > UX polish workstream M (#130-#136, #145) described here have shipped; §7 is a delivery
-> record rather than a proposal. The next UX tranche (#151-#158) and the forward-looking
-> roadmap (multi-region/DR operations, policy-as-code/HITL approvals UI (#163/#164), eval expansion, golden paths,
-> product UI) live in [enterprise-roadmap.md](enterprise-roadmap.md).
+> record rather than a proposal. The next UX tranche (#151-#158) is partly delivered
+> (#151 workspace/deep links, #163 HITL Approvals console); the remaining items and the
+> forward-looking roadmap (multi-region/DR operations, approvals queue operations
+> (#164), eval expansion, golden paths, product UI) live in
+> [enterprise-roadmap.md](enterprise-roadmap.md).
 
 ## 1. Purpose
 
@@ -166,12 +168,12 @@ from §3.2 applies to every UI: HTTP only, no `core.*` imports.
 | **Evaluation** | dataset picker (built-in benchmark or pasted JSON), dataset execution (query + evaluate per case with failure isolation), case-by-metric matrix, average-score chart, delta vs previous run, evaluator dropdown, ground-truth guidance, metric explanations, run comparison matrix, optional ground truth, auto-retrieved docs; launch + poll experiments | `/v1/evaluators`, `/v1/query`, `/v1/evaluate`, `/v1/experiments`, `/v1/experiments/{exp_id}` |
 | **Governance & Cost** | budget limits, spend window, per-request cost, guardrail hit-rate, time range + tenant/app/user filters, alerts preview, CSV/JSON metric export, raw Prometheus scrape | `/v1/governance/status`, `/v1/metrics`, `/metrics` |
 | **Guardrails** | profile/enabled/providers, resolved chains, probe query decisions, hit-rate | `/v1/guardrails`, `/metrics` |
+| **Approvals** | HITL queue (status filter, default `pending`), request detail with redacted context/policy, correlation/evidence ids, approve/reject with reviewer + note, audited decisions; requires `approve` capability | `/v1/approvals`, `/v1/approvals/{request_id}`, `/v1/approvals/{request_id}/decision`, `/v1/access` |
 | **Audit** | filter by `limit`/`event_type`; inspect redacted events | `/v1/audit` |
 | **Access / RBAC** | roles, capabilities, request caps, allowed models | `/v1/access` |
 | **Admin** | tenant scope indicator, confirmation prompts for sensitive updates, tenant policy view/update + identity directory users, audit export; requires `admin`/`rebuild` capability | `/v1/admin/tenants`, `/v1/admin/tenants/{tenant_id}`, `/v1/admin/users`, `/v1/access`, `/v1/audit` |
 | **Traces** | look up `request_id`; stage latency timeline/waterfall with span list, failure taxonomy, guardrail decisions, resilience, OTel ids, redaction-safe and raw trace views | `/v1/traces/{request_id}`, `/v1/metrics` |
-| **Settings (read-only)** | effective config viewer (redacted), model/provider/guardrail lists |
-| **Approvals (planned, #163, depends on #123)** | HITL queue/detail; approve/reject policy-gated actions; status filter; redacted context/policy; audit-linked decisions | `/v1/approvals`, `/v1/approvals/{request_id}`, `/v1/approvals/{request_id}/decision` | `/v1/config`, `/v1/models`, `/v1/embedding-models`, `/v1/retrievers`, `/v1/rerankers`, `/v1/evaluators`, `/v1/guardrails` |
+| **Settings (read-only)** | effective config viewer (redacted), model/provider/guardrail lists | `/v1/config`, `/v1/models`, `/v1/embedding-models`, `/v1/retrievers`, `/v1/rerankers`, `/v1/evaluators`, `/v1/guardrails` |
 
 No config-editing UI in v1 (write path = files in `config/`); `pipeline:rebuild` in the
 UI is expressed as preset "what-if" selections, keeping humans as the owners of YAML.
@@ -181,7 +183,8 @@ The sidebar also exposes the API base URL and the optional API key.
 
 The sidebar is grouped rather than a flat list: **Start here** (Overview, Query Studio),
 **Experiment** (Evaluation, Compare), **Governance & security** (Governance & Cost,
-Guardrails, Audit, Access), **Operate** (Traces, Admin) and **Reference** (Settings).
+Guardrails, Approvals, Audit, Access), **Operate** (Traces, Admin) and **Reference**
+(Settings).
 The console resolves the caller via `GET /v1/access` and uses the reported role and
 capabilities to:
 
@@ -302,6 +305,7 @@ These helpers are pure and Streamlit-free (`ui/evaluation.py`, `ui/traces.py`,
 | (added during delivery) | UX polish: evaluation dataset/GT/comparison; traces timeline; governance filters/export; admin safety; a11y/error remediation | #132-#136 |
 | (added during delivery) | evaluation dataset execution: per-case query + evaluate, failure isolation, matrix, averages, run delta | #145 |
 | (added during delivery) | persistent workspace, URL/deep links, saved views/runs, redacted export/import | #151 |
+| (added during delivery) | HITL Approvals console: queue/detail, redacted context, evidence ids, approve/reject decisions | #163 |
 
 The forward roadmap (horizons H0-H4, workstreams A-M) is tracked in
 [enterprise-roadmap.md](enterprise-roadmap.md) and the GitHub Project board; API/UX
@@ -322,10 +326,10 @@ workstream F there.
   (#133), governance filters/export (#134), admin safety (#135) and
   a11y/empty-state/error remediation (#136). Done.
 - **P3.2 — Next UX tranche (workstream M):** persistence/deep links (#151) **done**;
-  background evaluation jobs (#152), Dataset Studio (#153), cross-object evidence (#154),
-  command palette/WCAG 2.2 AA (#155), responsive/theming (#156), persona journeys/demo
-  mode (#157), collaboration/feedback (#158), HITL Approvals review/decision console
-  (#163, depends on #123 backend; `ui/` owned by bot-win) and approvals queue
-  ops/SLA/evidence follow-on (#164). Remaining items open on H4.
+  HITL Approvals review/decision console (#163) **done**; background evaluation jobs
+  (#152), Dataset Studio (#153), cross-object evidence (#154), command palette/WCAG 2.2 AA
+  (#155), responsive/theming (#156), persona journeys/demo mode (#157),
+  collaboration/feedback (#158) and approvals queue ops/SLA/evidence follow-on (#164)
+  remain open on H4.
 - **P4 (optional, later)** — React/Next.js product frontend reusing the same OpenAPI
   contract; tracked as workstream F in the enterprise roadmap (not committed).

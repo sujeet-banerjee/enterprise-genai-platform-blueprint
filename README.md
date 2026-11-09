@@ -143,6 +143,7 @@ the lifespan startup hook (not at import). Endpoints:
 - `GET /v1/config` - redacted effective configuration
 - `GET /v1/models`, `/v1/embedding-models`, `/v1/retrievers`, `/v1/rerankers`, `/v1/evaluators` - introspection
 - `GET /v1/guardrails` - resolved input/output guardrail chains (previewable while disabled)
+- `GET /v1/approvals`, `GET /v1/approvals/{request_id}`, `POST /v1/approvals/{request_id}/decision` - HITL approval queue and approve/reject decisions (off by default; requires the `approve` capability)
 - `POST /v1/evaluate` - run an evaluator on a query/response
 - `POST /v1/experiments` / `GET /v1/experiments/{exp_id}` - launch and poll experiments
 - `POST /v1/pipeline:rebuild` - runtime component swap via config overrides (gated by `api.allow_rebuild`)
@@ -184,8 +185,11 @@ Open **Traces** with the returned `request_id` to see the same trace the server 
 raw Prometheus `/metrics` panel. **Compare (what-if)** rebuilds the
 pipeline with overrides when `api.allow_rebuild=true`. **Guardrails** previews the resolved
 input/output chains (and the selected `profile`), runs a probe query to show per-request
-decisions, and reports hit-rate. **Audit** reads the redacted trail (`limit`/`event_type`
-filters) and **Access / RBAC** shows the calling persona's role/capabilities. The
+decisions, and reports hit-rate. **Approvals** is the HITL review queue: filter by status
+(default `pending`), inspect redacted context/policy and correlation ids, then approve or
+reject with an optional reviewer/note; requires the `approve` capability. **Audit** reads
+the redacted trail (`limit`/`event_type` filters) and **Access / RBAC** shows the calling
+persona's role/capabilities. The
 **Evaluation** screen adds a dataset picker (built-in benchmark summary or custom
 query/response), ground-truth guidance, metric explanations and a run comparison matrix. Its
 **Dataset evaluation** panel executes every built-in or pasted case through `/v1/query` and
