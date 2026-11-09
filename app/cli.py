@@ -172,7 +172,7 @@ def _print_scaffold(result: ScaffoldResult) -> None:
     print()
     print("Next steps:")
     print(f"  export GENAI_CONFIG_DIR={result.config_dir}")
-    print("  python -m app.config_validate")
+    print('  python -m app.config_validate --config-dir "$GENAI_CONFIG_DIR"')
     print("  uvicorn app.main:app")
 
 

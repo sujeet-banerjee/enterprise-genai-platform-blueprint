@@ -67,4 +67,5 @@ defaults.
 - `genai init` (issue #128) scaffolds a project from one of these templates; the
   onboarding guide (issue #129) explains the knobs in depth. Run
   `genai templates` to list paths and `genai validate <config-dir>` to check a
-  generated set with the same schemas the server enforces.
+  generated set with the same schemas the server enforces. See the
+  [`onboarding guide`](../../docs/onboarding.md) for the first edits and troubleshooting.
