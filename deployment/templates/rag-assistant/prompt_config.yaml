@@ -1,0 +1,36 @@
+# Golden path: rag-assistant (issue #127) - grounded answer prompt.
+config_version: 1
+
+active_prompt_profile: default
+
+profiles:
+  default:
+    system_prompt: |
+      You are a helpful enterprise assistant.
+      Answer strictly based on the provided context and cite the passages you use.
+      If the context is insufficient, say you do not know instead of guessing.
+    context_separator: "\n---\n"
+    empty_context_message: "No relevant context available."
+    template: |
+      {system_prompt}
+
+      Retrieved context:
+      {context}
+
+      Question:
+      {query}
+
+  concise:
+    system_prompt: |
+      You are a concise enterprise assistant. Give brief, factual answers grounded
+      only in the provided context.
+    context_separator: "\n---\n"
+    empty_context_message: "No context found."
+    template: |
+      {system_prompt}
+
+      Context:
+      {context}
+
+      Question:
+      {query}

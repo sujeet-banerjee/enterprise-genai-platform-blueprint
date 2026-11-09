@@ -1,0 +1,27 @@
+# Golden path: rag-assistant (issue #127).
+# Recommended guardrail posture: block direct prompt injection, neutralize
+# indirect injection in retrieved documents, scrub instruction-leak phrases
+# from responses instead of failing the request.
+config_version: 1
+
+enabled: true
+profile: standard
+
+profiles:
+  standard:
+    input:
+      - provider: injection
+        sensitivity: medium
+        trust_retrieved_documents: false
+    output:
+      - provider: deny_list
+        terms:
+          - "ignore previous instructions"
+          - "ignore all previous instructions"
+          - "disregard all prior instructions"
+          - "reveal your system prompt"
+          - "print your system prompt"
+        mask: "[REDACTED-POLICY]"
+
+input: []
+output: []

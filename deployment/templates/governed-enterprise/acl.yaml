@@ -1,0 +1,12 @@
+# Golden path: governed-enterprise (issue #127) - permission-aware retrieval.
+# Documents without ACL metadata stay visible (open policy); add
+# allowed_groups / allowed_tenants / allowed_roles metadata to restrict them.
+config_version: 1
+
+enabled: true
+default_policy: open
+overfetch_factor: 4
+
+# Admin retains break-glass access; remove this to enforce ACLs for everyone.
+bypass_roles:
+  - admin

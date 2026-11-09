@@ -1,0 +1,35 @@
+# Golden path: governed-enterprise (issue #127).
+# Deterministic retriever + dummy evaluator so the policy posture can be
+# exercised without model downloads.
+config_version: 1
+
+retrieval:
+  default_retriever: dummy
+  top_k: 3
+  similarity_metric: cosine
+  low_score_threshold: 0.0
+  avg_chunk_tokens: 128
+  retrievers:
+    dummy:
+      provider: dummy
+
+evaluation:
+  enabled: true
+  active_evaluator: dummy
+  evaluators:
+    dummy:
+      provider: dummy
+
+reranking:
+  enabled: false
+
+query_expansion:
+  enabled: false
+
+cache:
+  enabled: true
+  max_entries: 256
+  ttl_seconds: 120
+
+guardrails:
+  max_query_chars: 4000

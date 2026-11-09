@@ -1,0 +1,7 @@
+# Golden path: rag-assistant (issue #127) - per-request cost guardrail.
+config_version: 1
+
+enabled: true
+max_cost_per_request_usd: 0.05
+safety_margin_tokens: 200
+avg_chunk_tokens: 128

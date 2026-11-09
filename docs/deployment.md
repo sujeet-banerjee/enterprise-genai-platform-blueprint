@@ -79,6 +79,19 @@ uvicorn app.main:app --reload
 Set `OPENAI_API_KEY`/`HF_TOKEN` in the shell if needed. The console (`ui/`) is a pure HTTP client:
 `streamlit run ui/app.py -- --api-base http://localhost:8000`.
 
+**Prefer a golden path over hand-editing every file.** The shipped, schema-validated config sets
+in [`deployment/templates/`](templates/README.md) are complete starting points:
+
+```bash
+cp -r deployment/templates/rag-assistant config-local     # recommended: local models + FAISS + eval
+GENAI_CONFIG_DIR="$PWD/config-local" python -m app.config_validate
+GENAI_CONFIG_DIR="$PWD/config-local" uvicorn app.main:app
+```
+
+`local-demo` (dummy providers, instant offline), `rag-assistant` (local Qwen + MiniLM, FAISS,
+reranking, semantic eval) and `governed-enterprise` (RBAC + tenancy + ACL + strict guardrails +
+audit) are exercised in CI, so templates cannot drift from their schemas.
+
 ### 2.2 Docker Compose (single node)
 
 ```bash
@@ -268,6 +281,11 @@ Secrets from External Secrets, Prometheus Operator scraping `/metrics`, OTLP to 
 collector. It keeps config promotion in git, gives rollback for free and avoids bespoke scripts.
 
 ### 4.1 Reference artifacts (shipped)
+
+**Golden path config sets** — [`deployment/templates/`](templates/README.md) ships three opinionated,
+schema-validated starting points (see [§2.1](#21-local-development)). CI validates every template
+file with `python -m app.config_validate deployment/templates/*/*.yaml` and boots each one against
+`/health`, `/ready` and `/v1/query` (`tests/test_golden_path_templates.py`, issue #127).
 
 **Helm** — API Deployment (startup `/health`, readiness `/ready`, liveness `/health`), Service,
 optional Ingress/HPA, model-cache PVC (or an existing claim), optional ConfigMap mount, existing

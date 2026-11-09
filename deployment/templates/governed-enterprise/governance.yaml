@@ -1,0 +1,7 @@
+# Golden path: governed-enterprise (issue #127) - tight per-request budget.
+config_version: 1
+
+enabled: true
+max_cost_per_request_usd: 0.01
+safety_margin_tokens: 256
+avg_chunk_tokens: 128

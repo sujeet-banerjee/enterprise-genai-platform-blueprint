@@ -376,8 +376,30 @@ api:
 
 A missing referenced secret fails fast. In production, mount secrets with Vault (Agent
 Injector) or a Kubernetes `secretKeyRef` so the value is present in the process environment
-â€” the same `${ENV_VAR}` syntax works unchanged. Set `config_version` at the top of a file to
+— the same `${ENV_VAR}` syntax works unchanged. Set `config_version` at the top of a file to
 pin the schema; a newer version warns (with migration note) rather than failing.
+
+### Golden path templates
+
+Don't start from an empty `config/` directory. [`deployment/templates/`](deployment/templates/README.md)
+ships three complete, schema-validated config sets that CI validates and boots on every PR
+(issue #127):
+
+| Template | Use it when | Posture |
+|---|---|---|
+| `local-demo` | you want a running API in seconds, offline | dummy LLM/embedder/retriever, no downloads, evaluation off |
+| `rag-assistant` | you are building a real RAG assistant (**recommended**) | local Qwen2.5-0.5B + MiniLM, FAISS, reranking, chunking, semantic eval, benchmark dataset, `standard` guardrails |
+| `governed-enterprise` | you need regulated / multi-team governance | RBAC + tenancy + attribution + ACL retrieval, strict guardrails, audit, resilience failover, response cache, conservative API limits |
+
+```bash
+cp -r deployment/templates/rag-assistant config-local
+GENAI_CONFIG_DIR="$PWD/config-local" python -m app.config_validate   # every file validated
+GENAI_CONFIG_DIR="$PWD/config-local" uvicorn app.main:app
+```
+
+The provider-neutral `data/docs.json` path resolves relative to the config directory's parent,
+so keep (or copy) `data/` alongside your config directory. Templates carry no secrets — add
+your own `api_key`/secret references per [Validate config & manage secrets](#validate-config--manage-secrets).
 
 ## Development notes
 

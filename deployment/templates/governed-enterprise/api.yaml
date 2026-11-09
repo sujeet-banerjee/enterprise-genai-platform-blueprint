@@ -1,0 +1,14 @@
+# Golden path: governed-enterprise (issue #127) - conservative API defaults.
+config_version: 1
+
+require_api_key: false
+api_key: ""
+
+# Runtime rebuilds are an operator action; opt in explicitly.
+allow_rebuild: false
+
+history_max_runs: 500
+trace_store_max: 200
+
+max_batch_size: 10
+batch_max_workers: 2

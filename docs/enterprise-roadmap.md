@@ -1,12 +1,13 @@
 # Enterprise Roadmap — From Reference Blueprint to Production AI Platform
 
-> **Status: tracked and partially delivered (reconciled 2026-11-07).** This north star is
+> **Status: tracked and partially delivered (reconciled 2026-11-09).** This north star is
 > tracked by umbrella issue **#43** and the GitHub Project board. H0/H1, Workstream G,
-> Workstream H (ingestion #115-#117), operational DR (#118-#120) and workstream M UX
-> polish (#130-#136, #145) and UX8 persistence/deep links (#151) are landed. The open
-> bridge is Workstreams I-L (#121-#129) plus the remaining UX tranche (#152-#158). It maps
-> the current reference blueprint to what an enterprise actually needs to run GenAI in
-> production.
+> Workstream H (ingestion #115-#117), operational DR (#118-#120), workstream M UX
+> polish (#130-#136, #145), UX8 persistence/deep links (#151), policy-as-code
+> (#121-#123), eval expansion/CI gates (#124-#126) and golden path templates
+> (#127) are landed. The open bridge is L onboarding (#128-#129) plus the remaining
+> UX tranche (#152-#158). It maps the current reference blueprint to what an
+> enterprise actually needs to run GenAI in production.
 
 ---
 
@@ -444,9 +445,11 @@ later deployment item.
   `H1 - Multi-tenant & governed`, `H2 - Product surface`,
   `H3 - Enterprise scale & compliance`, `H4 - Post-G6 hardening & UX`.
 - H0, H1, H2 and Workstream G are **complete**. Workstream H ingestion (#115-#117),
-  operational DR (#118-#120), workstream M UX polish (#130-#136, #145) and UX8
-  persistence/deep links (#151) are **landed**; the active bridge is I-L
-  policy/eval/golden paths (#121-#129) plus the remaining UX tranche (#152-#158) on H4.
+  operational DR (#118-#120), workstream M UX polish (#130-#136, #145), UX8
+  persistence/deep links (#151), policy-as-code J (#121-#123), eval expansion/CI gates
+  K (#124-#126) and golden path templates L (#127, `deployment/templates/`) are
+  **landed**; the active bridge is L onboarding (#128-#129) plus the remaining UX
+  tranche (#152-#158) on H4.
 - The Project v2 board (**#8**) carries a **Workstream** field; options A-M plus
   Cross-cutting are configured and every open issue is assigned.
 - Contribution workflow (branching, PR checklist, release tags) is in

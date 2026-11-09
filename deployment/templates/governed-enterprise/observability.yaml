@@ -1,0 +1,24 @@
+# Golden path: governed-enterprise (issue #127) - redaction everywhere.
+config_version: 1
+
+log_level: INFO
+redact_sensitive_data: true
+low_retrieval_score_threshold: 0.1
+sensitive_patterns:
+  - "api[_-]?key"
+  - "password"
+  - "secret"
+  - "token"
+  - "authorization"
+  - "bearer"
+
+otel:
+  enabled: false
+  endpoint: ""
+  service_name: "enterprise-genai-platform"
+  sample_ratio: 1.0
+
+pii:
+  # Edge enforcement is provided by the strict guardrail profile below; the
+  # observability block keeps PII out of traces and logs regardless.
+  enabled: false
