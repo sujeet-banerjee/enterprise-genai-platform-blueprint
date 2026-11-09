@@ -394,14 +394,15 @@ ships three complete, schema-validated config sets that CI validates and boots o
 ```bash
 genai init my-app                                   # scaffolds rag-assistant + data/
 genai init my-app --template local-demo             # instant offline demo
+genai validate my-app/config                        # every file checked
 export GENAI_CONFIG_DIR="$PWD/my-app/config"
-python -m app.config_validate                       # every file validated
 uvicorn app.main:app
 ```
 
 `genai init` (from `pip install -e .`) copies the template into `my-app/config`, copies the sample
 corpus into `my-app/data`, validates every file and prints the next commands. `genai templates`
-lists the paths; `genai validate <config-dir>` re-checks a set.
+lists the paths; `genai validate <config-dir>` re-checks a set. New here? Follow the
+[onboarding guide](docs/onboarding.md).
 
 The provider-neutral `data/docs.json` path resolves relative to the config directory's parent,
 so keep (or copy) `data/` alongside your config directory. Templates carry no secrets — add
@@ -418,7 +419,7 @@ config/     YAML configuration - the single source of truth for behaviour
 ui/         Streamlit console (HTTP-only client of the public API)
 tests/      pytest suite (behavioural tests drive real local models)
 data/       sample corpus (data/docs.json)
-docs/       architecture.md, deployment.md, ux-and-api.md, enterprise-roadmap.md
+docs/       onboarding.md, architecture.md, deployment.md, ux-and-api.md, enterprise-roadmap.md
 ```
 
 ### How to run the backend

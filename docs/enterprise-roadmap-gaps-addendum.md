@@ -17,7 +17,7 @@
 | I - Multi-region/DR operations | Operationalize the G5/G6 foundations: cross-region persistence, backup/restore, failover, DR runbooks | P0 | `#118` Cross-region persistence strategy, `#119` Backup/restore automation + verification, `#120` DR runbook + chaos tests | RTO/RPO documented, automated backup/restore tested, failover documented and rehearsed |
 | J - Policy-as-Code | Declarative policies (CEL/Rego), bundles, dry-run, HITL | P1 | `#121` Policy engine interface, `#122` CEL evaluator + bundles, `#123` HITL approval workflow | Policies in git, versioned bundles, dry-run in audit, HITL gating for sensitive actions |
 | K - Eval Expansion & CI Gates | Domain eval sets, regression gates, continuous eval | P1 | `#124` Eval dataset schema + loaders, `#125` CI regression gates, `#126` Eval dashboard enhancements | PR blocks on regression thresholds, domain sets pluggable, trend tracking in metrics |
-| L - Onboarding & Golden Paths | Templates, scaffolding CLI, improved docs/UX | P2 | `#127` **Landed** — golden path templates (`local-demo`, `rag-assistant`, `governed-enterprise`) in `deployment/templates/`, `#128` **Landed** — `genai init`/`templates`/`validate` CLI (`app/cli.py`, console script), `#129` Onboarding guide + validation | `genai init` scaffolds valid config set, golden paths pass smoke tests, docs updated |
+| L - Onboarding & Golden Paths | Templates, scaffolding CLI, improved docs/UX | P2 | `#127` **Landed** — golden path templates (`local-demo`, `rag-assistant`, `governed-enterprise`) in `deployment/templates/`, `#128` **Landed** — `genai init`/`templates`/`validate` CLI (`app/cli.py`, console script), `#129` **Landed** — onboarding guide (`docs/onboarding.md`) + validation | `genai init` scaffolds valid config set, golden paths pass smoke tests, docs updated |
 
 **H delivery status (landed 2026-11-05):** `#115` framework + base connector (`a17a5cf`,
 PR #140), `#116` SharePoint/Confluence (`abcd4a9`), `#117` S3/Azure Blob/GCS (`9bcd911`).
@@ -30,8 +30,9 @@ preserve ACL metadata for permission-aware retrieval.
 `local-demo`, `rag-assistant` and `governed-enterprise`, every file schema-validated in CI and
 covered by boot smoke tests. L `#128` **landed** — the `genai` CLI (`genai init`,
 `genai templates`, `genai validate`) scaffolds a project from a template, copies the sample
-corpus, validates the result and is exercised in CI. L remains open only for `#129`
-(onboarding guide).
+corpus, validates the result and is exercised in CI. L `#129` **landed** —
+`docs/onboarding.md` (ten-minute path, golden path choice, config map, first edits,
+validation, troubleshooting) plus structural/flow tests. **Workstream L is complete.**
 
 ## Workstream M: UX Polish & Adoption (new)
 *(From UX fact-check: docs/analysis/ux_roadmap_fact_check.md / .pdf)*

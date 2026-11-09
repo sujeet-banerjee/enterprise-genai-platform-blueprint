@@ -85,8 +85,8 @@ in [`deployment/templates/`](templates/README.md) are complete starting points:
 ```bash
 genai init my-app                                  # recommended: local models + FAISS + eval
 genai init my-app --template governed-enterprise   # or: local-demo / governed-enterprise
+genai validate my-app/config
 export GENAI_CONFIG_DIR="$PWD/my-app/config"
-python -m app.config_validate
 uvicorn app.main:app
 ```
 
@@ -94,7 +94,9 @@ uvicorn app.main:app
 reranking, semantic eval) and `governed-enterprise` (RBAC + tenancy + ACL + strict guardrails +
 audit) are exercised in CI, so templates cannot drift from their schemas. The `genai init` CLI
 (issue #128) scaffolds a project from any of them, copies `data/`, and validates the result;
-`genai templates` lists them and `genai validate <config-dir>` re-checks a set.
+`genai templates` lists them and `genai validate <config-dir>` re-checks a set. The
+[end-to-end onboarding guide](onboarding.md) covers the first edits, validation and
+troubleshooting.
 
 ### 2.2 Docker Compose (single node)
 
@@ -393,6 +395,7 @@ client → API (fast: validate, enqueue) → queue → worker pods → pipeline 
 
 ## 7. Related documents
 
+- [`onboarding.md`](onboarding.md) — ten-minute onboarding: golden paths, first edits, validation.
 - [`architecture.md`](architecture.md) — contracts, composition root, stages, failure taxonomy,
   observability, config reference.
 - [`architecture.md` §12.1](architecture.md#121-config-schemas-validation-and-secrets-issue-46) —

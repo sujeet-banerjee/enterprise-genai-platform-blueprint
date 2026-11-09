@@ -5,8 +5,9 @@
 > Workstream H (ingestion #115-#117), operational DR (#118-#120), workstream M UX
 > polish (#130-#136, #145), UX8 persistence/deep links (#151), policy-as-code
 > (#121-#123), eval expansion/CI gates (#124-#126), golden path templates
-> (#127) and the `genai init` scaffolding CLI (#128) are landed. The open bridge is
-> L onboarding (#129) plus the remaining UX tranche (#152-#158). It maps the current reference blueprint to what an
+> (#127), the `genai init` scaffolding CLI (#128) and the onboarding guide
+> (#129) are landed — Workstream L is complete. The open bridge is the remaining UX
+> tranche (#152-#158). It maps the current reference blueprint to what an
 > enterprise actually needs to run GenAI in production.
 
 ---
@@ -448,8 +449,9 @@ later deployment item.
   operational DR (#118-#120), workstream M UX polish (#130-#136, #145), UX8
   persistence/deep links (#151), policy-as-code J (#121-#123), eval expansion/CI gates
   K (#124-#126), golden path templates L (#127, `deployment/templates/`) and the
-  `genai init` CLI (#128, `app/cli.py`) are **landed**; the active bridge is L
-  onboarding (#129) plus the remaining UX tranche (#152-#158) on H4.
+  `genai init` CLI (#128, `app/cli.py`) and the onboarding guide (#129,
+  `docs/onboarding.md`) are **landed**; Workstream L is complete. The active bridge
+  is the remaining UX tranche (#152-#158) on H4.
 - The Project v2 board (**#8**) carries a **Workstream** field; options A-M plus
   Cross-cutting are configured and every open issue is assigned.
 - Contribution workflow (branching, PR checklist, release tags) is in
