@@ -1,0 +1,13 @@
+# Golden path: governed-enterprise (issue #127) - workspace/tenant isolation.
+config_version: 1
+
+enabled: true
+default_tenant: default
+
+tenants:
+  default:
+    workspace: default
+    app: platform
+
+# Map tenant API keys here (or inject via your secret manager).
+api_keys: {}

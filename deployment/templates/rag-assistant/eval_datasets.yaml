@@ -1,0 +1,18 @@
+# Golden path: rag-assistant (issue #127) - built-in benchmark dataset.
+# Regression thresholds are intentionally left off here; enable them in your
+# fork once you have domain data and a stable baseline (see issue #125).
+config_version: 1
+
+enabled: true
+default_dataset: benchmark
+
+datasets:
+  benchmark:
+    path: data/benchmark.json
+    domain: retrieval
+    description: "Built-in IR benchmark (query -> relevant doc ids)"
+
+regression:
+  enabled: false
+  top_k: 3
+  thresholds: {}

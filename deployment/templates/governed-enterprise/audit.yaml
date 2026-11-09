@@ -1,0 +1,20 @@
+# Golden path: governed-enterprise (issue #127) - in-memory audit ring.
+# Point `path` at a persistent volume (and enable `immutable` below) for a
+# durable, hash-chained trail.
+config_version: 1
+
+enabled: true
+path: ""
+max_entries: 500
+
+immutable:
+  enabled: false
+  path: "audit/immutable.jsonl"
+  default_region: "default"
+  regions: {}
+  tenant_regions: {}
+
+retention:
+  default_days: 90
+  event_types: {}
+  tenants: {}

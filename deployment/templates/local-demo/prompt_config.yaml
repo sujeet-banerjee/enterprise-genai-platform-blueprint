@@ -1,0 +1,21 @@
+# Golden path: local-demo (issue #127) - grounded, no-frills assistant prompt.
+config_version: 1
+
+active_prompt_profile: default
+
+profiles:
+  default:
+    system_prompt: |
+      You are a helpful assistant.
+      Answer strictly based on the provided context.
+      If the context is insufficient, say you do not know.
+    context_separator: "\n"
+    empty_context_message: "No relevant context available."
+    template: |
+      {system_prompt}
+
+      Context:
+      {context}
+
+      Question:
+      {query}

@@ -1,0 +1,16 @@
+# Golden path: governed-enterprise (issue #127) - retries, breaker and failover.
+config_version: 1
+
+resilience:
+  enabled: true
+  max_attempts: 3
+  backoff_initial_ms: 100
+  backoff_max_ms: 2000
+  jitter: true
+  breaker_threshold: 5
+  breaker_reset_ms: 30000
+  # Ordered failover chain; names must exist in models.yaml.
+  fallback_models:
+    - dummy-fallback
+  fallback_embedders:
+    - dummy-fallback

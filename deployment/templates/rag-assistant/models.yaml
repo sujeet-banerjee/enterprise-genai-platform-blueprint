@@ -1,0 +1,19 @@
+# Golden path: rag-assistant (issue #127) - recommended retrieval-augmented setup.
+# Local open models: no API keys required. Swap providers when you scale up.
+config_version: 1
+
+active_model: local-qwen
+active_embedding_model: all-MiniLM-L6-v2
+
+models:
+  local-qwen:
+    provider: local_hf
+    model_name: Qwen/Qwen2.5-0.5B-Instruct
+    context_window: 32768
+    temperature: 0.2
+    max_new_tokens: 128
+
+embedding_models:
+  all-MiniLM-L6-v2:
+    provider: sentence_transformers
+    model_name: sentence-transformers/all-MiniLM-L6-v2

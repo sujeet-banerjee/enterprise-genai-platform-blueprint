@@ -1,0 +1,19 @@
+# Golden path: local-demo (issue #127).
+# Dummy retriever, no evaluation and no reranking: the fastest end-to-end path.
+config_version: 1
+
+retrieval:
+  default_retriever: dummy
+  top_k: 2
+  similarity_metric: cosine
+  low_score_threshold: 0.0
+  avg_chunk_tokens: 128
+  retrievers:
+    dummy:
+      provider: dummy
+
+evaluation:
+  enabled: false
+
+reranking:
+  enabled: false

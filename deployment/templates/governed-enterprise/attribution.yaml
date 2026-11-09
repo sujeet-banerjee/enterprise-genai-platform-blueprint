@@ -1,0 +1,7 @@
+# Golden path: governed-enterprise (issue #127) - chargeback attribution.
+config_version: 1
+
+enabled: true
+include_user: true
+include_cost_center: true
+default_dimension: default

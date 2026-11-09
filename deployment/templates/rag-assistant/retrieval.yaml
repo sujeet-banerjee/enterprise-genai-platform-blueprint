@@ -1,0 +1,57 @@
+# Golden path: rag-assistant (issue #127) - vector retrieval + rerank + eval.
+config_version: 1
+
+retrieval:
+  default_retriever: faiss
+  top_k: 4
+  similarity_metric: cosine
+  low_score_threshold: 0.2
+  avg_chunk_tokens: 128
+  retrievers:
+    faiss:
+      provider: faiss
+      documents_path: data/docs.json
+
+evaluation:
+  enabled: true
+  active_evaluator: semantic
+  evaluators:
+    semantic:
+      provider: semantic
+      model_name: sentence-transformers/all-MiniLM-L6-v2
+
+reranking:
+  enabled: true
+  strategy: lexical_hybrid
+  lexical_weight: 0.6
+  initial_score_weight: 0.4
+  top_k: 4
+  active_reranker: simple
+  rerankers:
+    simple:
+      provider: simple
+
+query_expansion:
+  enabled: false
+
+chunking:
+  enabled: true
+  active_strategy: small
+  strategies:
+    small:
+      chunk_size: 120
+      chunk_overlap: 20
+      separator: " "
+
+token_budget:
+  default_mode: strict
+  max_output_cap: 512
+  min_output_tokens: 16
+  chars_per_token: 4
+
+cache:
+  enabled: false
+
+guardrails:
+  # Reject oversized queries before token budgeting (issue #73).
+  max_query_chars: 8000

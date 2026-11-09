@@ -180,3 +180,9 @@ jobs:
           # Enable regression thresholds in config/eval_datasets.yaml to block CI.
           python -m app.eval_gate --config-dir config --json
 
+      - name: Validate golden path templates
+        run: |
+          # Every deployment/templates/<path>/*.yaml is schema-validated exactly
+          # like config/*.yaml (issue #127). Missing optional files are defaults.
+          python -m app.config_validate deployment/templates/*/*.yaml
+

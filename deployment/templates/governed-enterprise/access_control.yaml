@@ -1,0 +1,35 @@
+# Golden path: governed-enterprise (issue #127) - least-privilege personas.
+config_version: 1
+
+enabled: true
+default_role: viewer
+
+roles:
+  admin:
+    capabilities:
+      - query
+      - batch
+      - evaluate
+      - experiment
+      - rebuild
+      - introspect
+      - governance
+      - audit
+      - approve
+  analyst:
+    capabilities:
+      - query
+      - batch
+      - evaluate
+      - experiment
+      - introspect
+      - approve
+    top_k_max: 5
+  viewer:
+    capabilities:
+      - query
+      - introspect
+    top_k_max: 3
+
+# Map real keys here (or inject via your secret manager). Keys are never shipped.
+api_keys: {}

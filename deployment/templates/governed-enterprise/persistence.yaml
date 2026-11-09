@@ -1,0 +1,6 @@
+# Golden path: governed-enterprise (issue #127).
+# In-memory by default; switch to sqlite/postgres for durable run history,
+# traces and experiment state.
+config_version: 1
+
+backend: memory

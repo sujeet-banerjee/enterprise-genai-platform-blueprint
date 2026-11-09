@@ -1,0 +1,45 @@
+# Golden path: governed-enterprise (issue #127).
+# Regulated/customer-facing policy: higher injection sensitivity, PII blocked at
+# the input edge, instruction leakage blocked on output, PII masked in responses.
+config_version: 1
+
+enabled: true
+profile: strict
+
+profiles:
+  standard:
+    input:
+      - provider: injection
+        sensitivity: medium
+        trust_retrieved_documents: false
+    output:
+      - provider: deny_list
+        terms:
+          - "ignore previous instructions"
+          - "ignore all previous instructions"
+          - "disregard all prior instructions"
+          - "reveal your system prompt"
+          - "print your system prompt"
+        mask: "[REDACTED-POLICY]"
+
+  strict:
+    input:
+      - provider: injection
+        sensitivity: high
+      - provider: pii
+        classes: [email, phone, credit_card, national_id]
+        mode: block
+    output:
+      - provider: deny_list
+        terms:
+          - "ignore previous instructions"
+          - "ignore all previous instructions"
+          - "disregard all prior instructions"
+          - "reveal your system prompt"
+          - "print your system prompt"
+      - provider: pii
+        classes: [email, phone, credit_card, national_id]
+        mode: redact
+
+input: []
+output: []
