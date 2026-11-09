@@ -322,17 +322,6 @@ def create_app(
             _exp_store = None
         from core.services.approval import ApprovalService
         application.state.approvals = ApprovalService(config_path=str(_config_dir() / "policies.yaml"))
-        application.state.evaluate = EvaluationService(
-            models_config_path=models_config_path,
-            prompt_config_path=prompt_config_path,
-            retrieval_config_path=retrieval_config_path,
-            governance_config_path=governance_config_path,
-            observability_config_path=observability_config_path,
-            resilience_config_path=resilience_config_path,
-            guardrails_config_path=guardrails_config_path,
-            acl_config_path=acl_config_path,
-            store=_exp_store,
-        )
         try:
             from core.services.base_store import build_store
 
@@ -344,6 +333,24 @@ def create_app(
             max_traces=int(api_config.get("trace_store_max", 500)),
             observability_config_path=observability_config_path,
             store=_store,
+        )
+        from app.eval_trends import EvalTrendStore
+        application.state.eval_trends = EvalTrendStore(
+            max_entries=int(api_config.get("eval_trend_max_entries", 2000)),
+            config_dir=_config_dir(),
+            store=_store,
+        )
+        application.state.evaluate = EvaluationService(
+            models_config_path=models_config_path,
+            prompt_config_path=prompt_config_path,
+            retrieval_config_path=retrieval_config_path,
+            governance_config_path=governance_config_path,
+            observability_config_path=observability_config_path,
+            resilience_config_path=resilience_config_path,
+            guardrails_config_path=guardrails_config_path,
+            acl_config_path=acl_config_path,
+            store=_exp_store,
+            trend_store=application.state.eval_trends,
         )
         # Prometheus collector (issue #44): optional dependency; a no-op when
         # prometheus-client is not installed.

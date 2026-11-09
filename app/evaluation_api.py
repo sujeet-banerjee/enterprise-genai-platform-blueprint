@@ -170,7 +170,9 @@ class EvaluationService:
     guardrails_config_path: Optional[Path] = None,
     acl_config_path: Optional[Path] = None,
     store: Optional[Any] = None,
+    trend_store: Optional[Any] = None,
     ):
+        self.trend_store = trend_store
         self.models_config_path = Path(models_config_path)
         self.prompt_config_path = Path(prompt_config_path)
         self.retrieval_config_path = Path(retrieval_config_path)
@@ -354,9 +356,29 @@ class EvaluationService:
             else:
                 raise ValueError(f"Unsupported experiment kind: {kind}")
             self.store.complete(exp_id, jsonable(result))
+            self._record_experiment_trends(kind, result, exp_id)
         except Exception as exc:  # noqa: BLE001 - surfaced through the store
             failure_type = FailureClassifier.classify_exception(exc)
             self.store.fail(exp_id, str(exc), failure_type)
+
+
+
+    def _record_experiment_trends(self, kind: str, result: Any, exp_id: str) -> None:
+        store = getattr(self, "trend_store", None)
+        if store is None or not isinstance(result, dict):
+            return
+        try:
+            if isinstance(result.get("metrics"), dict):
+                store.record(result.get("metrics") or {}, source="experiment", dataset=kind, request_id=exp_id, metadata={"kind": kind, "experiment_id": exp_id})
+            for key in ("results", "runs", "experiments", "comparisons"):
+                rows = result.get(key)
+                if not isinstance(rows, list):
+                    continue
+                for row in rows:
+                    if isinstance(row, dict) and isinstance(row.get("metrics"), dict):
+                        store.record(row.get("metrics") or {}, source="experiment", dataset=kind, evaluator=row.get("evaluator") or row.get("name"), request_id=exp_id, metadata={"kind": kind, "experiment_id": exp_id})
+        except Exception:
+            pass
 
     def get_experiment(self, exp_id: str) -> Optional[Dict[str, Any]]:
         return self.store.get(exp_id)
@@ -429,6 +451,19 @@ def register_evaluation_routes(
                 ),
             )
         result["request_id"] = request_id
+        trend_store = getattr(request.app.state, "eval_trends", None) or getattr(service, "trend_store", None)
+        if trend_store is not None:
+            try:
+                trend_store.record(
+                    result.get("metrics") or {},
+                    source="evaluate",
+                    evaluator=result.get("evaluator"),
+                    evaluator_key=result.get("evaluator_key"),
+                    tenant=getattr(request.state, "tenant_id", None),
+                    request_id=request_id,
+                )
+            except Exception:
+                pass
         return EvaluateResponse(**result)
 
     @application.post(
