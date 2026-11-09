@@ -83,14 +83,18 @@ Set `OPENAI_API_KEY`/`HF_TOKEN` in the shell if needed. The console (`ui/`) is a
 in [`deployment/templates/`](templates/README.md) are complete starting points:
 
 ```bash
-cp -r deployment/templates/rag-assistant config-local     # recommended: local models + FAISS + eval
-GENAI_CONFIG_DIR="$PWD/config-local" python -m app.config_validate
-GENAI_CONFIG_DIR="$PWD/config-local" uvicorn app.main:app
+genai init my-app                                  # recommended: local models + FAISS + eval
+genai init my-app --template governed-enterprise   # or: local-demo / governed-enterprise
+export GENAI_CONFIG_DIR="$PWD/my-app/config"
+python -m app.config_validate
+uvicorn app.main:app
 ```
 
 `local-demo` (dummy providers, instant offline), `rag-assistant` (local Qwen + MiniLM, FAISS,
 reranking, semantic eval) and `governed-enterprise` (RBAC + tenancy + ACL + strict guardrails +
-audit) are exercised in CI, so templates cannot drift from their schemas.
+audit) are exercised in CI, so templates cannot drift from their schemas. The `genai init` CLI
+(issue #128) scaffolds a project from any of them, copies `data/`, and validates the result;
+`genai templates` lists them and `genai validate <config-dir>` re-checks a set.
 
 ### 2.2 Docker Compose (single node)
 

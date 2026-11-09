@@ -186,3 +186,9 @@ jobs:
           # like config/*.yaml (issue #127). Missing optional files are defaults.
           python -m app.config_validate deployment/templates/*/*.yaml
 
+      - name: Scaffold with genai init
+        run: |
+          # The scaffolding CLI must produce a valid, bootable config set (issue #128).
+          python -m app.cli init /tmp/genai-init --template local-demo
+          python -m app.config_validate /tmp/genai-init/config/*.yaml
+
