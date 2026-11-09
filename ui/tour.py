@@ -53,7 +53,19 @@ TOUR_STEPS: List[TourStep] = [
         try_it="Follow **Continue** from start to finish; the progress bar reaches 5 of 5.",
     ),
     TourStep(
-        title="4. Query Studio",
+        title="4. Persistent workspace & share links",
+        screen="Sidebar",
+        body=(
+            "The **Workspace** panel turns the current screen into a shareable URL and an "
+            "exportable JSON file. Links carry the tenant/workspace scope, query settings, "
+            "filters, recent runs and saved views; bulky state is trimmed to stay within the "
+            "URL budget and secrets are stripped. Each screen also has **Saved views** for "
+            "reusable filter/query presets. Use **Reset workspace** to start clean."
+        ),
+        try_it="Open Workspace, copy the share URL, then load the exported JSON in a new tab.",
+    ),
+    TourStep(
+        title="5. Query Studio",
         screen="Query Studio",
         body=(
             "Start from a **template**, or type a question and set **top_k**. Click "
@@ -65,7 +77,7 @@ TOUR_STEPS: List[TourStep] = [
         try_it="Apply the RAG basics template, run it, then run it again to compare.",
     ),
     TourStep(
-        title="5. Compare (what-if)",
+        title="6. Compare (what-if)",
         screen="Compare (what-if)",
         body=(
             "Pick config overrides (similarity metric, retriever) and click **Apply "
@@ -75,7 +87,7 @@ TOUR_STEPS: List[TourStep] = [
         try_it="Requires `api.allow_rebuild: true` in `config/api.yaml`.",
     ),
     TourStep(
-        title="6. Evaluation",
+        title="7. Evaluation",
         screen="Evaluation",
         body=(
             "Score one query/response pair with the **Evaluator** dropdown (e.g. `llm_judge`), "
@@ -90,7 +102,7 @@ TOUR_STEPS: List[TourStep] = [
         ),
     ),
     TourStep(
-        title="7. Governance & Cost",
+        title="8. Governance & Cost",
         screen="Governance & Cost",
         body=(
             "Shows whether governance is enabled, the per-request cost cap and safety "
@@ -100,7 +112,7 @@ TOUR_STEPS: List[TourStep] = [
         try_it="After a few queries, watch Total runs increase.",
     ),
     TourStep(
-        title="8. Guardrails",
+        title="9. Guardrails",
         screen="Guardrails",
         body=(
             "Shows the **resolved** input/output guardrail chains, the selected `profile` "
@@ -111,7 +123,7 @@ TOUR_STEPS: List[TourStep] = [
         try_it="Run the default injection probe and confirm it blocks with `guardrail_input_blocked`.",
     ),
     TourStep(
-        title="9. Audit",
+        title="10. Audit",
         screen="Audit",
         body=(
             "Read the append-only, redacted audit trail (`GET /v1/audit`) with `limit` and "
@@ -121,7 +133,7 @@ TOUR_STEPS: List[TourStep] = [
         try_it="Enable `config/audit.yaml`, run a query, then filter by `event_type = governance`.",
     ),
     TourStep(
-        title="10. Access / RBAC",
+        title="11. Access / RBAC",
         screen="Access / RBAC",
         body=(
             "Shows the calling persona's **role** and effective **capabilities** (plus `top_k_max` "
@@ -131,7 +143,7 @@ TOUR_STEPS: List[TourStep] = [
         try_it="Compare capabilities with and without the API key configured.",
     ),
     TourStep(
-        title="11. Admin",
+        title="12. Admin",
         screen="Admin",
         body=(
             "Tenant list and users (identity directory) plus a proposal form to update tenant budgets. "
@@ -140,7 +152,7 @@ TOUR_STEPS: List[TourStep] = [
         try_it="List tenants/users if your role has admin capability.",
     ),
     TourStep(
-        title="12. Traces",
+        title="13. Traces",
         screen="Traces",
         body=(
             "Paste a `request_id` (from a Query Studio result) and click **Look up trace** "
@@ -151,7 +163,7 @@ TOUR_STEPS: List[TourStep] = [
         try_it="Look up the request_id shown after your Query Studio run.",
     ),
     TourStep(
-        title="13. Settings (read-only)",
+        title="14. Settings (read-only)",
         screen="Settings (read-only)",
         body=(
             "View the redacted **effective configuration** and expand the provider lists "

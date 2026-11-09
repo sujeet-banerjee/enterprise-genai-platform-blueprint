@@ -27,7 +27,7 @@
 - **Complexity**: The system has many moving parts (registries, guardrails, tenancy, etc.). Without the docs, it's overwhelming. The docs are reconciled, but the learning curve is still steep.
 - **Local development**: Running the full suite requires model downloads and is slow. The smoke configs help, but architects need to understand the dummy vs real providers.
 - **Connector breadth**: SharePoint, Confluence, S3, Azure Blob and GCS connectors landed (#115-#117), but the catalog and ingestion operations still need to grow for broad enterprise coverage.
-- **UI vs API**: The console now covers the main architect, analyst, security and ops workflows over HTTP only. Remaining UI gaps are persistence/deep links, long-running jobs, dataset authoring, formal accessibility, cross-object evidence navigation and collaboration (opened as #151-#158; see `docs/analysis/ux_roadmap_fact_check.md`).
+- **UI vs API**: The console now covers the main architect, analyst, security and ops workflows over HTTP only. Persistence/deep links landed as #151; remaining UI gaps are long-running jobs, dataset authoring, formal accessibility, cross-object evidence navigation and collaboration (#152-#158; see `docs/analysis/ux_roadmap_fact_check.md`).
 
 ## 3) Value Assessment (Assuming Near Completion)
 
@@ -37,7 +37,7 @@
 | Security/Compliance Architects | Very High | Guardrails, PII, ACL, tenancy, immutable audit, and attribution directly address enterprise requirements. |
 | Data/ML Architects (RAG/KG) | High | Hybrid + KG retrieval, experiment framework, benchmarks and connector groundwork are strong. Needs broader connector catalog and larger domain-specific eval datasets. |
 | SRE/Platform Engineers | High | OTel, Prometheus, Helm/Kustomize, HPA, rollouts, health checks, config validation, multi-region/residency/DR foundations and backup/restore/chaos automation (#118-#120) are production-aligned. The next step is proving the runbooks per environment. |
-| Product/Business Stakeholders | Medium-High | Cost attribution, governance and the role-aware console make the value visible. Remaining product polish is persistence, long-running jobs, accessibility, dashboards and collaboration (UX8-UX15, #151-#158). |
+| Product/Business Stakeholders | Medium-High | Cost attribution, governance, the role-aware console and persistent/deep-linkable workspaces (#151) make the value visible. Remaining product polish is long-running jobs, accessibility, dashboards and collaboration (UX9-UX15, #152-#158). |
 
 ## 4) Concrete Verdict
 
@@ -55,6 +55,6 @@
 - **Policy as code**: The guardrail framework exists; the declarative policy engine, CEL evaluator and approval workflow are tracked as #121-#123.
 - **Larger eval datasets and CI gates**: The benchmark is good; dataset schema/loaders, regression gates and dashboard enhancements are tracked as #124-#126.
 - **Simplified onboarding and golden paths**: The config surface is still large; templates, `genai init` and the onboarding guide are tracked as #127-#129.
-- **Next UX/UI tranche**: persistence/deep links, background evaluation jobs, dataset authoring, cross-object evidence navigation, WCAG 2.2 AA/keyboard access, responsive/theming, persona journeys and collaboration are opened as #151-#158 and documented in `docs/analysis/ux_roadmap_fact_check.md`.
+- **Next UX/UI tranche**: persistence/deep links landed as #151; background evaluation jobs, dataset authoring, cross-object evidence navigation, WCAG 2.2 AA/keyboard access, responsive/theming, persona journeys and collaboration remain opened as #152-#158 and documented in `docs/analysis/ux_roadmap_fact_check.md`.
 
-**Bottom line:** UX1-UX7 and #145 turned the console into a credible role-aware workflow surface, and G5/G6 plus #118-#120 closed the largest operational gaps. The remaining roadmap work is breadth and proof (connectors, DR drills, policy-as-code, eval expansion, golden paths) plus the UX8-UX15 tranche (#151-#158). This is an excellent reference architecture and a viable foundation for an internal platform, not just a demo.
+**Bottom line:** UX1-UX8 and #145 turned the console into a credible role-aware workflow surface, and G5/G6 plus #118-#120 closed the largest operational gaps. The remaining roadmap work is breadth and proof (connectors, DR drills, policy-as-code, eval expansion, golden paths) plus the UX9-UX15 tranche (#152-#158). This is an excellent reference architecture and a viable foundation for an internal platform, not just a demo.

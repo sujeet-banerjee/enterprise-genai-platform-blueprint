@@ -13,6 +13,7 @@ import json
 import sys
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
+from urllib.parse import parse_qsl, urlsplit
 
 import streamlit as st
 
@@ -64,6 +65,27 @@ from ui.query_studio import (
 )
 from ui.tour import render_help_expander, render_tour, start_tour
 from ui.traces import build_timeline, redaction_safe_view, span_filters, trace_context
+from ui.workspace import (
+    MANAGED_PARAMS,
+    WorkspaceError,
+    add_saved_run,
+    add_saved_view,
+    apply_saved_view,
+    apply_workspace,
+    build_share_url,
+    ensure_state_defaults,
+    export_workspace,
+    import_workspace,
+    merge_query_params,
+    remove_saved_run,
+    remove_saved_view,
+    reset_workspace_state,
+    saved_view_names,
+    workspace_from_query_params,
+    workspace_from_session,
+    workspace_signature,
+    workspace_to_query_params,
+)
 
 st.set_page_config(page_title="Enterprise GenAI RAG Console", layout="wide")
 
@@ -124,6 +146,20 @@ def _bootstrap() -> None:
         st.session_state.tour_state = "idle"
     if "tour_step" not in st.session_state:
         st.session_state.tour_step = 0
+    ensure_state_defaults(st.session_state)
+    if "evaluation_dataset_json" not in st.session_state:
+        st.session_state.evaluation_dataset_json = CUSTOM_DATASET_TEMPLATE
+    for key in (
+        "workspace_url_initialized",
+        "workspace_url_signature",
+        "workspace_synced_signature",
+    ):
+        if key not in st.session_state:
+            st.session_state[key] = False if key == "workspace_url_initialized" else ""
+    if "workspace_pending" not in st.session_state:
+        st.session_state.workspace_pending = None
+    if "access_context" not in st.session_state:
+        st.session_state.access_context = {}
 
 
 def _failure_taxonomy(result) -> None:
@@ -162,6 +198,200 @@ def _access_context(api: ApiClient) -> Dict[str, Any]:
 def _navigate(screen: str) -> None:
     st.session_state.active_screen = screen
     st.rerun()
+
+
+def _access_scope(access: Dict[str, Any]) -> Dict[str, str]:
+    tenant = (access or {}).get("tenant") or {}
+    return {
+        "tenant": str(tenant.get("id") or ""),
+        "workspace": str(tenant.get("workspace") or ""),
+    }
+
+
+def _current_workspace(access: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    access = access or st.session_state.get("access_context") or {}
+    scope = (
+        _access_scope(access)
+        if access.get("ok")
+        else st.session_state.get("workspace_scope") or {}
+    )
+    return workspace_from_session(st.session_state, scope)
+
+
+def _current_page_url() -> str:
+    try:
+        return str(st.context.url)
+    except Exception:
+        return "http://localhost:8501/"
+
+
+def _ensure_choice(key: str, options: list) -> None:
+    if key in st.session_state and st.session_state[key] not in options:
+        st.session_state[key] = options[0] if options else None
+
+
+def _apply_pending_workspace(access: Dict[str, Any]) -> None:
+    pending = st.session_state.pop("workspace_pending", None)
+    if not pending:
+        return
+    if pending.get("reset"):
+        reset_workspace_state(st.session_state)
+        st.session_state.evaluation_dataset_json = CUSTOM_DATASET_TEMPLATE
+        st.session_state.workspace_scope = _access_scope(access)
+        st.session_state.workspace_url_initialized = True
+        st.session_state.workspace_synced_signature = ""
+        preserved = {
+            key: value
+            for key, value in st.query_params.to_dict().items()
+            if key not in MANAGED_PARAMS
+        }
+        st.query_params.from_dict(preserved)
+        st.session_state.workspace_url_signature = workspace_signature(
+            workspace_from_query_params(preserved)
+        )
+        st.session_state.workspace_notice = "Workspace reset."
+        return
+    workspace = pending.get("workspace")
+    if isinstance(workspace, dict):
+        apply_workspace(
+            workspace, st.session_state, access, list(SCREENS.keys())
+        )
+        st.session_state.workspace_synced_signature = ""
+        notice = pending.get("notice")
+        if notice:
+            st.session_state.workspace_notice = notice
+
+
+def _apply_incoming_workspace(access: Dict[str, Any]) -> None:
+    params = st.query_params.to_dict()
+    incoming = workspace_from_query_params(params)
+    signature = workspace_signature(incoming)
+    has_managed = any(key in params for key in MANAGED_PARAMS)
+    if not st.session_state.get("workspace_url_initialized"):
+        st.session_state.workspace_url_initialized = True
+        if not has_managed:
+            st.session_state.workspace_url_signature = ""
+            st.session_state.workspace_scope = _access_scope(access)
+            return
+    if signature == st.session_state.get("workspace_url_signature"):
+        return
+    st.session_state.workspace_url_signature = signature
+    st.session_state.workspace_synced_signature = ""
+    apply_workspace(incoming, st.session_state, access, list(SCREENS.keys()))
+
+
+def _sync_workspace_to_url(access: Dict[str, Any]) -> None:
+    workspace = _current_workspace(access)
+    signature = workspace_signature(workspace)
+    if signature == st.session_state.get("workspace_synced_signature"):
+        return
+    try:
+        url = build_share_url(_current_page_url(), workspace)
+    except WorkspaceError as exc:
+        st.session_state.workspace_notice = str(exc)
+        st.session_state.workspace_synced_signature = signature
+        return
+    written = dict(parse_qsl(urlsplit(url).query, keep_blank_values=True))
+    if workspace_to_query_params(workspace) != written:
+        st.session_state.workspace_notice = (
+            "Share link trimmed bulky workspace state to stay within the URL budget."
+        )
+    written_signature = workspace_signature(workspace_from_query_params(written))
+    merged = merge_query_params(st.query_params.to_dict(), written)
+    st.session_state.workspace_synced_signature = signature
+    st.session_state.workspace_url_signature = written_signature
+    st.query_params.from_dict(merged)
+
+
+def _render_workspace_sidebar(access: Dict[str, Any]) -> None:
+    current = _current_workspace(access)
+    with st.sidebar.expander("Workspace", expanded=False):
+        st.caption(
+            "Share this view, export a workspace file, or restore one. "
+            "Secrets are stripped; bulk state is trimmed to fit the URL budget."
+        )
+        try:
+            share_url = build_share_url(_current_page_url(), current)
+        except WorkspaceError as exc:
+            st.error(str(exc))
+        else:
+            st.code(share_url, language="text")
+        try:
+            payload = export_workspace(current)
+        except WorkspaceError as exc:
+            st.error(str(exc))
+        else:
+            st.download_button(
+                "Export workspace JSON",
+                data=payload,
+                file_name="genai-workspace.json",
+                mime="application/json",
+                key="workspace_export",
+            )
+        uploaded = st.file_uploader(
+            "Import workspace JSON", type=["json"], key="workspace_upload"
+        )
+        if uploaded is not None and st.button(
+            "Import workspace", key="workspace_import"
+        ):
+            try:
+                imported = import_workspace(uploaded.getvalue().decode("utf-8"))
+            except (UnicodeDecodeError, WorkspaceError) as exc:
+                st.error(str(exc))
+            else:
+                st.session_state.workspace_pending = {
+                    "workspace": imported,
+                    "notice": "Workspace imported.",
+                }
+                st.rerun()
+        if st.button("Reset workspace", key="workspace_reset"):
+            st.session_state.workspace_pending = {"reset": True}
+            st.rerun()
+        notice = st.session_state.get("workspace_notice")
+        if notice:
+            st.warning(notice)
+            st.session_state.workspace_notice = ""
+
+
+def _render_saved_views(kind: str) -> None:
+    current = _current_workspace()
+    names = saved_view_names(current, kind)
+    with st.expander(f"Saved views - {len(names)}", expanded=False):
+        st.caption("Capture this screen's current settings and restore them later.")
+        if names:
+            selected_key = f"workspace_view::{kind}"
+            if st.session_state.get(selected_key) not in names:
+                st.session_state[selected_key] = names[0]
+            selected = st.selectbox("Saved view", names, key=selected_key)
+            load_col, delete_col = st.columns(2)
+            if load_col.button(
+                "Load saved view", key=f"workspace_view_load::{kind}"
+            ):
+                st.session_state.workspace_pending = {
+                    "workspace": apply_saved_view(current, kind, selected),
+                    "notice": f"Loaded view {selected}.",
+                }
+                st.rerun()
+            if delete_col.button(
+                "Delete saved view", key=f"workspace_view_delete::{kind}"
+            ):
+                st.session_state.workspace_pending = {
+                    "workspace": remove_saved_view(current, kind, selected),
+                    "notice": f"Deleted view {selected}.",
+                }
+                st.rerun()
+        name = st.text_input("View name", key=f"workspace_view_name::{kind}")
+        if st.button("Save this view", key=f"workspace_view_save::{kind}"):
+            try:
+                updated = add_saved_view(current, kind, name)
+            except WorkspaceError as exc:
+                st.error(str(exc))
+            else:
+                st.session_state.workspace_pending = {
+                    "workspace": updated,
+                    "notice": f"Saved view {name.strip()}.",
+                }
+                st.rerun()
 
 
 def _render_sidebar_navigation(access: Dict[str, Any]) -> None:
@@ -357,35 +587,88 @@ def _render_query_history() -> None:
                 "No runs yet. The last 20 single-query runs appear here; select one to restore "
                 "it or compare against it."
             )
-            return
-        st.dataframe(history_rows(history), use_container_width=True, hide_index=True)
-        if st.session_state.get("qs_history_index", 0) >= len(history):
-            st.session_state.qs_history_index = 0
-        index = st.selectbox(
-            "Restore a run",
-            options=list(range(len(history))),
-            format_func=lambda position: _history_label(history[position]),
-            key="qs_history_index",
-        )
-        load_col, clear_col = st.columns(2)
-        if load_col.button("Load selected run", key="qs_load_run", type="primary"):
-            selected = history[index]
-            st.session_state.qs_query = selected.get("query") or ""
-            st.session_state.qs_top_k = max(1, min(10, int(selected.get("top_k") or 3)))
-            st.session_state.qs_last_entry = selected
-            st.session_state.qs_last_baseline = find_baseline(
-                history,
-                selected.get("query") or "",
-                exclude_request_id=selected.get("request_id") or None,
+        else:
+            st.dataframe(
+                history_rows(history), use_container_width=True, hide_index=True
             )
-            st.session_state.last_request_id = selected.get("request_id") or ""
-            st.session_state.last_query = selected.get("query") or ""
-            st.rerun()
-        if clear_col.button("Clear history", key="qs_clear_history"):
-            st.session_state.query_history = []
-            st.session_state.qs_last_entry = None
-            st.session_state.qs_last_baseline = None
-            st.rerun()
+            if st.session_state.get("qs_history_index", 0) >= len(history):
+                st.session_state.qs_history_index = 0
+            index = st.selectbox(
+                "Restore a run",
+                options=list(range(len(history))),
+                format_func=lambda position: _history_label(history[position]),
+                key="qs_history_index",
+            )
+            load_col, pin_col, clear_col = st.columns(3)
+            if load_col.button(
+                "Load selected run", key="qs_load_run", type="primary"
+            ):
+                selected = history[index]
+                st.session_state.qs_query = selected.get("query") or ""
+                st.session_state.qs_top_k = max(
+                    1, min(10, int(selected.get("top_k") or 3))
+                )
+                st.session_state.qs_last_entry = selected
+                st.session_state.qs_last_baseline = find_baseline(
+                    history,
+                    selected.get("query") or "",
+                    exclude_request_id=selected.get("request_id") or None,
+                )
+                st.session_state.last_request_id = selected.get("request_id") or ""
+                st.session_state.last_query = selected.get("query") or ""
+                st.rerun()
+            if pin_col.button("Pin selected run", key="qs_pin_run"):
+                updated = add_saved_run(_current_workspace(), history[index])
+                st.session_state.workspace_saved_runs = updated["saved_runs"]
+                st.rerun()
+            if clear_col.button("Clear history", key="qs_clear_history"):
+                st.session_state.query_history = []
+                st.session_state.qs_last_entry = None
+                st.session_state.qs_last_baseline = None
+                st.rerun()
+
+        st.divider()
+        st.subheader("Pinned runs")
+        saved = _current_workspace()["saved_runs"]
+        if saved:
+            st.dataframe(
+                history_rows(saved), use_container_width=True, hide_index=True
+            )
+        last = st.session_state.get("qs_last_entry")
+        if last and last.get("request_id"):
+            if st.button("Pin last run", key="qs_pin_last"):
+                updated = add_saved_run(_current_workspace(), last)
+                st.session_state.workspace_saved_runs = updated["saved_runs"]
+                st.rerun()
+        if saved:
+            if st.session_state.get("qs_pinned_index", 0) >= len(saved):
+                st.session_state.qs_pinned_index = 0
+            pinned_index = st.selectbox(
+                "Restore a pinned run",
+                options=list(range(len(saved))),
+                format_func=lambda position: _history_label(saved[position]),
+                key="qs_pinned_index",
+            )
+            load_col, unpin_col = st.columns(2)
+            if load_col.button("Load pinned run", key="qs_load_pinned"):
+                selected = saved[pinned_index]
+                request_id = selected.get("request_id") or ""
+                st.session_state.qs_query = selected.get("query") or ""
+                st.session_state.qs_top_k = max(
+                    1, min(10, int(selected.get("top_k") or 3))
+                )
+                st.session_state.qs_last_entry = None
+                st.session_state.qs_last_baseline = None
+                st.session_state.last_request_id = request_id
+                st.session_state.last_query = selected.get("query") or ""
+                st.session_state.trace_request_id = request_id
+                st.rerun()
+            if unpin_col.button("Unpin run", key="qs_unpin_run"):
+                updated = remove_saved_run(
+                    _current_workspace(), saved[pinned_index].get("request_id") or ""
+                )
+                st.session_state.workspace_saved_runs = updated["saved_runs"]
+                st.rerun()
 
 
 def _record_query_run(
@@ -484,6 +767,8 @@ def screen_query_studio() -> None:
             st.subheader("Last run (this session)")
             _render_query_result(last_entry.get("result") or {}, last_entry.get("query") or "")
             _render_run_comparison(st.session_state.get("qs_last_baseline"), last_entry)
+
+    _render_saved_views("query")
 
 
 def _render_query_result(item: Dict[str, Any], query: str = "") -> None:
@@ -608,11 +893,17 @@ def screen_compare() -> None:
     api = client()
 
     st.caption("Rebuild the live pipeline with config overrides, then run A/B queries.")
-    metric = st.selectbox("similarity_metric", ["(keep)", "cosine", "l2"])
-    retriever = st.selectbox("default_retriever", ["(keep)", "faiss", "simple", "dummy"])
-    query = st.text_input("Query", value="What is retrieval augmented generation?")
+    metric_options = ["(keep)", "cosine", "l2"]
+    retriever_options = ["(keep)", "faiss", "simple", "dummy"]
+    _ensure_choice("cmp_metric", metric_options)
+    _ensure_choice("cmp_retriever", retriever_options)
+    metric = st.selectbox("similarity_metric", metric_options, key="cmp_metric")
+    retriever = st.selectbox(
+        "default_retriever", retriever_options, key="cmp_retriever"
+    )
+    query = st.text_input("Query", key="cmp_query")
 
-    if st.button("Apply what-if & run"):
+    if st.button("Apply what-if & run", key="cmp_run"):
         overrides = {}
         if metric != "(keep)":
             overrides["similarity_metric"] = metric
@@ -627,6 +918,8 @@ def screen_compare() -> None:
         after = api.query(query, include_trace=False)
         if require_ok(after):
             _render_query_result(after.data, query)
+
+    _render_saved_views("compare")
 
 
 def _evaluator_options(api: ApiClient) -> list:
@@ -649,24 +942,29 @@ def screen_evaluation() -> None:
 
     datasets = available_datasets()
     ds_map = {ds.label: ds for ds in datasets}
-    dataset_choice = st.selectbox("Dataset", list(ds_map.keys()))
+    dataset_labels = list(ds_map.keys())
+    _ensure_choice("evaluation_dataset_choice", dataset_labels)
+    dataset_choice = st.selectbox(
+        "Dataset", dataset_labels, key="evaluation_dataset_choice"
+    )
     chosen = ds_map[dataset_choice]
     with st.expander("Dataset details"):
         st.write(chosen.description)
         st.caption(f"docs: {chosen.docs_count} | cases: {chosen.cases_count}")
 
-    query = st.text_input("Query", value="What is retrieval augmented generation?")
-    response = st.text_area("Response", value="RAG grounds an LLM on retrieved documents.")
+    query = st.text_input("Query", key="eval_query")
+    response = st.text_area("Response", key="eval_response")
     options = _evaluator_options(api)
+    _ensure_choice("eval_evaluator", options)
     button_col, gt_col = st.columns([1, 1])
     with button_col:
-        evaluator = st.selectbox("Evaluator", options)
+        evaluator = st.selectbox("Evaluator", options, key="eval_evaluator")
     with gt_col:
-        ground_truth = st.text_input("Ground truth (optional)", value="")
+        ground_truth = st.text_input("Ground truth (optional)", key="eval_ground_truth")
 
     st.caption(ground_truth_hint(evaluator))
 
-    if st.button("Evaluate"):
+    if st.button("Evaluate", key="eval_run"):
         result = api.evaluate(
             query,
             response,
@@ -702,9 +1000,11 @@ def screen_evaluation() -> None:
         "Run every dataset case through `POST /v1/query` and then score the answer with "
         "`POST /v1/evaluate`. A failing case is reported without stopping the run."
     )
+    source_options = ("Built-in benchmark", "Paste JSON")
+    _ensure_choice("evaluation_dataset_source", list(source_options))
     source = st.radio(
         "Dataset source",
-        ("Built-in benchmark", "Paste JSON"),
+        source_options,
         horizontal=True,
         key="evaluation_dataset_source",
     )
@@ -738,15 +1038,18 @@ def screen_evaluation() -> None:
                 hide_index=True,
             )
         dataset_col, top_k_col = st.columns([1, 1])
+        _ensure_choice("dataset_evaluator", options)
         with dataset_col:
             dataset_evaluator = st.selectbox(
                 "Dataset evaluator", options, key="dataset_evaluator"
             )
         with top_k_col:
-            dataset_top_k = st.slider("Top k per case", 1, 10, 3, key="dataset_top_k")
+            dataset_top_k = st.slider(
+                "Top k per case", 1, 10, key="dataset_top_k"
+            )
         st.caption(ground_truth_hint(dataset_evaluator))
 
-        if st.button("Run dataset evaluation"):
+        if st.button("Run dataset evaluation", key="eval_dataset_run"):
             progress = st.progress(0.0)
 
             def _progress(done: int, total: int) -> None:
@@ -828,20 +1131,31 @@ def screen_evaluation() -> None:
 
     st.divider()
     st.subheader("Launch experiment")
-    kind = st.selectbox(
-        "kind", ["single", "compare_embedding_models", "compare_chunking_strategies"]
-    )
-    if st.button("Launch"):
+    kind_options = [
+        "single",
+        "compare_embedding_models",
+        "compare_chunking_strategies",
+    ]
+    _ensure_choice("eval_experiment_kind", kind_options)
+    kind = st.selectbox("kind", kind_options, key="eval_experiment_kind")
+    if st.button("Launch", key="eval_launch"):
         launch = api.launch_experiment(kind=kind, query=query)
         if require_ok(launch):
             st.session_state.last_experiment_id = launch.data.get("id")
+            st.session_state.eval_exp_id = launch.data.get("id") or ""
             st.json(launch.data)
 
-    exp_id = st.text_input("Experiment id", value=st.session_state.get("last_experiment_id", ""))
-    if exp_id and st.button("Poll experiment"):
+    if "eval_exp_id" not in st.session_state:
+        st.session_state.eval_exp_id = (
+            st.session_state.get("last_experiment_id") or ""
+        )
+    exp_id = st.text_input("Experiment id", key="eval_exp_id")
+    if exp_id and st.button("Poll experiment", key="eval_poll"):
         poll = api.get_experiment(exp_id)
         if require_ok(poll):
             st.json(poll.data)
+
+    _render_saved_views("evaluation")
 
 
 def screen_governance() -> None:
@@ -865,10 +1179,12 @@ def screen_governance() -> None:
         st.session_state.last_metrics = metrics
         st.subheader("Metrics filters & export")
         f1, f2, f3, f4 = st.columns(4)
-        tw = f1.selectbox("Time range", time_windows())
-        tenant = f2.text_input("Tenant (filter)", value="")
-        app = f3.text_input("App (filter)", value="")
-        user = f4.text_input("User (filter)", value="")
+        windows = time_windows()
+        _ensure_choice("gov_time_range", windows)
+        tw = f1.selectbox("Time range", windows, key="gov_time_range")
+        tenant = f2.text_input("Tenant (filter)", key="gov_tenant")
+        app = f3.text_input("App (filter)", key="gov_app")
+        user = f4.text_input("User (filter)", key="gov_user")
         _ = filter_metrics(metrics, tenant=tenant, app=app, user=user)
         st.caption(f"Time range: {tw} | filters: tenant={tenant or '*'} app={app or '*'} user={user or '*'}")
         alerts = alerts_preview(metrics)
@@ -921,6 +1237,8 @@ def screen_governance() -> None:
             "`/metrics` is unavailable. Install the observability extra: "
             "`pip install -e .[observability]` (prometheus-client)."
         )
+
+    _render_saved_views("governance")
 
 
 def _chain_rows(entries: Dict[str, list]) -> list:
@@ -1042,9 +1360,13 @@ def screen_audit() -> None:
     )
     col1, col2 = st.columns(2)
     with col1:
-        limit = st.number_input("Limit", min_value=1, max_value=1000, value=50, step=10)
+        limit = st.number_input(
+            "Limit", min_value=1, max_value=1000, step=10, key="audit_limit"
+        )
     with col2:
-        event_type = st.text_input("event_type filter (optional)", value="")
+        event_type = st.text_input(
+            "event_type filter (optional)", key="audit_event_type"
+        )
 
     result = api.audit(limit=int(limit), event_type=event_type or None)
     if not require_ok(result):
@@ -1075,6 +1397,8 @@ def screen_audit() -> None:
             st.json(events)
     else:
         st.info("No audit events returned (auditing may be disabled in `config/audit.yaml`).")
+
+    _render_saved_views("audit")
 
 
 def screen_access() -> None:
@@ -1175,8 +1499,16 @@ def screen_traces() -> None:
     st.header("Traces")
     api = client()
 
-    request_id = st.text_input("request_id", value=st.session_state.get("last_request_id", ""))
-    if request_id and st.button("Look up trace"):
+    if not st.session_state.get("trace_request_id"):
+        st.session_state.trace_request_id = (
+            st.session_state.get("last_trace_request_id")
+            or st.session_state.get("last_request_id")
+            or ""
+        )
+    request_id = st.text_input("request_id", key="trace_request_id")
+    autoload = bool(st.session_state.pop("trace_autoload", False))
+    lookup = st.button("Look up trace", key="trace_lookup")
+    if request_id and (autoload or lookup):
         result = api.trace(request_id)
         if require_ok(result):
             st.session_state.last_trace_request_id = request_id
@@ -1213,6 +1545,8 @@ def screen_traces() -> None:
             _failure_taxonomy(result)
         else:
             _failure_taxonomy(result)
+
+    _render_saved_views("traces")
 
 
 def screen_settings() -> None:
@@ -1266,11 +1600,16 @@ def main() -> None:
         start_tour()
     api = client()
     access = _access_context(api)
+    st.session_state.access_context = access
+    _apply_pending_workspace(access)
+    _apply_incoming_workspace(access)
     _render_sidebar_navigation(access)
+    _render_workspace_sidebar(access)
     render_help_expander()
     render_tour()
     active = st.session_state.get("active_screen", "Overview / Health")
     SCREENS.get(active, screen_overview)()
+    _sync_workspace_to_url(access)
 
 
 if __name__ == "__main__":

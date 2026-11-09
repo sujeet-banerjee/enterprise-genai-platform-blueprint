@@ -203,6 +203,17 @@ screen that role usually needs, and hides screens your capabilities cannot open 
 Overview walks connect -> query -> trace -> evaluate -> governance and tracks real
 actions, while **Quick actions** jump straight to the next task.
 
+The console keeps a **persistent workspace** across reloads and share links (#151).
+Screen, query, filters, selected trace, comparisons, datasets and saved views are encoded
+in managed URL parameters (`screen`, `request_id` and the compact `ws` payload), so
+copying the address bar reproduces the current view. Use the sidebar to **Share this
+view** (bounded to 12,000 characters; bulky datasets/history are trimmed first), **Save
+view** on any screen, **Pin selected run** in **Recent runs**, or **Export workspace** /
+**Import workspace** as redacted JSON. **Reset workspace** clears it. URLs and exports are
+redacted and never contain secrets or raw config; saved views are capped at 5 per screen
+and saved runs at 20. The Streamlit dependency is pinned to `>=1.65` for query-param
+back/forward support.
+
 First-time users: click **Take the tour** in the sidebar for a guided, step-by-step
 walkthrough of every screen (Back / Next / Skip), or open the always-available
 **Help & tour guide** expander for the same reference at any time.

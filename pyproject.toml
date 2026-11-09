@@ -30,7 +30,7 @@ dev = [
     "mypy>=1.11.0",
 ]
 ui = [
-    "streamlit>=1.30",
+    "streamlit>=1.65",
     "requests>=2.31",
 ]
 observability = [

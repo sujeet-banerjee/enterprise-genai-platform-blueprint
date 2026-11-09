@@ -99,7 +99,8 @@ non-trivial consumer and living proof that the contract is sufficient.
   embedders, retrievers (vector, FAISS, hybrid, knowledge-graph), rerankers,
   evaluators, chunkers, query expanders and guardrails, all selected by config.
 - **Console** — 11 screens (§6) in a role-aware grouped navigation, a dependency-free
-  13-step tour, a Get started checklist, and a client that wraps every documented
+  14-step tour, a Get started checklist, a persistent URL-backed workspace with saved
+  views/runs and redacted export/import (#151), and a client that wraps every documented
   endpoint (HTTP only).
 
 ## 5. API surface v1 — endpoint matrix
@@ -194,8 +195,38 @@ capabilities to:
 evaluate -> governance) whose progress is derived from completed actions in the session,
 not just from visiting a screen. `ui/navigation.py` holds the pure navigation contract
 (groups, capabilities, landing rules, checklist) so it is unit-tested without Streamlit.
-`ui/tour.py` guides a first-run user through 13 steps (connect, overview, checklist, then
-one per screen).
+`ui/tour.py` guides a first-run user through 14 steps (connect, overview, checklist,
+persistent workspace, then one per screen).
+
+### Persistent workspace and shareable deep links (#151)
+
+`ui/workspace.py` is the pure, Streamlit-free state contract. A versioned workspace
+captures the active screen, navigation/access scope, Query Studio, Compare, Evaluation,
+Governance, Audit and Traces filters, recent and pinned runs, and saved views. It is
+normalized, bounded (10 recent runs, 20 saved runs, 5 saved views per screen, 20k dataset
+chars) and redacted before it can leave the process.
+
+- **Reload and back/forward** — the active workspace is encoded into managed URL
+  parameters: direct `screen`/`query`/`request_id` keys plus a compact, zlib-compressed
+  base64 `ws` payload. State is applied only when its signature changes, so Streamlit
+  reruns do not fight the URL. Streamlit `>=1.65` is required for query-param
+  back/forward.
+- **Deep links** — **Share this view** builds an absolute URL capped at 12,000 characters;
+  when over budget it strips bulk fields first (dataset/response text, saved-view
+  snapshots, history) and tells the user. A direct `request_id` link opens Traces.
+- **Saved views and saved runs** — every screen can save/apply/remove a named view;
+  Query Studio's **Recent runs** panel can pin a run into the workspace so it survives
+  reload and appears in a saved link.
+- **Export/import/reset** — the sidebar exports redacted workspace JSON limited to
+  256 KiB, imports it back through the same normalizer, and resets the workspace plus
+  managed widgets without touching backend state.
+- **Scope safety** — when tenancy/identity narrows the caller, a workspace from another
+  tenant/workspace/app is filtered to accessible screens and sections instead of applied
+  wholesale.
+
+The HTTP-only rule still applies: the workspace is client-side; there are no new backend
+routes. Tests live in `tests/test_ui_workspace.py` (codec, bounds, redaction, scope,
+share URL, export/import) with AST wiring coverage in the UI tests.
 
 ### Query Studio workflow polish (#131)
 
@@ -270,6 +301,7 @@ These helpers are pure and Streamlit-free (`ui/evaluation.py`, `ui/traces.py`,
 | (added during delivery) | UX polish: role-aware navigation + checklist; Query Studio templates/history/compare/tabs/share | #130, #131 |
 | (added during delivery) | UX polish: evaluation dataset/GT/comparison; traces timeline; governance filters/export; admin safety; a11y/error remediation | #132-#136 |
 | (added during delivery) | evaluation dataset execution: per-case query + evaluate, failure isolation, matrix, averages, run delta | #145 |
+| (added during delivery) | persistent workspace, URL/deep links, saved views/runs, redacted export/import | #151 |
 
 The forward roadmap (horizons H0-H4, workstreams A-M) is tracked in
 [enterprise-roadmap.md](enterprise-roadmap.md) and the GitHub Project board; API/UX
@@ -289,11 +321,11 @@ workstream F there.
   dataset/GT/comparison UX (#132), dataset execution + averages (#145), trace timeline
   (#133), governance filters/export (#134), admin safety (#135) and
   a11y/empty-state/error remediation (#136). Done.
-- **P3.2 — Next UX tranche (workstream M):** persistence/deep links (#151), background
-  evaluation jobs (#152), Dataset Studio (#153), cross-object evidence (#154), command
-  palette/WCAG 2.2 AA (#155), responsive/theming (#156), persona journeys/demo mode
-  (#157), collaboration/feedback (#158), HITL Approvals review/decision console (#163,
-  depends on #123 backend; `ui/` owned by bot-win) and approvals queue ops/SLA/evidence
-  follow-on (#164). Open on H4.
+- **P3.2 — Next UX tranche (workstream M):** persistence/deep links (#151) **done**;
+  background evaluation jobs (#152), Dataset Studio (#153), cross-object evidence (#154),
+  command palette/WCAG 2.2 AA (#155), responsive/theming (#156), persona journeys/demo
+  mode (#157), collaboration/feedback (#158), HITL Approvals review/decision console
+  (#163, depends on #123 backend; `ui/` owned by bot-win) and approvals queue
+  ops/SLA/evidence follow-on (#164). Remaining items open on H4.
 - **P4 (optional, later)** — React/Next.js product frontend reusing the same OpenAPI
   contract; tracked as workstream F in the enterprise roadmap (not committed).
