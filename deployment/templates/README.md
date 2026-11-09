@@ -5,10 +5,17 @@ Each directory is a **portable config set**: copy it to a config directory (for
 example `config/`) and point the service at it with `GENAI_CONFIG_DIR`.
 
 ```bash
-# Try a golden path without touching the shipped config/
-cp -r deployment/templates/local-demo /tmp/genai-config
-GENAI_CONFIG_DIR=/tmp/genai-config uvicorn app.main:app
+# Scaffold a project (recommended path by default) without touching config/
+genai init my-app                    # rag-assistant
+genai init my-app --template local-demo
+export GENAI_CONFIG_DIR="$PWD/my-app/config"
+uvicorn app.main:app
 ```
+
+`genai init` (issue #128) copies the template into `<target>/config`, copies the
+sample corpus into `<target>/data` (so `documents_path: data/docs.json` resolves),
+validates every file, and prints the next commands. Use `--force` to overwrite an
+existing config directory and `--no-data` to skip the corpus.
 
 Missing files are intentional: the platform treats an absent config file as the
 safe default (feature off). A template only ships the files that define its
@@ -58,4 +65,6 @@ defaults.
   `retrieval.yaml`. Copy the `data/` directory alongside your config, or use
   absolute paths.
 - `genai init` (issue #128) scaffolds a project from one of these templates; the
-  onboarding guide (issue #129) explains the knobs in depth.
+  onboarding guide (issue #129) explains the knobs in depth. Run
+  `genai templates` to list paths and `genai validate <config-dir>` to check a
+  generated set with the same schemas the server enforces.

@@ -392,10 +392,16 @@ ships three complete, schema-validated config sets that CI validates and boots o
 | `governed-enterprise` | you need regulated / multi-team governance | RBAC + tenancy + attribution + ACL retrieval, strict guardrails, audit, resilience failover, response cache, conservative API limits |
 
 ```bash
-cp -r deployment/templates/rag-assistant config-local
-GENAI_CONFIG_DIR="$PWD/config-local" python -m app.config_validate   # every file validated
-GENAI_CONFIG_DIR="$PWD/config-local" uvicorn app.main:app
+genai init my-app                                   # scaffolds rag-assistant + data/
+genai init my-app --template local-demo             # instant offline demo
+export GENAI_CONFIG_DIR="$PWD/my-app/config"
+python -m app.config_validate                       # every file validated
+uvicorn app.main:app
 ```
+
+`genai init` (from `pip install -e .`) copies the template into `my-app/config`, copies the sample
+corpus into `my-app/data`, validates every file and prints the next commands. `genai templates`
+lists the paths; `genai validate <config-dir>` re-checks a set.
 
 The provider-neutral `data/docs.json` path resolves relative to the config directory's parent,
 so keep (or copy) `data/` alongside your config directory. Templates carry no secrets — add
