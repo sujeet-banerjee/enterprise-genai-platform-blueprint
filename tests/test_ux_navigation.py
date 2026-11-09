@@ -216,6 +216,6 @@ def test_app_navigation_uses_access_api_and_role_controls():
 def test_tour_has_a_get_started_step_and_sequential_numbers():
     payloads = _tour_payloads()
     assert any("Get started" in payload["title"] for payload in payloads)
-    assert len(payloads) == 13
+    assert len(payloads) == 14
     for index, payload in enumerate(payloads, start=1):
         assert payload["title"].startswith(f"{index}."), payload["title"]

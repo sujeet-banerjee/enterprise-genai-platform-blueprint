@@ -3,9 +3,10 @@
 > **Status: tracked and partially delivered (reconciled 2026-11-07).** This north star is
 > tracked by umbrella issue **#43** and the GitHub Project board. H0/H1, Workstream G,
 > Workstream H (ingestion #115-#117), operational DR (#118-#120) and workstream M UX
-> polish (#130-#136, #145) are landed. The open bridge is Workstreams I-L (#121-#129)
-> plus the next UX tranche (#151-#158). It maps the current reference blueprint to what
-> an enterprise actually needs to run GenAI in production.
+> polish (#130-#136, #145) and UX8 persistence/deep links (#151) are landed. The open
+> bridge is Workstreams I-L (#121-#129) plus the remaining UX tranche (#152-#158). It maps
+> the current reference blueprint to what an enterprise actually needs to run GenAI in
+> production.
 
 ---
 
@@ -443,14 +444,14 @@ later deployment item.
   `H1 - Multi-tenant & governed`, `H2 - Product surface`,
   `H3 - Enterprise scale & compliance`, `H4 - Post-G6 hardening & UX`.
 - H0, H1, H2 and Workstream G are **complete**. Workstream H ingestion (#115-#117),
-  operational DR (#118-#120) and workstream M UX polish (#130-#136, #145) are
-  **landed**; the active bridge is I-L policy/eval/golden paths (#121-#129) plus the
-  next UX tranche (#151-#158) on H4.
+  operational DR (#118-#120), workstream M UX polish (#130-#136, #145) and UX8
+  persistence/deep links (#151) are **landed**; the active bridge is I-L
+  policy/eval/golden paths (#121-#129) plus the remaining UX tranche (#152-#158) on H4.
 - The Project v2 board (**#8**) carries a **Workstream** field; options A-M plus
   Cross-cutting are configured and every open issue is assigned.
 - Contribution workflow (branching, PR checklist, release tags) is in
   [`CONTRIBUTING.md`](../CONTRIBUTING.md).
-- **Addendum (fact-check):** [enterprise-roadmap-gaps-addendum.md](enterprise-roadmap-gaps-addendum.md) + [analysis/fact_check_usability_value_for_enterprise_architects.pdf](analysis/fact_check_usability_value_for_enterprise_architects.pdf) define the H4 workstreams H–L (#115–#129) for connectors/ingestion, multi-region/DR operations, policy-as-code, eval expansion/CI gates, and onboarding/golden paths. **UX addendum:** [analysis/ux_roadmap_fact_check.pdf](analysis/ux_roadmap_fact_check.pdf) / [analysis/ux_roadmap_fact_check.md](analysis/ux_roadmap_fact_check.md) define Workstream M — UX polish for the existing console, kept separate from Workstream F (console build-out): delivered #130–#136/#145 plus the next tranche #151–#158.
+- **Addendum (fact-check):** [enterprise-roadmap-gaps-addendum.md](enterprise-roadmap-gaps-addendum.md) + [analysis/fact_check_usability_value_for_enterprise_architects.pdf](analysis/fact_check_usability_value_for_enterprise_architects.pdf) define the H4 workstreams H–L (#115–#129) for connectors/ingestion, multi-region/DR operations, policy-as-code, eval expansion/CI gates, and onboarding/golden paths. **UX addendum:** [analysis/ux_roadmap_fact_check.pdf](analysis/ux_roadmap_fact_check.pdf) / [analysis/ux_roadmap_fact_check.md](analysis/ux_roadmap_fact_check.md) define Workstream M — UX polish for the existing console, kept separate from Workstream F (console build-out): delivered #130–#136/#145 and #151, with the remaining tranche #152–#158.
 
 
 - HITL console UI tracked as #163/#164 (Workstream M), dependent on #123.
