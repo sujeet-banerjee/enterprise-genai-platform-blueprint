@@ -422,6 +422,49 @@ class PoliciesConfig(_StrictModel):
     hitl: PoliciesHitlConfig = Field(default_factory=PoliciesHitlConfig)
 
 
+# -- eval_datasets.yaml --------------------------------------------------
+
+
+class EvalDatasetRegressionThresholds(_OpenModel):
+    context_precision: Optional[float] = None
+    context_recall: Optional[float] = None
+    precision: Optional[float] = None
+    recall: Optional[float] = None
+    min: Optional[float] = None
+    minimum: Optional[float] = None
+    gte: Optional[float] = None
+
+
+class EvalDatasetRegressionSpec(_OpenModel):
+    top_k: Optional[int] = None
+    thresholds: Dict[str, Any] = Field(default_factory=dict)
+    metrics: Dict[str, Any] = Field(default_factory=dict)
+
+
+class EvalDatasetsRegressionConfig(_OpenModel):
+    enabled: bool = False
+    top_k: int = 3
+    thresholds: Dict[str, Any] = Field(default_factory=dict)
+    datasets: Dict[str, EvalDatasetRegressionSpec] = Field(default_factory=dict)
+
+
+class EvalDatasetSpec(_OpenModel):
+    path: Optional[str] = None
+    format: Optional[str] = None
+    domain: Optional[str] = None
+    description: Optional[str] = None
+    task: Optional[str] = None
+    top_k: Optional[int] = None
+    thresholds: Dict[str, Any] = Field(default_factory=dict)
+
+
+class EvalDatasetsConfig(_StrictModel):
+    enabled: bool = False
+    default_dataset: Optional[str] = None
+    datasets: Dict[str, Union[EvalDatasetSpec, str]] = Field(default_factory=dict)
+    regression: EvalDatasetsRegressionConfig = Field(default_factory=EvalDatasetsRegressionConfig)
+
+
 
 #: Map of config file stem -> (schema, human label).
 SCHEMAS: Dict[str, Any] = {
@@ -442,4 +485,5 @@ SCHEMAS: Dict[str, Any] = {
     "audit": AuditConfig,
     "ingestion": IngestionConfig,
     "policies": PoliciesConfig,
+    "eval_datasets": EvalDatasetsConfig,
 }

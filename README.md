@@ -336,6 +336,7 @@ All behaviour is driven by YAML in config/:
 - config/persistence.yaml - store backend: memory/SQLite/Postgres
 - config/ingestion.yaml - pluggable connectors + incremental sync (disabled by default)
 - config/policies.yaml - Policy-as-Code engine/bundles (CEL/Rego), dry-run and HITL hooks (disabled by default)
+- config/eval_datasets.yaml - domain-specific evaluation dataset registry/loaders + regression gates (disabled by default; #124, #125)
 - config/residency.yaml - multi-region/residency routing (disabled by default)
 - config/dr.yaml - disaster recovery backup/restore (disabled by default)
 
