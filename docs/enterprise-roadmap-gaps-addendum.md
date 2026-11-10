@@ -64,9 +64,9 @@ Workstream F** (enterprise console build-out): F delivers capabilities, M makes 
 | #157 | UX14: Role-based journeys and demo mode | P2 | Persona tours, seeded demo data, reset and expanded onboarding checklist |
 | #158 | UX15: Collaboration and feedback capture | P2 | Annotations/flags, promote-to-dataset, evidence-pack export, optional review queue |
 | #163 | UX16: HITL Approvals review & decision console | P0 | **Delivered** - HTTP-only Approvals/HITL Review screen consuming #123 (`GET/POST /v1/approvals*`); queue/detail/approve-reject, RBAC/tenant-aware, redaction-safe; depends on #123 backend; owner `ui/` bot-win per split |
-| #164 | UX17: HITL Approvals queue operations, SLA & evidence export | P1 | **Planned follow-on** - filters/pagination/sort, bulk-safe actions where supported, SLA/aging, redacted export, cross-links; depends on #123 + #163 |
+| #164 | UX17: HITL Approvals queue operations, SLA & evidence export | P1 | **Delivered** - client-side filters/search/sort/pagination, SLA/aging thresholds, safe metadata-only JSON/CSV export, sequential bulk approve/reject with explicit confirmation + partial-failure reporting; UI-only until backend #175 adds server-side pagination/filtering/tenant scope |
 
-**Notes:** Keep HTTP-only (`ui/` never imports `app.*`/`core.*`), extend `ui/client.py`/`ui/common.py`, add AST + client tests. Link to #43, Workstream M. Delivered M work (#130-#136, #145) targeted milestone H2; #151 (UX8) and #163 (UX16) have since landed against milestone H4, and the remaining tranche (#152-#158, #164) targets H4. #163/#164 close the roadmap B6 HITL queue/UI gap (backend #121-#123). Do not fold M into F.
+**Notes:** Keep HTTP-only (`ui/` never imports `app.*`/`core.*`), extend `ui/client.py`/`ui/common.py`, add AST + client tests. Link to #43, Workstream M. Delivered M work (#130-#136, #145) targeted milestone H2; #151 (UX8), #163 (UX16) and #164 (UX17) have since landed against milestone H4, and the remaining tranche (#152-#158) targets H4. #163/#164 close the roadmap B6 HITL queue/UI gap (backend #121-#123); server-side queue scale-out is #175. Do not fold M into F.
 
 ## Tracking Updates
 - Add to `docs/enterprise-roadmap.md` as Workstreams H-L and M (post-G6/H4)

@@ -248,7 +248,8 @@ def test_workspace_round_trips_approval_deep_links():
     assert params["approval_status"] == "approved"
     assert params["approval_request"] == "req-42"
     restored = workspace_from_query_params(params)
-    assert restored["approvals"] == {"status": "approved", "request_id": "req-42"}
+    assert restored["approvals"]["status"] == "approved"
+    assert restored["approvals"]["request_id"] == "req-42"
 
     state: Dict[str, Any] = {}
     screen = apply_workspace(workspace, state, ACCESS, SCREENS)
@@ -259,8 +260,10 @@ def test_workspace_round_trips_approval_deep_links():
     from_session = workspace_from_session(
         {"active_screen": "Approvals", "approval_status": "rejected", "approval_request_id": "req-9"}
     )
-    assert from_session["approvals"] == {"status": "rejected", "request_id": "req-9"}
-    assert empty_workspace()["approvals"] == {"status": "pending", "request_id": ""}
+    assert from_session["approvals"]["status"] == "rejected"
+    assert from_session["approvals"]["request_id"] == "req-9"
+    assert empty_workspace()["approvals"]["status"] == "pending"
+    assert empty_workspace()["approvals"]["request_id"] == ""
 
 
 def test_client_lists_filters_and_gets_approvals(approvals_api):

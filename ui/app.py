@@ -11,6 +11,7 @@ API surface is sufficient for a real front-end. See ``docs/ux-and-api.md`` §6.
 import argparse
 import json
 import sys
+import time
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 from urllib.parse import parse_qsl, urlsplit
@@ -19,16 +20,35 @@ import streamlit as st
 
 from ui.admin import audit_export_rows, confirm_action, scope_indicator
 from ui.approvals import (
+    AGE_FILTER_OPTIONS,
+    ANY_VALUE,
+    DEFAULT_PAGE_SIZE,
+    DEFAULT_SLA_CRITICAL_HOURS,
+    DEFAULT_SLA_WARNING_HOURS,
+    PAGE_SIZE_OPTIONS,
+    SORT_OPTIONS,
     STATUS_OPTIONS,
+    approval_filter_options,
     approval_rows,
+    bulk_confirmation_text,
+    bulk_result_row,
+    bulk_summary,
     can_decide,
     decision_payload,
     deep_link_params,
     evidence_links,
+    export_csv,
+    export_filename,
+    export_json,
+    filter_approval_records,
     format_timestamp,
     normalize_status,
+    paginate_approval_records,
+    pending_ids,
     redact_approval,
-    status_filter,
+    select_pending_records,
+    sla_summary,
+    sort_approval_records,
     summary_counts,
 )
 from ui.client import ApiClient
@@ -1390,50 +1410,319 @@ def screen_approvals() -> None:
     if notice:
         st.success(notice)
 
-    status = normalize_status(st.session_state.get("approval_status"))
-    st.session_state.approval_status = status
-    status = st.selectbox("Status", STATUS_OPTIONS, key="approval_status")
-
-    result = api.approvals(status=status_filter(status))
+    with st.spinner("Loading approvals..."):
+        result = api.approvals()
     if not require_ok(result):
         _failure_taxonomy(result)
         return
     data = result.data
     records = [item for item in (data.get("requests") or []) if isinstance(item, dict)]
     counts = summary_counts(records)
-    if status != "all":
-        all_result = api.approvals()
-        if all_result.ok:
-            all_records = [
-                item for item in (all_result.data.get("requests") or []) if isinstance(item, dict)
-            ]
-            counts = summary_counts(all_records)
+    now = time.time()
+
+    status = normalize_status(st.session_state.get("approval_status"))
+    st.session_state.approval_status = status
+    options = approval_filter_options(records)
+
+    def filter_choice(key: str, values: list) -> str:
+        current = str(st.session_state.get(key) or ANY_VALUE)
+        if current not in values:
+            current = ANY_VALUE
+            st.session_state[key] = current
+        return current
+
+    filter_choice("approval_action", [ANY_VALUE] + options["actions"])
+    filter_choice("approval_policy", [ANY_VALUE] + options["policies"])
+    filter_choice("approval_requester", [ANY_VALUE] + options["requesters"])
+    filter_choice("approval_tenant", [ANY_VALUE] + options["tenants"])
+
+    age = str(st.session_state.get("approval_age") or AGE_FILTER_OPTIONS[0])
+    if age not in AGE_FILTER_OPTIONS:
+        age = AGE_FILTER_OPTIONS[0]
+        st.session_state.approval_age = age
+    sort_by = str(st.session_state.get("approval_sort") or SORT_OPTIONS[0])
+    if sort_by not in SORT_OPTIONS:
+        sort_by = SORT_OPTIONS[0]
+        st.session_state.approval_sort = sort_by
+    try:
+        page_size = int(st.session_state.get("approval_page_size") or DEFAULT_PAGE_SIZE)
+    except (TypeError, ValueError):
+        page_size = DEFAULT_PAGE_SIZE
+    if page_size not in PAGE_SIZE_OPTIONS:
+        page_size = DEFAULT_PAGE_SIZE
+        st.session_state.approval_page_size = page_size
+
+    def hours_value(key: str, default: float) -> float:
+        try:
+            value = float(st.session_state.get(key))
+        except (TypeError, ValueError):
+            value = default
+        return max(0.1, min(720.0, round(value, 2)))
+
+    warning_hours = hours_value(
+        "approval_warning_hours", DEFAULT_SLA_WARNING_HOURS
+    )
+    critical_hours = max(
+        warning_hours,
+        hours_value("approval_critical_hours", DEFAULT_SLA_CRITICAL_HOURS),
+    )
+    st.session_state.approval_warning_hours = warning_hours
+    st.session_state.approval_critical_hours = critical_hours
+
+    def clear_approval_filters() -> None:
+        st.session_state.approval_status = "pending"
+        st.session_state.approval_action = ANY_VALUE
+        st.session_state.approval_policy = ANY_VALUE
+        st.session_state.approval_requester = ANY_VALUE
+        st.session_state.approval_tenant = ANY_VALUE
+        st.session_state.approval_age = AGE_FILTER_OPTIONS[0]
+        st.session_state.approval_search = ""
+        st.session_state.approval_sort = SORT_OPTIONS[0]
+        st.session_state.approval_page = 1
+        st.session_state.approval_page_size = DEFAULT_PAGE_SIZE
+        st.session_state.approval_warning_hours = DEFAULT_SLA_WARNING_HOURS
+        st.session_state.approval_critical_hours = DEFAULT_SLA_CRITICAL_HOURS
+        st.session_state.approval_bulk_ids = []
+        st.session_state.approval_bulk_confirm = False
+
+    with st.expander("Queue filters", expanded=True):
+        f1, f2, f3 = st.columns(3)
+        status = f1.selectbox("Status", STATUS_OPTIONS, key="approval_status")
+        f2.selectbox("Action", [ANY_VALUE] + options["actions"], key="approval_action")
+        f3.selectbox("Policy", [ANY_VALUE] + options["policies"], key="approval_policy")
+        f4, f5, f6 = st.columns(3)
+        f4.selectbox(
+            "Requester", [ANY_VALUE] + options["requesters"], key="approval_requester"
+        )
+        f5.selectbox("Tenant", [ANY_VALUE] + options["tenants"], key="approval_tenant")
+        f6.selectbox("Age", AGE_FILTER_OPTIONS, key="approval_age")
+        f7, f8, f9 = st.columns(3)
+        f7.text_input("Search", key="approval_search", placeholder="id, action, reason")
+        f8.selectbox("Sort", SORT_OPTIONS, key="approval_sort")
+        f9.selectbox("Page size", PAGE_SIZE_OPTIONS, key="approval_page_size")
+        f10, f11 = st.columns(2)
+        f10.number_input(
+            "SLA warning (hours)",
+            min_value=0.1,
+            max_value=720.0,
+            step=1.0,
+            key="approval_warning_hours",
+        )
+        f11.number_input(
+            "SLA critical (hours)",
+            min_value=0.1,
+            max_value=720.0,
+            step=1.0,
+            key="approval_critical_hours",
+        )
+        st.caption(
+            "Filters are display-only. Tenant and requester values come from optional "
+            "context metadata and are not an authorization boundary."
+        )
+        st.button(
+            "Clear filters",
+            key="approval_clear_filters",
+            on_click=clear_approval_filters,
+        )
+
+    filtered = filter_approval_records(
+        records,
+        status=status,
+        action=st.session_state.approval_action,
+        policy=st.session_state.approval_policy,
+        requester=st.session_state.approval_requester,
+        tenant=st.session_state.approval_tenant,
+        age=st.session_state.approval_age,
+        search=st.session_state.approval_search,
+        now=now,
+    )
+    filtered = sort_approval_records(filtered, st.session_state.approval_sort, now)
+    pagination = paginate_approval_records(
+        filtered, st.session_state.get("approval_page"), st.session_state.approval_page_size
+    )
+    st.session_state.approval_page = pagination["page"]
+    sla_counts = sla_summary(records, now, warning_hours, critical_hours)
 
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("HITL enabled", "yes" if data.get("enabled") else "no")
     c2.metric("Pending", counts["pending"])
-    c3.metric("Approved", counts["approved"])
-    c4.metric("Rejected", counts["rejected"])
+    c3.metric("SLA warning", sla_counts["warning"])
+    c4.metric("SLA critical", sla_counts["critical"])
+    c5, c6, c7, c8 = st.columns(4)
+    c5.metric("Approved", counts["approved"])
+    c6.metric("Rejected", counts["rejected"])
+    c7.metric("Filtered", pagination["total"])
+    c8.metric("Pages", pagination["pages"] or 1)
     if not data.get("enabled"):
         st.info(
             "HITL approvals are disabled. Enable `hitl.enabled` in `config/policies.yaml` "
             "to collect approval requests."
         )
 
-    rows = approval_rows(records)
+    rows = approval_rows(
+        pagination["items"], now, warning_hours, critical_hours
+    )
+    st.subheader("Queue")
+    st.caption(
+        f"Showing {len(rows)} of {pagination['total']} matching requests. "
+        f"SLA thresholds: warning at {warning_hours:g}h, critical at {critical_hours:g}h."
+    )
     if rows:
-        st.subheader("Queue")
         st.dataframe(rows, use_container_width=True, hide_index=True)
     else:
-        st.info("No approval requests match this status.")
+        st.info("No approval requests match these filters.")
+
+    p1, p2, p3 = st.columns([1, 1, 4])
+    if p1.button("Previous", disabled=not pagination["has_prev"], key="approval_prev"):
+        st.session_state.approval_page = max(1, pagination["page"] - 1)
+        st.rerun()
+    if p2.button("Next", disabled=not pagination["has_next"], key="approval_next"):
+        st.session_state.approval_page = pagination["page"] + 1
+        st.rerun()
+    p3.caption(
+        f"Page {pagination['page']} of {pagination['pages'] or 1} "
+        f"({pagination['start'] + 1 if pagination['total'] else 0}-"
+        f"{pagination['end']} of {pagination['total']})."
+    )
+
+    page_ids = pending_ids(pagination["items"])
+    valid_bulk = [
+        item
+        for item in (st.session_state.get("approval_bulk_ids") or [])
+        if item in page_ids
+    ]
+    if valid_bulk != list(st.session_state.get("approval_bulk_ids") or []):
+        st.session_state.approval_bulk_ids = valid_bulk
+    bulk_results = list(st.session_state.get("approval_bulk_results") or [])
+    with st.expander("Bulk decisions", expanded=bool(bulk_results)):
+        if page_ids:
+            st.caption(
+                "Only pending requests on this page can be selected. Decisions are "
+                "submitted one at a time and are not atomic."
+            )
+            selected_bulk = st.multiselect(
+                "Select pending requests", page_ids, key="approval_bulk_ids"
+            )
+            b1, b2 = st.columns(2)
+            bulk_reviewer = b1.text_input(
+                "Reviewer", key="approval_bulk_decided_by"
+            )
+            bulk_note = b2.text_input("Note (optional)", key="approval_bulk_note")
+            bulk_decision = st.radio(
+                "Bulk decision",
+                ("approved", "rejected"),
+                horizontal=True,
+                key="approval_bulk_decision",
+            )
+            st.info(bulk_confirmation_text(len(selected_bulk), bulk_decision))
+            confirmed = st.checkbox(
+                "I understand partial failures are possible and successful "
+                "decisions are not rolled back.",
+                key="approval_bulk_confirm",
+            )
+            if st.button(
+                f"Submit {bulk_decision} for {len(selected_bulk)} request(s)",
+                type="primary",
+                disabled=not selected_bulk or not confirmed,
+                key="approval_bulk_submit",
+            ):
+                try:
+                    payload = decision_payload(
+                        bulk_decision, bulk_reviewer, bulk_note
+                    )
+                except ValueError as exc:
+                    st.error(str(exc))
+                else:
+                    submitted = []
+                    for request_id in selected_bulk:
+                        decided = api.decide_approval(
+                            request_id,
+                            payload["decision"],
+                            decided_by=payload.get("decided_by"),
+                            note=payload.get("note"),
+                        )
+                        submitted.append(
+                            bulk_result_row(
+                                request_id,
+                                payload["decision"],
+                                ok=decided.ok,
+                                status=decided.data.get("status") or "",
+                                failure_type=decided.failure_type or "",
+                                error=decided.error or "",
+                            )
+                        )
+                    summary = bulk_summary(submitted)
+                    st.session_state.approval_bulk_results = submitted
+                    st.session_state.approval_notice = (
+                        f"Bulk decision submitted: {summary['succeeded']} succeeded, "
+                        f"{summary['failed']} failed."
+                    )
+                    st.session_state.approval_page = 1
+                    st.rerun()
+        else:
+            st.caption("No pending requests on this page.")
+
+        if bulk_results:
+            summary = bulk_summary(bulk_results)
+            if summary["failed"]:
+                st.warning(
+                    f"{summary['succeeded']} succeeded, {summary['failed']} failed. "
+                    "Successful decisions were kept."
+                )
+            else:
+                st.success(f"All {summary['succeeded']} decisions succeeded.")
+            st.dataframe(bulk_results, use_container_width=True, hide_index=True)
+            if st.button("Clear bulk results", key="approval_clear_bulk_results"):
+                st.session_state.approval_bulk_results = []
+                st.rerun()
+
+    selected_ids = set(st.session_state.get("approval_bulk_ids") or [])
+    selected_records = select_pending_records(filtered, list(selected_ids))
+    st.subheader("Export")
+    export_scope = st.radio(
+        "Export scope",
+        ("Filtered queue", "Selected pending requests"),
+        horizontal=True,
+        key="approval_export_scope",
+    )
+    export_records = (
+        selected_records
+        if export_scope == "Selected pending requests" and selected_records
+        else filtered
+    )
+    if export_scope == "Selected pending requests" and not selected_records:
+        st.caption("No pending requests selected; exporting the filtered queue instead.")
+    st.caption(
+        f"Safe metadata export for {len(export_records)} request(s). Raw approval "
+        "context is never included; secret-looking values are redacted."
+    )
+    e1, e2 = st.columns(2)
+    e1.download_button(
+        "Download JSON",
+        data=export_json(
+            export_records, now, warning_hours, critical_hours
+        ),
+        file_name=export_filename("json", now),
+        mime="application/json",
+        key="approval_export_json",
+    )
+    e2.download_button(
+        "Download CSV",
+        data=export_csv(
+            export_records, now, warning_hours, critical_hours
+        ),
+        file_name=export_filename("csv", now),
+        mime="text/csv",
+        key="approval_export_csv",
+    )
 
     queue_ids = [row["request_id"] for row in rows if row["request_id"]]
     current = str(st.session_state.get("approval_request_id") or "")
-    options = list(dict.fromkeys(([current] if current else []) + queue_ids))
-    if options:
-        if current not in options:
-            st.session_state.approval_request_id = options[0]
-        st.selectbox("Approval request", options, key="approval_request_id")
+    request_options = list(dict.fromkeys(([current] if current else []) + queue_ids))
+    if request_options:
+        if current not in request_options:
+            st.session_state.approval_request_id = request_options[0]
+        st.selectbox("Approval request", request_options, key="approval_request_id")
     else:
         st.text_input("Approval request id", key="approval_request_id")
     manual = st.text_input("Open by request id", key="approval_manual_id")
@@ -1453,10 +1742,15 @@ def screen_approvals() -> None:
         else:
             record = redact_approval(detail.data)
             st.subheader("Request detail")
-            d1, d2, d3 = st.columns(3)
+            d1, d2, d3, d4 = st.columns(4)
             d1.metric("Status", record.get("status", "-"))
             d2.metric("Action", record.get("action", "-"))
             d3.metric("Created", format_timestamp(record.get("created_at")))
+            age_row = approval_rows([record], now, warning_hours, critical_hours)[0]
+            d4.metric(
+                "Age / SLA",
+                f"{age_row['age'] or '-'} / {age_row['sla']}",
+            )
             st.code(record.get("request_id", selected), language=None)
             st.write("**Reason:** " + str(record.get("reason") or "-"))
             policy = record.get("policy") or {}

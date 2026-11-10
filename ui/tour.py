@@ -127,14 +127,16 @@ TOUR_STEPS: List[TourStep] = [
         screen="Approvals",
         body=(
             "Review policy-gated actions waiting for human sign-off. The queue defaults to "
-            "**pending** and shows action, reason, policy id/bundle/labels and request id. "
-            "Select a request to inspect its redacted context/policy and any trace/audit "
-            "correlation ids, then approve or reject with an optional reviewer name and note. "
-            "Decisions are audited and the screen requires the `approve` capability."
+            "**pending** and supports action/policy/requester/tenant/age filters, sorting, "
+            "pagination and configurable SLA warning/critical thresholds. Select a request "
+            "to inspect its redacted context/policy and trace/audit ids, then approve or "
+            "reject with an optional reviewer name and note. Bulk decisions submit one item "
+            "at a time and report partial failures; export is safe metadata only. Decisions "
+            "are audited and the screen requires the `approve` capability."
         ),
         try_it=(
-            "Enable `hitl.enabled` in `config/policies.yaml`, create a gated action, then "
-            "approve it here and confirm the status changes."
+            "Enable `hitl.enabled` in `config/policies.yaml`, create a gated action, filter "
+            "the queue, export the safe metadata, then approve one or more requests."
         ),
     ),
     TourStep(

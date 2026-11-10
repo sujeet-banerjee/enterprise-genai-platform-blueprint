@@ -459,5 +459,7 @@ later deployment item.
 - **Addendum (fact-check):** [enterprise-roadmap-gaps-addendum.md](enterprise-roadmap-gaps-addendum.md) + [analysis/fact_check_usability_value_for_enterprise_architects.pdf](analysis/fact_check_usability_value_for_enterprise_architects.pdf) define the H4 workstreams H–L (#115–#129) for connectors/ingestion, multi-region/DR operations, policy-as-code, eval expansion/CI gates, and onboarding/golden paths. **UX addendum:** [analysis/ux_roadmap_fact_check.pdf](analysis/ux_roadmap_fact_check.pdf) / [analysis/ux_roadmap_fact_check.md](analysis/ux_roadmap_fact_check.md) define Workstream M — UX polish for the existing console, kept separate from Workstream F (console build-out): delivered #130–#136/#145 and #151, with the remaining tranche #152–#158.
 
 
-- HITL console UI: #163 (review/decision console) delivered; queue operations/SLA/evidence
-  follow-on tracked as #164 (Workstream M), both dependent on #123.
+- HITL console UI: #163 (review/decision console) and #164 (filters/SLA/safe export/
+  sequential bulk) delivered in Workstream M against the #123 contract. True
+  server-side pagination/filtering and tenant-scoped queue operations remain with
+  backend #175 (Workstream J).

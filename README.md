@@ -185,9 +185,13 @@ Open **Traces** with the returned `request_id` to see the same trace the server 
 raw Prometheus `/metrics` panel. **Compare (what-if)** rebuilds the
 pipeline with overrides when `api.allow_rebuild=true`. **Guardrails** previews the resolved
 input/output chains (and the selected `profile`), runs a probe query to show per-request
-decisions, and reports hit-rate. **Approvals** is the HITL review queue: filter by status
-(default `pending`), inspect redacted context/policy and correlation ids, then approve or
-reject with an optional reviewer/note; requires the `approve` capability. **Audit** reads
+decisions, and reports hit-rate. **Approvals** is the HITL review queue: default
+`pending` view with action/policy/requester/tenant/age filters, search, sorting,
+pagination and configurable SLA warning/critical thresholds; inspect redacted
+context/policy and correlation ids, then approve or reject with an optional
+reviewer/note. Bulk decisions submit pending items one at a time after explicit
+confirmation and report partial failures; export is safe metadata only (no raw context).
+Requires the `approve` capability. **Audit** reads
 the redacted trail (`limit`/`event_type` filters) and **Access / RBAC** shows the calling
 persona's role/capabilities. The
 **Evaluation** screen adds a dataset picker (built-in benchmark summary or custom
