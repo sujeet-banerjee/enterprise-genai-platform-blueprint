@@ -21,6 +21,16 @@ import zlib
 from typing import Any, Dict, List, Mapping, MutableMapping, Optional, Sequence, Tuple
 from urllib.parse import quote, urlencode, urlsplit, urlunsplit
 
+from ui.approvals import (
+    AGE_FILTER_OPTIONS,
+    ANY_VALUE,
+    DEFAULT_PAGE_SIZE,
+    DEFAULT_SLA_CRITICAL_HOURS,
+    DEFAULT_SLA_WARNING_HOURS,
+    DEFAULT_SORT,
+    PAGE_SIZE_OPTIONS,
+    SORT_OPTIONS,
+)
 from ui.navigation import can_access, landing_screen
 
 WORKSPACE_VERSION = 1
@@ -95,6 +105,17 @@ DIRECT_PARAMS: Tuple[str, ...] = (
     "audit_event",
     "approval_status",
     "approval_request",
+    "approval_action",
+    "approval_policy",
+    "approval_requester",
+    "approval_tenant",
+    "approval_age",
+    "approval_search",
+    "approval_sort",
+    "approval_page",
+    "approval_page_size",
+    "approval_warning_hours",
+    "approval_critical_hours",
     "traces_request_id",
 )
 
@@ -173,6 +194,18 @@ def _as_float(value: Any) -> Optional[float]:
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         return None
     return round(float(value), 6)
+
+
+def _as_hours(value: Any, default: float) -> float:
+    if isinstance(value, bool):
+        return default
+    try:
+        parsed = float(value)
+    except (TypeError, ValueError):
+        return default
+    if parsed != parsed:
+        return default
+    return round(max(0.1, min(720.0, parsed)), 2)
 
 
 def _first(value: Any) -> str:
@@ -258,9 +291,37 @@ def _normalize_approvals(value: Any) -> Dict[str, Any]:
     status = _clean_text(data.get("status"), 40).lower()
     if status not in ("pending", "approved", "rejected", "all"):
         status = "pending"
+    age = _clean_text(data.get("age"), 40)
+    if age not in AGE_FILTER_OPTIONS:
+        age = AGE_FILTER_OPTIONS[0]
+    sort_by = _clean_text(data.get("sort"), 60)
+    if sort_by not in SORT_OPTIONS:
+        sort_by = DEFAULT_SORT
+    page_size = _as_int(data.get("page_size"), DEFAULT_PAGE_SIZE, 1, 500)
+    if page_size not in PAGE_SIZE_OPTIONS:
+        page_size = DEFAULT_PAGE_SIZE
+    warning_hours = _as_hours(
+        data.get("warning_hours"), DEFAULT_SLA_WARNING_HOURS
+    )
+    critical_hours = _as_hours(
+        data.get("critical_hours"), DEFAULT_SLA_CRITICAL_HOURS
+    )
+    if critical_hours < warning_hours:
+        critical_hours = warning_hours
     return {
         "status": status,
         "request_id": _clean_id(data.get("request_id")),
+        "action": _clean_text(data.get("action"), 120) or ANY_VALUE,
+        "policy": _clean_text(data.get("policy"), 120) or ANY_VALUE,
+        "requester": _clean_text(data.get("requester"), 120) or ANY_VALUE,
+        "tenant": _clean_text(data.get("tenant"), 80) or ANY_VALUE,
+        "age": age,
+        "search": _clean_text(data.get("search"), 200),
+        "sort": sort_by,
+        "page": _as_int(data.get("page"), 1, 1, 100_000),
+        "page_size": page_size,
+        "warning_hours": warning_hours,
+        "critical_hours": critical_hours,
     }
 
 
@@ -484,6 +545,17 @@ def workspace_from_session(
         {
             "status": state.get("approval_status"),
             "request_id": state.get("approval_request_id"),
+            "action": state.get("approval_action"),
+            "policy": state.get("approval_policy"),
+            "requester": state.get("approval_requester"),
+            "tenant": state.get("approval_tenant"),
+            "age": state.get("approval_age"),
+            "search": state.get("approval_search"),
+            "sort": state.get("approval_sort"),
+            "page": state.get("approval_page"),
+            "page_size": state.get("approval_page_size"),
+            "warning_hours": state.get("approval_warning_hours"),
+            "critical_hours": state.get("approval_critical_hours"),
         }
     )
     workspace["traces"] = _normalize_traces(
@@ -598,6 +670,18 @@ def apply_workspace(
     state["audit_event_type"] = audit["event_type"]
     state["approval_status"] = approvals["status"]
     state["approval_request_id"] = approvals["request_id"]
+    state["approval_action"] = approvals["action"]
+    state["approval_policy"] = approvals["policy"]
+    state["approval_requester"] = approvals["requester"]
+    state["approval_tenant"] = approvals["tenant"]
+    state["approval_age"] = approvals["age"]
+    state["approval_search"] = approvals["search"]
+    state["approval_sort"] = approvals["sort"]
+    state["approval_page"] = approvals["page"]
+    state["approval_page_size"] = approvals["page_size"]
+    state["approval_warning_hours"] = approvals["warning_hours"]
+    state["approval_critical_hours"] = approvals["critical_hours"]
+    state["approval_bulk_ids"] = []
     state["last_request_id"] = activity["last_request_id"]
     state["last_query"] = activity["last_query"]
     state["last_trace_request_id"] = activity["last_trace_request_id"]
@@ -653,6 +737,18 @@ def _state_defaults() -> Dict[str, Any]:
         "audit_event_type": audit["event_type"],
         "approval_status": approvals["status"],
         "approval_request_id": approvals["request_id"],
+        "approval_action": approvals["action"],
+        "approval_policy": approvals["policy"],
+        "approval_requester": approvals["requester"],
+        "approval_tenant": approvals["tenant"],
+        "approval_age": approvals["age"],
+        "approval_search": approvals["search"],
+        "approval_sort": approvals["sort"],
+        "approval_page": approvals["page"],
+        "approval_page_size": approvals["page_size"],
+        "approval_warning_hours": approvals["warning_hours"],
+        "approval_critical_hours": approvals["critical_hours"],
+        "approval_bulk_ids": [],
         "trace_request_id": "",
         "trace_autoload": False,
         "workspace_scope": {"tenant": "", "workspace": ""},
@@ -914,6 +1010,40 @@ def workspace_from_query_params(
         )["status"]
     if has("approval_request"):
         approvals["request_id"] = _clean_id(value("approval_request"))
+    if has("approval_action"):
+        approvals["action"] = _clean_text(value("approval_action"), 120) or ANY_VALUE
+    if has("approval_policy"):
+        approvals["policy"] = _clean_text(value("approval_policy"), 120) or ANY_VALUE
+    if has("approval_requester"):
+        approvals["requester"] = (
+            _clean_text(value("approval_requester"), 120) or ANY_VALUE
+        )
+    if has("approval_tenant"):
+        approvals["tenant"] = _clean_text(value("approval_tenant"), 80) or ANY_VALUE
+    if has("approval_age"):
+        approvals["age"] = _normalize_approvals(
+            {"age": value("approval_age")}
+        )["age"]
+    if has("approval_search"):
+        approvals["search"] = _clean_text(value("approval_search"), 200)
+    if has("approval_sort"):
+        approvals["sort"] = _normalize_approvals(
+            {"sort": value("approval_sort")}
+        )["sort"]
+    if has("approval_page"):
+        approvals["page"] = _as_int(value("approval_page"), approvals["page"], 1, 100_000)
+    if has("approval_page_size"):
+        approvals["page_size"] = _normalize_approvals(
+            {"page_size": value("approval_page_size")}
+        )["page_size"]
+    if has("approval_warning_hours"):
+        approvals["warning_hours"] = _as_hours(
+            value("approval_warning_hours"), approvals["warning_hours"]
+        )
+    if has("approval_critical_hours"):
+        approvals["critical_hours"] = _as_hours(
+            value("approval_critical_hours"), approvals["critical_hours"]
+        )
     if has("tenant"):
         scope["tenant"] = _normalize_scope({"tenant": value("tenant")})["tenant"]
     if has("workspace"):
@@ -989,6 +1119,28 @@ def workspace_to_query_params(
         params["approval_status"] = approvals["status"]
     if normalized["screen"] == "Approvals" and approvals["request_id"]:
         params["approval_request"] = approvals["request_id"]
+    if approvals["action"] != ANY_VALUE:
+        params["approval_action"] = approvals["action"]
+    if approvals["policy"] != ANY_VALUE:
+        params["approval_policy"] = approvals["policy"]
+    if approvals["requester"] != ANY_VALUE:
+        params["approval_requester"] = approvals["requester"]
+    if approvals["tenant"] != ANY_VALUE:
+        params["approval_tenant"] = approvals["tenant"]
+    if approvals["age"] != AGE_FILTER_OPTIONS[0]:
+        params["approval_age"] = approvals["age"]
+    if approvals["search"]:
+        params["approval_search"] = approvals["search"]
+    if approvals["sort"] != DEFAULT_SORT:
+        params["approval_sort"] = approvals["sort"]
+    if approvals["page"] != 1:
+        params["approval_page"] = str(approvals["page"])
+    if approvals["page_size"] != DEFAULT_PAGE_SIZE:
+        params["approval_page_size"] = str(approvals["page_size"])
+    if approvals["warning_hours"] != DEFAULT_SLA_WARNING_HOURS:
+        params["approval_warning_hours"] = str(approvals["warning_hours"])
+    if approvals["critical_hours"] != DEFAULT_SLA_CRITICAL_HOURS:
+        params["approval_critical_hours"] = str(approvals["critical_hours"])
     return params
 
 
