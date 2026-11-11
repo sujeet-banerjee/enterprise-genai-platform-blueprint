@@ -747,7 +747,10 @@ input:
 ```
 
 The `pii` provider detects email, phone, credit card (Luhn validated), national id and IP
-addresses, plus optional NER classes (names, addresses), and either **redacts** or **blocks**:
+addresses, plus optional NER classes (names, addresses), and either **redacts** or **blocks**.
+`national_id` matches US SSN, India PAN/Aadhaar (Verhoeff checked) and UK National Insurance by
+default; `national_id_patterns` replaces the built-in patterns. PII scrubbing is **off by
+default** - enable the `pii:` block below to mask PAN/SSN/Aadhaar style values:
 
 ```yaml
 output:

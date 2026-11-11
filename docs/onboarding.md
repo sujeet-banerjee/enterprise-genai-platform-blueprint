@@ -166,6 +166,7 @@ lint, types, tests, deploy smoke and those gates are green.
 | `No relevant context available` / empty sources | `documents_path` does not resolve or corpus is empty | keep `data/` beside `config/`, or use an absolute path; re-run `genai validate` |
 | Startup fails with a schema error | unknown/wrong-typed key or unresolved secret | read the precise message, fix the YAML, re-run `genai validate` |
 | Model download fails / air-gapped | no network and no cache | pre-populate `HF_HOME`, set `HF_TOKEN` for gated models, or use `--template local-demo` |
+| PAN / SSN / Aadhaar / email still visible | `observability.pii.enabled` is off; input redaction only masks `sensitive_patterns` | enable the `pii:` block in `observability.yaml` (or the `pii` guardrail provider) and restart |
 | `403 guardrail_input_blocked` | the query (or a retrieved doc) tripped a guardrail | expected for injections; inspect `guardrail_decisions` / `GET /v1/guardrails` |
 | `402` / `cost_limit_exceeded` | per-request or per-tenant budget cap | raise the cap in `governance.yaml` / tenant policy |
 | `503 not_ready` | the app has not finished its lifespan startup | wait for `/ready` to report `status: ready` |

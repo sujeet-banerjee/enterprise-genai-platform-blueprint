@@ -28,7 +28,8 @@ PII_EMAIL = "email"
 PII_PHONE = "phone"
 #: Payment card number (Luhn validated).
 PII_CREDIT_CARD = "credit_card"
-#: Government / national identifier (SSN-like by default, configurable).
+#: Government / national identifier (US SSN, India PAN/Aadhaar, UK NI by
+#: default; the patterns are configurable via ``national_id_patterns``).
 PII_NATIONAL_ID = "national_id"
 #: IPv4 / IPv6 address.
 PII_IP_ADDRESS = "ip_address"

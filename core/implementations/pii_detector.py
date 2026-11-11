@@ -55,6 +55,47 @@ def luhn_valid(digits: str) -> bool:
     return checksum % 10 == 0
 
 
+_VERHOEFF_D = (
+    (0, 1, 2, 3, 4, 5, 6, 7, 8, 9),
+    (1, 2, 3, 4, 0, 6, 7, 8, 9, 5),
+    (2, 3, 4, 0, 1, 7, 8, 9, 5, 6),
+    (3, 4, 0, 1, 2, 8, 9, 5, 6, 7),
+    (4, 0, 1, 2, 3, 9, 5, 6, 7, 8),
+    (5, 9, 8, 7, 6, 0, 4, 3, 2, 1),
+    (6, 5, 9, 8, 7, 1, 0, 4, 3, 2),
+    (7, 6, 5, 9, 8, 2, 1, 0, 4, 3),
+    (8, 7, 6, 5, 9, 3, 2, 1, 0, 4),
+    (9, 8, 7, 6, 5, 4, 3, 2, 1, 0),
+)
+_VERHOEFF_P = (
+    (0, 1, 2, 3, 4, 5, 6, 7, 8, 9),
+    (1, 5, 7, 6, 2, 8, 3, 0, 9, 4),
+    (5, 8, 0, 3, 7, 9, 6, 1, 4, 2),
+    (8, 9, 1, 6, 0, 4, 3, 5, 2, 7),
+    (9, 4, 5, 3, 1, 2, 6, 8, 7, 0),
+    (4, 2, 8, 6, 5, 7, 3, 9, 0, 1),
+    (2, 7, 9, 3, 8, 0, 6, 4, 1, 5),
+    (7, 0, 4, 6, 9, 1, 3, 2, 5, 8),
+)
+
+
+def verhoeff_valid(digits: str) -> bool:
+    """Validate an Aadhaar-style number with the Verhoeff checksum."""
+    if not digits or not digits.isdigit():
+        return False
+    checksum = 0
+    for index, char in enumerate(reversed(digits)):
+        checksum = _VERHOEFF_D[checksum][_VERHOEFF_P[index % 8][int(char)]]
+    return checksum == 0
+
+
+def _aadhaar_valid(value: str) -> bool:
+    digits = re.sub(r"[\s-]", "", value)
+    if len(digits) != 12 or digits[0] not in "23456789":
+        return False
+    return verhoeff_valid(digits)
+
+
 class RegexPiiDetector(PiiDetector):
     """Deterministic regex detector for the standard PII classes.
 
@@ -70,7 +111,15 @@ class RegexPiiDetector(PiiDetector):
 
     _EMAIL = r"\b[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}\b"
     _CREDIT_CARD = r"(?<![\w\-])\d(?:[ \-]?\d){12,18}(?![\w\-])"
-    _NATIONAL_ID = r"\b\d{3}-\d{2}-\d{4}\b"
+    _NATIONAL_ID_SSN = r"\b\d{3}-\d{2}-\d{4}\b"
+    # India PAN: five letters, four digits, one letter (e.g. AHSPB3220C).
+    _NATIONAL_ID_PAN = r"\b[A-Z]{5}[0-9]{4}[A-Z]\b"
+    _NATIONAL_ID_AADHAAR_SPACED = r"(?<!\d)\d{4}[\s-]\d{4}[\s-]\d{4}(?!\d)"
+    _NATIONAL_ID_AADHAAR_PLAIN = r"(?<!\d)\d{12}(?!\d)"
+    # UK National Insurance number (e.g. QQ 12 34 56 C).
+    _NATIONAL_ID_UK_NINO = (
+        r"\b[A-CEGHJ-PR-TW-Z]{2}\s?\d{2}\s?\d{2}\s?\d{2}\s?[A-D]\b"
+    )
     _IP_V4 = r"\b(?:\d{1,3}\.){3}\d{1,3}\b"
     _IP_V6 = r"\b(?:[A-Fa-f0-9]{0,4}:){2,7}[A-Fa-f0-9]{0,4}\b"
     _PHONE_INTL = (
@@ -84,9 +133,22 @@ class RegexPiiDetector(PiiDetector):
     _DEFAULT_PATTERNS: Dict[str, Sequence[str]] = {
         PII_EMAIL: (_EMAIL,),
         PII_CREDIT_CARD: (_CREDIT_CARD,),
-        PII_NATIONAL_ID: (_NATIONAL_ID,),
+        PII_NATIONAL_ID: (
+            _NATIONAL_ID_SSN,
+            _NATIONAL_ID_PAN,
+            _NATIONAL_ID_AADHAAR_SPACED,
+            _NATIONAL_ID_AADHAAR_PLAIN,
+            _NATIONAL_ID_UK_NINO,
+        ),
         PII_PHONE: (_PHONE_INTL, _PHONE_PAREN, _PHONE_GROUPED, _PHONE_PLAIN),
         PII_IP_ADDRESS: (_IP_V4, _IP_V6),
+    }
+
+    #: Checksum validators for the built-in national-id patterns (operator
+    #: ``national_id_patterns`` overrides are accepted as written).
+    _DEFAULT_NATIONAL_ID_VALIDATORS: Dict[str, Callable[[str], bool]] = {
+        _NATIONAL_ID_AADHAAR_SPACED: _aadhaar_valid,
+        _NATIONAL_ID_AADHAAR_PLAIN: _aadhaar_valid,
     }
 
     def __init__(
@@ -106,6 +168,7 @@ class RegexPiiDetector(PiiDetector):
         }
 
         self._compiled: Dict[str, List["re.Pattern[str]"]] = {}
+        self._validators: Dict[str, Callable[[str], bool]] = {}
         for pii_class in self.classes:
             raw_patterns = list(self._DEFAULT_PATTERNS.get(pii_class, ()))
             if pii_class == PII_NATIONAL_ID and national_id_patterns:
@@ -114,6 +177,11 @@ class RegexPiiDetector(PiiDetector):
             self._compiled[pii_class] = [
                 re.compile(pattern) for pattern in raw_patterns if pattern
             ]
+            if pii_class == PII_NATIONAL_ID:
+                for pattern in raw_patterns:
+                    validator = self._DEFAULT_NATIONAL_ID_VALIDATORS.get(pattern)
+                    if validator is not None:
+                        self._validators[pattern] = validator
 
     def detect(self, text: str) -> List[PiiMatch]:
         if not text or not isinstance(text, str):
@@ -122,12 +190,15 @@ class RegexPiiDetector(PiiDetector):
         found: List[PiiMatch] = []
         for pii_class in sorted(self.classes, key=class_priority):
             for pattern in self._compiled.get(pii_class, []):
+                validator = self._validators.get(pattern.pattern)
                 for match in pattern.finditer(text):
                     value = match.group(0)
                     if pii_class == PII_CREDIT_CARD:
                         digits = re.sub(r"[ \-]", "", value)
                         if not (13 <= len(digits) <= 19) or not luhn_valid(digits):
                             continue
+                    if validator is not None and not validator(value):
+                        continue
                     found.append(
                         PiiMatch(
                             pii_class=pii_class,
