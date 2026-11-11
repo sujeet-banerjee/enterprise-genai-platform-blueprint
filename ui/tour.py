@@ -91,14 +91,16 @@ TOUR_STEPS: List[TourStep] = [
         screen="Evaluation",
         body=(
             "Score one query/response pair with the **Evaluator** dropdown (e.g. `llm_judge`), "
-            "or run a whole **Dataset evaluation** (built-in benchmark or pasted JSON) through "
-            "the API. Dataset results include per-case failures, a metric matrix, averages and "
-            "a delta against the previous run. **Launch experiment** compares embedding models "
-            "or chunking strategies."
+            "or run a whole **Dataset evaluation** as a **background job** (built-in benchmark "
+            "or pasted JSON, up to 200 cases). Jobs show live progress, per-case failure "
+            "isolation, cancellation that stops after the current case, retry of failed cases, "
+            "resume of unfinished cases, partial results and JSON/CSV export - and they survive "
+            "a page refresh. **Launch experiment** compares embedding models or chunking "
+            "strategies."
         ),
         try_it=(
-            "Select `llm_judge`, click **Evaluate**, then run the built-in dataset and compare "
-            "the average-score chart."
+            "Start a background job on the built-in benchmark, cancel it mid-run, then "
+            "retry the failed cases and export the matrix CSV."
         ),
     ),
     TourStep(

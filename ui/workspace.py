@@ -97,6 +97,7 @@ DIRECT_PARAMS: Tuple[str, ...] = (
     "eval_dataset_source",
     "eval_dataset_evaluator",
     "eval_dataset_top_k",
+    "eval_job",
     "gov_time",
     "gov_tenant",
     "gov_app",
@@ -265,6 +266,7 @@ def _normalize_evaluation(value: Any) -> Dict[str, Any]:
         "dataset_json": _clean_text(data.get("dataset_json"), MAX_DATASET_CHARS),
         "dataset_evaluator": _clean_text(data.get("dataset_evaluator"), 80) or "(active)",
         "dataset_top_k": _as_int(data.get("dataset_top_k"), 3, 1, 10),
+        "job_id": _clean_id(data.get("job_id")),
     }
 
 
@@ -528,6 +530,7 @@ def workspace_from_session(
             "dataset_json": state.get("evaluation_dataset_json"),
             "dataset_evaluator": state.get("dataset_evaluator"),
             "dataset_top_k": state.get("dataset_top_k"),
+            "job_id": state.get("eval_job_id"),
         }
     )
     workspace["governance"] = _normalize_governance(
@@ -662,6 +665,7 @@ def apply_workspace(
     state["evaluation_dataset_json"] = evaluation["dataset_json"]
     state["dataset_evaluator"] = evaluation["dataset_evaluator"]
     state["dataset_top_k"] = evaluation["dataset_top_k"]
+    state["eval_job_id"] = evaluation["job_id"]
     state["gov_time_range"] = governance["time_range"]
     state["gov_tenant"] = governance["tenant"]
     state["gov_app"] = governance["app"]
@@ -729,6 +733,7 @@ def _state_defaults() -> Dict[str, Any]:
         "evaluation_dataset_source": evaluation["dataset_source"],
         "dataset_evaluator": evaluation["dataset_evaluator"],
         "dataset_top_k": evaluation["dataset_top_k"],
+        "eval_job_id": evaluation["job_id"],
         "gov_time_range": governance["time_range"],
         "gov_tenant": governance["tenant"],
         "gov_app": governance["app"],
@@ -992,6 +997,8 @@ def workspace_from_query_params(
         evaluation["dataset_top_k"] = _as_int(
             value("eval_dataset_top_k"), evaluation["dataset_top_k"], 1, 10
         )
+    if has("eval_job"):
+        evaluation["job_id"] = _clean_id(value("eval_job"))
     if has("gov_time"):
         governance["time_range"] = _clean_text(value("gov_time"), 40)
     if has("gov_tenant"):
@@ -1103,6 +1110,8 @@ def workspace_to_query_params(
         params["eval_dataset_evaluator"] = evaluation["dataset_evaluator"]
     if evaluation["dataset_top_k"] != 3:
         params["eval_dataset_top_k"] = str(evaluation["dataset_top_k"])
+    if evaluation["job_id"]:
+        params["eval_job"] = evaluation["job_id"]
     if governance["time_range"] != "Last hour":
         params["gov_time"] = governance["time_range"]
     if governance["tenant"]:

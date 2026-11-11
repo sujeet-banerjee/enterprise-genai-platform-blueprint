@@ -53,9 +53,20 @@ from ui.approvals import (
 )
 from ui.client import ApiClient
 from ui.common import api_base_url, latency_rows, metric_rows, require_ok
+from ui.eval_jobs import (
+    ACTIVE_STATUSES,
+    MAX_JOB_CASES,
+    MAX_PREVIEW_ROWS,
+    TERMINAL_STATUSES,
+    get_job_store,
+    job_export_csv,
+    job_export_filename,
+    job_export_json,
+    job_history_rows,
+    merge_job_rows,
+)
 from ui.evaluation import (
     CUSTOM_DATASET_TEMPLATE,
-    MAX_DATASET_CASES,
     available_datasets,
     build_comparison_matrix,
     compare_metric_averages,
@@ -66,7 +77,6 @@ from ui.evaluation import (
     metric_summary,
     metric_table_with_tooltips,
     parse_dataset_json,
-    run_dataset_evaluation,
 )
 from ui.governance import (
     alerts_preview,
@@ -964,6 +974,210 @@ def _evaluator_options(api: ApiClient) -> list:
     return options
 
 
+def _eval_job_focus_id(store) -> str:
+    """Resolve the focused job: session choice, else newest active, else newest."""
+    focused = str(st.session_state.get("eval_job_id") or "")
+    if focused and store.get(focused):
+        return focused
+    latest = store.latest(active_only=True) or store.latest()
+    if latest is not None:
+        st.session_state.eval_job_id = latest.job_id
+        return latest.job_id
+    st.session_state.eval_job_id = ""
+    return ""
+
+
+def _rerun_job_panel() -> None:
+    """Rerun the jobs fragment when available, else the whole app."""
+    if hasattr(st, "fragment"):
+        st.rerun(scope="fragment")
+    else:
+        st.rerun()
+
+
+def _render_eval_job_detail(store, api: ApiClient, job_id: str) -> None:
+    job = store.get(job_id)
+    if job is None:
+        st.info("This job is no longer in the console history.")
+        return
+    snap = job.snapshot()
+    status = snap["status"]
+
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("Status", status)
+    c2.metric("Cases", f"{snap['done']} / {snap['total']}")
+    c3.metric("Succeeded", snap["succeeded"])
+    c4.metric("Failed", snap["failed"])
+    st.progress(
+        min(1.0, snap["progress"]),
+        text=f"{snap['done']} of {snap['total']} cases evaluated ({status})",
+    )
+    if snap["current_case"]:
+        st.caption(f"Current case: {snap['current_case'][:120]}")
+    if snap["error"]:
+        st.error(f"Job error: {snap['error']}")
+    st.caption(
+        f"job_id: `{snap['job_id']}` | created {snap['created_at'] or '-'} | "
+        f"finished {snap['finished_at'] or '-'} | evaluator {snap['evaluator']} | "
+        f"top_k {snap['top_k']}"
+        + (f" | resumes `{snap['resume_of']}`" if snap["resume_of"] else "")
+    )
+
+    a1, a2, a3 = st.columns(3)
+    if status in ACTIVE_STATUSES:
+        if a1.button(
+            "Cancel job", key=f"eval_job_cancel::{job_id}", help="Stops after the current case; completed results are kept."
+        ):
+            outcome = store.cancel(job_id)
+            if outcome != "ok":
+                st.warning(f"Cancel returned `{outcome}`.")
+    elif snap["failed"]:
+        if a1.button(
+            "Retry failed cases", key=f"eval_job_retry::{job_id}", help="New job with only the failed cases."
+        ):
+            retry = store.retry_failed(job_id, api)
+            if retry is None:
+                st.warning("No failed cases to retry.")
+            else:
+                st.session_state.eval_job_id = retry.job_id
+                _rerun_job_panel()
+    if status in TERMINAL_STATUSES and snap["remaining"]:
+        if a2.button(
+            "Resume unfinished cases", key=f"eval_job_resume::{job_id}", help="New job with the failed and not-yet-run cases."
+        ):
+            resumed = store.retry_failed(job_id, api, include_pending=True)
+            if resumed is None:
+                st.warning("Nothing left to resume.")
+            else:
+                st.session_state.eval_job_id = resumed.job_id
+                _rerun_job_panel()
+    if status in TERMINAL_STATUSES:
+        if a3.button("Remove from history", key=f"eval_job_remove::{job_id}"):
+            if store.remove(job_id):
+                st.session_state.eval_job_id = ""
+                _rerun_job_panel()
+            else:
+                st.warning("Only finished jobs can be removed.")
+
+    rows = snap["rows"]
+    if not rows:
+        st.info("No case results yet; the panel refreshes automatically while the job runs.")
+        return
+
+    previous_rows: list = []
+    if snap["resume_of"]:
+        parent = store.get(snap["resume_of"])
+        if parent is not None:
+            previous_rows = parent.snapshot()["rows"]
+            rows = merge_job_rows(previous_rows, rows)
+            st.caption("Merged with the original run (retried cases override their previous rows).")
+    else:
+        for other in store.list():
+            if other.job_id != job_id:
+                previous_rows = other.snapshot()["rows"]
+                break
+
+    st.dataframe(metric_matrix(rows), use_container_width=True, hide_index=True)
+    summary = metric_summary(rows)
+    if summary:
+        st.bar_chart(summary)
+        st.dataframe(
+            [{"metric": key, "average": value} for key, value in summary.items()],
+            use_container_width=True,
+            hide_index=True,
+        )
+    if previous_rows:
+        st.subheader("Change vs previous run")
+        st.dataframe(
+            compare_metric_averages(previous_rows, rows),
+            use_container_width=True,
+            hide_index=True,
+        )
+    failed_rows = [row for row in rows if row.get("status") == "error"]
+    if failed_rows:
+        with st.expander(f"Failed cases ({len(failed_rows)})", expanded=False):
+            st.dataframe(
+                [
+                    {
+                        "case": row.get("case"),
+                        "query": row.get("query"),
+                        "error": row.get("error"),
+                    }
+                    for row in failed_rows
+                ],
+                use_container_width=True,
+                hide_index=True,
+            )
+    e1, e2 = st.columns(2)
+    e1.download_button(
+        "Download job JSON",
+        data=job_export_json(snap),
+        file_name=job_export_filename(snap, "json"),
+        mime="application/json",
+        key=f"eval_job_export_json::{job_id}",
+    )
+    e2.download_button(
+        "Download case matrix CSV",
+        data=job_export_csv(snap),
+        file_name=job_export_filename(snap, "csv"),
+        mime="text/csv",
+        key=f"eval_job_export_csv::{job_id}",
+    )
+
+
+def _eval_jobs_panel_body(api: ApiClient) -> None:
+    store = get_job_store()
+    history = store.list()
+    if not history:
+        st.info(
+            "No evaluation jobs yet. Pick a dataset above and start a background job."
+        )
+        return
+    snaps = [job.snapshot() for job in history]
+    with st.expander(f"Job history ({len(snaps)}) - newest first", expanded=False):
+        st.dataframe(job_history_rows(snaps), use_container_width=True, hide_index=True)
+
+    def _focus_job() -> None:
+        st.session_state.eval_job_id = st.session_state.get("eval_job_history_select") or ""
+
+    job_ids = [snap["job_id"] for snap in snaps]
+    labels = {
+        snap["job_id"]: (
+            f"{snap['label']} - {snap['status']} ({snap['done']}/{snap['total']})"
+        )
+        for snap in snaps
+    }
+    focused = _eval_job_focus_id(store)
+    index = job_ids.index(focused) if focused in job_ids else 0
+    st.selectbox(
+        "View job",
+        job_ids,
+        index=index,
+        format_func=lambda job_id: labels.get(job_id, job_id),
+        key="eval_job_history_select",
+        on_change=_focus_job,
+    )
+    _render_eval_job_detail(store, api, focused)
+
+    active = any(snap["status"] in ACTIVE_STATUSES for snap in snaps)
+    if active and not hasattr(st, "fragment"):
+        if st.button("Refresh", key="eval_job_refresh"):
+            st.rerun()
+
+
+_EVAL_JOBS_FRAGMENT: Optional[Any] = None
+if hasattr(st, "fragment"):
+    _EVAL_JOBS_FRAGMENT = st.fragment(run_every=1.0)(_eval_jobs_panel_body)
+
+
+def _render_eval_jobs(api: ApiClient) -> None:
+    """Render the jobs panel; auto-refreshing fragment when supported."""
+    if _EVAL_JOBS_FRAGMENT is not None:
+        _EVAL_JOBS_FRAGMENT(api)
+    else:
+        _eval_jobs_panel_body(api)
+
+
 def screen_evaluation() -> None:
     st.header("Evaluation")
     api = client()
@@ -1028,10 +1242,13 @@ def screen_evaluation() -> None:
                 )
 
     st.divider()
-    st.subheader("Dataset evaluation")
+    st.subheader("Dataset evaluation (background jobs)")
     st.caption(
-        "Run every dataset case through `POST /v1/query` and then score the answer with "
-        "`POST /v1/evaluate`. A failing case is reported without stopping the run."
+        "Each dataset case runs `POST /v1/query` and then `POST /v1/evaluate` in a "
+        "background job, so the console stays usable. Progress, per-case failure "
+        "isolation, cancellation (effective between cases), retry of failed cases, "
+        "resume of unfinished cases, partial results and export are supported. Jobs "
+        "survive a page refresh within this console process."
     )
     source_options = ("Built-in benchmark", "Paste JSON")
     _ensure_choice("evaluation_dataset_source", list(source_options))
@@ -1062,14 +1279,16 @@ def screen_evaluation() -> None:
             st.error(str(exc))
 
     if cases:
-        if len(cases) > MAX_DATASET_CASES:
-            st.caption(f"Only the first {MAX_DATASET_CASES} cases will run.")
+        if len(cases) > MAX_JOB_CASES:
+            st.caption(f"Only the first {MAX_JOB_CASES} cases will run.")
         with st.expander("Preview cases"):
             st.dataframe(
-                dataset_preview_rows(cases[:MAX_DATASET_CASES]),
+                dataset_preview_rows(cases[:MAX_PREVIEW_ROWS]),
                 use_container_width=True,
                 hide_index=True,
             )
+            if len(cases) > MAX_PREVIEW_ROWS:
+                st.caption(f"Preview shows the first {MAX_PREVIEW_ROWS} of {len(cases)} cases.")
         dataset_col, top_k_col = st.columns([1, 1])
         _ensure_choice("dataset_evaluator", options)
         with dataset_col:
@@ -1082,68 +1301,29 @@ def screen_evaluation() -> None:
             )
         st.caption(ground_truth_hint(dataset_evaluator))
 
-        if st.button("Run dataset evaluation", key="eval_dataset_run"):
-            progress = st.progress(0.0)
-
-            def _progress(done: int, total: int) -> None:
-                progress.progress(done / max(total, 1))
-
-            with st.spinner("Running dataset..."):
-                dataset_rows = run_dataset_evaluation(
+        label = (
+            "Built-in benchmark"
+            if source == "Built-in benchmark"
+            else f"Pasted dataset ({min(len(cases), MAX_JOB_CASES)} cases)"
+        )
+        if st.button("Start background job", key="eval_job_start", type="primary"):
+            try:
+                job = get_job_store().submit(
+                    label,
                     cases,
                     api,
                     evaluator=dataset_evaluator,
                     top_k=dataset_top_k,
-                    on_progress=_progress,
+                    source=source,
                 )
-            st.session_state.dataset_evaluation_previous = (
-                st.session_state.get("dataset_evaluation_rows") or []
-            )
-            st.session_state.dataset_evaluation_rows = dataset_rows
-            progress.empty()
+            except ValueError as exc:
+                st.error(str(exc))
+            else:
+                st.session_state.eval_job_id = job.job_id
+                st.session_state.last_evaluation_at = "completed"
+                st.rerun()
 
-        dataset_rows = st.session_state.get("dataset_evaluation_rows") or []
-        if dataset_rows:
-            succeeded = sum(1 for row in dataset_rows if row.get("status") == "ok")
-            failed = len(dataset_rows) - succeeded
-            c1, c2, c3 = st.columns(3)
-            c1.metric("Cases", len(dataset_rows))
-            c2.metric("Succeeded", succeeded)
-            c3.metric("Failed", failed)
-            st.dataframe(
-                metric_matrix(dataset_rows), use_container_width=True, hide_index=True
-            )
-            summary = metric_summary(dataset_rows)
-            if summary:
-                st.bar_chart(summary)
-                st.dataframe(
-                    [{"metric": key, "average": value} for key, value in summary.items()],
-                    use_container_width=True,
-                    hide_index=True,
-                )
-            previous_rows = st.session_state.get("dataset_evaluation_previous") or []
-            if previous_rows:
-                st.subheader("Change vs previous dataset run")
-                st.dataframe(
-                    compare_metric_averages(previous_rows, dataset_rows),
-                    use_container_width=True,
-                    hide_index=True,
-                )
-            failed_rows = [row for row in dataset_rows if row.get("status") == "error"]
-            if failed_rows:
-                with st.expander("Failed cases"):
-                    st.dataframe(
-                        [
-                            {
-                                "case": row.get("case"),
-                                "query": row.get("query"),
-                                "error": row.get("error"),
-                            }
-                            for row in failed_rows
-                        ],
-                        use_container_width=True,
-                        hide_index=True,
-                    )
+    _render_eval_jobs(api)
 
     st.divider()
     st.subheader("Comparison matrix")

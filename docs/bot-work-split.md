@@ -1,10 +1,10 @@
 # Bot work split (H4 / current open items)
 
-Reconciled 2026-11-09 from `origin/main` @ `4306af4` (before the UX17 PR). No open PRs.
+Reconciled 2026-11-11 from `origin/main` @ `e78ba03` (after #175/#162 merged). No open PRs.
 
-Open items at reconciliation: umbrella **#43**; Workstream M UX **#152-#158**;
-Workstream B redaction bug **#162**; Workstream J backend approval queue **#175**.
-**#164 (UX17)** is delivered by this branch/PR. Re-check open issues and PRs before each item.
+Open items at reconciliation: umbrella **#43**; Workstream M UX **#153-#158**.
+Workstream B redaction **#162** and Workstream J backend queue **#175** are closed.
+Re-check open issues and PRs before each item.
 
 ## Bot identities
 
@@ -23,31 +23,30 @@ Workstream B redaction bug **#162**; Workstream J backend approval queue **#175*
 
 | Order | Item | Notes |
 |---|---|---|
-| 1 | **#175 J - HITL approvals API queue contract** (H4) | Server-side pagination/filter/sort/tenant scope behind the existing `/v1/approvals` routes. Unblocks true at-scale queue behavior in the console (#164 is UI-only). |
-| 2 | **#162 B - generic redaction fallback** (H4) | Redaction currently misses unknown secret shapes. Security-sensitive; coordinate with `core/services`/observability owners. |
-| 3 | **Backend support for UX where agreed** | Prefer bot-win owns the `ui/` surface. Take narrowly-scoped backend contracts only after agreeing in the issue (e.g. #152 jobs API). |
-| 4 | **Roadmap/docs reconciliation** | Small post-merge doc PRs; avoid concurrent edits to the same files. |
+| 1 | **Backend support for UX where agreed** | Prefer bot-win owns the `ui/` surface. Take narrowly-scoped backend contracts only after agreeing in the issue (e.g. a jobs API if #152's UI-side execution ever needs server-side scale). |
+| 2 | **Roadmap/docs reconciliation** | Small post-merge doc PRs; avoid concurrent edits to the same files. |
 
 Completed by this workstream since the last split: #121 hybrid policy registry, #122 CEL
 evaluator + bundles, #123 HITL workflow, #124 eval dataset schema/loaders, #125 CI
 regression gates, #126 eval dashboard metrics, #127 golden paths, #128 `genai init`,
-#129 onboarding guide.
+#129 onboarding guide, #162 generic redaction fallback, #175 HITL approvals queue
+contract (server-side pagination/filter/sort/tenant scope).
 
 ## Work items for enterprise-gen-ai-bot-win — UX/console and docs polish
 
 | Order | Item | Notes |
 |---|---|---|
-| 1 | **#152 UX9 - Background evaluation jobs** (H4, P0) | UX contract + state; may need agreed backend slice from bot-uni. |
-| 2 | **#153 UX10 - Dataset Studio authoring** (H4, P1) | Align schema with delivered #124 loaders. |
-| 3 | **#154 UX11 - Cross-link and compare operational evidence** (H4, P1) | Trace/audit/metrics/governance links and two-trace diff; #164 deliberately left broader navigation here. |
-| 4 | **#155 UX12 - Command palette + WCAG 2.2 AA** (H4, P1) | A11y/UI shell. |
-| 5 | **#156 UX13 - Responsive/compact/themes** (H4, P2) | UI polish. |
-| 6 | **#157 UX14 - Role journeys + demo mode** (H4, P2) | Onboarding experience. |
-| 7 | **#158 UX15 - Collaboration and feedback** (H4, P2) | UI feature. |
-| 8 | **Roadmap/docs reconciliation** | Low-risk docs sync after merges. |
+| 1 | **#153 UX10 - Dataset Studio authoring** (H4, P1) | Align schema with delivered #124 loaders. |
+| 2 | **#154 UX11 - Cross-link and compare operational evidence** (H4, P1) | Trace/audit/metrics/governance links and two-trace diff; #164 deliberately left broader navigation here. |
+| 3 | **#155 UX12 - Command palette + WCAG 2.2 AA** (H4, P1) | A11y/UI shell. |
+| 4 | **#156 UX13 - Responsive/compact/themes** (H4, P2) | UI polish. |
+| 5 | **#157 UX14 - Role journeys + demo mode** (H4, P2) | Onboarding experience. |
+| 6 | **#158 UX15 - Collaboration and feedback** (H4, P2) | UI feature. |
+| 7 | **Roadmap/docs reconciliation** | Low-risk docs sync after merges. |
 
 Completed by this workstream since the last split: #130-#136, #145, #151 (workspace/deep
-links), #163 (HITL review console) and #164 (queue operations/SLA/safe export).
+links), #152 (background evaluation jobs), #163 (HITL review console) and #164 (queue
+operations/SLA/safe export).
 
 ## Suggested operating rules (to avoid collisions)
 
