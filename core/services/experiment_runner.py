@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence, Union
+from typing import Any, Dict, List, Mapping, Optional, Sequence, Union
 
 from core.implementations.chunker import ChunkerFactory
 from core.interfaces.retriever import Document
@@ -114,6 +114,8 @@ class ExperimentRunner:
         )
 
         pipeline_result = pipeline.run(query)
+        cost = pipeline_result.get("cost") or {}
+        latency = pipeline_result.get("latency") or {}
 
         return {
             "query": query,
@@ -128,8 +130,159 @@ class ExperimentRunner:
             "retrieved_documents": pipeline_result.get("retrieved_docs", []),
             "retrieval_scores": pipeline_result.get("retrieval_scores", []),
             "metrics": pipeline_result.get("metrics", {}),
-            "latency": pipeline_result.get("latency", {}),
+            "cost": cost,
+            "cost_usd": self._cost_usd(cost),
+            "latency": latency,
+            "latency_summary": self._latency_summary(latency),
             "observability": pipeline_result.get("observability", {}),
+        }
+
+    # ------------------------------------------------------------------
+    # Cost / latency reporting (issue #179)
+    # ------------------------------------------------------------------
+    QUALITY_METRIC_PRIORITY = (
+        "context_recall",
+        "context_precision",
+        "answer_correctness",
+        "ground_truth_similarity",
+        "answer_relevance",
+        "faithfulness",
+    )
+
+    @staticmethod
+    def _cost_usd(cost: Any) -> float:
+        """Return the estimated USD cost from a pipeline cost dict."""
+        if not isinstance(cost, dict):
+            return 0.0
+        try:
+            return float(cost.get("estimated_cost_usd") or 0.0)
+        except (TypeError, ValueError):
+            return 0.0
+
+    @staticmethod
+    def _latency_summary(latency: Any) -> Dict[str, Any]:
+        """Return a stable latency summary from the pipeline's flat latency dict."""
+        empty: Dict[str, Any] = {
+            "total_ms": 0.0,
+            "stages": {},
+            "slowest_stage": None,
+            "slowest_stage_ms": 0.0,
+        }
+        if not isinstance(latency, dict):
+            return empty
+        stages: Dict[str, float] = {}
+        for key, value in latency.items():
+            if not isinstance(value, (int, float)):
+                continue
+            # The report contains both ``stage`` and ``stage_ms`` aliases plus
+            # ``total_*`` keys; keep only the canonical stage values.
+            if key.endswith("_ms") or str(key).startswith("total"):
+                continue
+            stages[str(key)] = float(value)
+        total = latency.get("total_ms", latency.get("total_pipeline_ms", 0.0))
+        try:
+            total_ms = float(total or 0.0)
+        except (TypeError, ValueError):
+            total_ms = 0.0
+        slowest_stage: Optional[str] = None
+        slowest_ms = 0.0
+        for stage, ms in stages.items():
+            if ms > slowest_ms:
+                slowest_stage, slowest_ms = stage, ms
+        return {
+            "total_ms": total_ms,
+            "stages": stages,
+            "slowest_stage": slowest_stage,
+            "slowest_stage_ms": slowest_ms,
+        }
+
+    @classmethod
+    def summarize_run(cls, run: Mapping[str, Any]) -> Dict[str, Any]:
+        """Return a compact cost/latency/quality summary for one experiment run."""
+        metrics = run.get("metrics") or {}
+        quality: Dict[str, float] = {}
+        if isinstance(metrics, dict):
+            for key, value in metrics.items():
+                if isinstance(value, (int, float)) and not isinstance(value, bool):
+                    quality[str(key)] = float(value)
+        latency_summary = run.get("latency_summary")
+        total_latency: Optional[float] = None
+        if isinstance(latency_summary, dict):
+            candidate = latency_summary.get("total_ms")
+            if isinstance(candidate, (int, float)):
+                total_latency = float(candidate)
+        if total_latency is None:
+            latency = run.get("latency")
+            if isinstance(latency, dict) and isinstance(latency.get("total_ms"), (int, float)):
+                total_latency = float(latency["total_ms"])
+        return {
+            "cost_usd": cls._cost_usd(run.get("cost")),
+            "total_latency_ms": total_latency or 0.0,
+            "quality": quality,
+        }
+
+    @classmethod
+    def _primary_quality_metric(
+        cls, summaries: Mapping[str, Mapping[str, Any]]
+    ) -> Optional[str]:
+        available: set[str] = set()
+        for summary in summaries.values():
+            quality = summary.get("quality")
+            if isinstance(quality, Mapping):
+                available.update(str(key) for key in quality)
+        for metric in cls.QUALITY_METRIC_PRIORITY:
+            if metric in available:
+                return metric
+        return sorted(available)[0] if available else None
+
+    @classmethod
+    def summarize_comparison(cls, runs: Mapping[str, Mapping[str, Any]]) -> Dict[str, Any]:
+        """Aggregate per-run cost/latency/quality for a comparison."""
+        summaries = {name: cls.summarize_run(run) for name, run in runs.items()}
+        quality_metric = cls._primary_quality_metric(summaries)
+
+        best_quality: Optional[Dict[str, Any]] = None
+        if quality_metric:
+            ranked = sorted(
+                (
+                    (name, summary["quality"][quality_metric])
+                    for name, summary in summaries.items()
+                    if summary["quality"].get(quality_metric) is not None
+                ),
+                key=lambda item: (-float(item[1]), item[0]),
+            )
+            if ranked:
+                name, value = ranked[0]
+                best_quality = {
+                    "name": name,
+                    "value": float(value),
+                    "metric": quality_metric,
+                }
+
+        cheapest: Optional[Dict[str, Any]] = None
+        fastest: Optional[Dict[str, Any]] = None
+        if summaries:
+            cheap_name = min(summaries, key=lambda n: (summaries[n]["cost_usd"], n))
+            cheapest = {"name": cheap_name, "cost_usd": summaries[cheap_name]["cost_usd"]}
+            fast_name = min(summaries, key=lambda n: (summaries[n]["total_latency_ms"], n))
+            fastest = {
+                "name": fast_name,
+                "total_latency_ms": summaries[fast_name]["total_latency_ms"],
+            }
+
+        count = len(summaries)
+        total_cost = sum(summary["cost_usd"] for summary in summaries.values())
+        total_latency = sum(summary["total_latency_ms"] for summary in summaries.values())
+        return {
+            "runs": summaries,
+            "count": count,
+            "total_cost_usd": total_cost,
+            "avg_cost_usd": (total_cost / count) if count else 0.0,
+            "avg_total_latency_ms": (total_latency / count) if count else 0.0,
+            "quality_metric": quality_metric,
+            "best_quality": best_quality,
+            "cheapest": cheapest,
+            "fastest": fastest,
         }
 
     def compare_embedding_models(
@@ -159,6 +312,7 @@ class ExperimentRunner:
             "query": query,
             "models_compared": target_models,
             "results": runs,
+            "summary": self.summarize_comparison(runs),
         }
 
     def compare_chunking_strategies(
@@ -185,6 +339,7 @@ class ExperimentRunner:
             "query": query,
             "strategies_compared": list(strategies),
             "results": runs,
+            "summary": self.summarize_comparison(runs),
         }
 
 

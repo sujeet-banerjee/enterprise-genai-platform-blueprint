@@ -889,6 +889,16 @@ Evaluation can be toggled off via `evaluation.enabled: false`, in which case the
 `EvaluatorRegistry` returns a `NullEvaluator` that emits empty metrics at zero cost. This keeps
 the pipeline fully functional in passive/shadow mode.
 
+### Experiment comparisons
+
+`ExperimentRunner` (used by `POST /v1/experiments`) runs the same composition root as
+production, so every run carries the pipeline's `cost` block and stage latency. Results now
+include `cost`, `cost_usd` and a compact `latency_summary` (total ms, per-stage ms, slowest
+stage), and `compare_embedding_models` / `compare_chunking_strategies` add a `summary` block
+with per-run cost/latency/quality plus the best-quality, cheapest and fastest candidates
+(issue #179). This is the telemetry consumed by budget-aware regression gates (#180) and the
+config sweep (#181).
+
 ---
 
 # 11. Cost Transparency
