@@ -143,7 +143,7 @@ the lifespan startup hook (not at import). Endpoints:
 - `GET /v1/config` - redacted effective configuration
 - `GET /v1/models`, `/v1/embedding-models`, `/v1/retrievers`, `/v1/rerankers`, `/v1/evaluators` - introspection
 - `GET /v1/guardrails` - resolved input/output guardrail chains (previewable while disabled)
-- `GET /v1/approvals`, `GET /v1/approvals/{request_id}`, `POST /v1/approvals/{request_id}/decision` - HITL approval queue and approve/reject decisions (off by default; requires the `approve` capability)
+- `GET /v1/approvals`, `GET /v1/approvals/{request_id}`, `POST /v1/approvals/{request_id}/decision` - HITL approval queue (paginated + server-side filters/sort, tenant-scoped) and approve/reject decisions (off by default; requires the `approve` capability)
 - `POST /v1/evaluate` - run an evaluator on a query/response
 - `POST /v1/experiments` / `GET /v1/experiments/{exp_id}` - launch and poll experiments
 - `POST /v1/pipeline:rebuild` - runtime component swap via config overrides (gated by `api.allow_rebuild`)
