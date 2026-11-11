@@ -241,7 +241,7 @@ def test_evaluation_screen_wires_dataset_workflow():
         "Dataset evaluation",
         "load_benchmark_cases",
         "parse_dataset_json",
-        "run_dataset_evaluation",
+        "get_job_store",
         "metric_matrix",
         "metric_summary",
         "compare_metric_averages",

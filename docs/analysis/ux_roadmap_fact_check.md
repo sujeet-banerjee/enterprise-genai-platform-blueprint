@@ -1,11 +1,12 @@
 # UX Roadmap Fact-Check & Plan
 
-*Updated 2026-11-07. Streamlit console at `ui/`, HTTP-only, API-driven.*
+*Updated 2026-11-11. Streamlit console at `ui/`, HTTP-only, API-driven.*
 
-> **Status: UX1-UX8 delivered and closed.** Workstream M (UX polish) shipped in
-> #130-#136, with the Evaluation dataset-runner follow-up #145 and persistent
-> workspace/deep links #151. This document now (a) records the delivered state, and
-> (b) tracks the remaining next UX/UI tranche, **UX9-UX15**, opened as #152-#158 and
+> **Status: UX1-UX9 delivered and closed.** Workstream M (UX polish) shipped in
+> #130-#136, with the Evaluation dataset-runner follow-up #145, persistent
+> workspace/deep links #151 and background evaluation jobs #152. This document now
+> (a) records the delivered state, and
+> (b) tracks the remaining next UX/UI tranche, **UX10-UX15**, opened as #153-#158 and
 > mapped to Project #8 Workstream M.
 
 ## Assessment: "Don't make me think"
@@ -22,9 +23,10 @@
 - **Query Studio**: six task templates, bounded session history, restore/clear,
   Compare with last run, six result tabs (Answer, Documents, Trace, Guardrails,
   Resilience, Cache), and copy/share/download.
-- **Evaluation**: built-in benchmark or pasted dataset execution, per-case failure
-  isolation, case-by-metric matrix, averages, delta vs the previous run, evaluator
-  dropdown and ground-truth guidance.
+- **Evaluation**: built-in benchmark or pasted dataset execution as background jobs
+  (live progress, cancel, retry/resume, partial results, 200-case cap, export),
+  per-case failure isolation, case-by-metric matrix, averages, delta vs the previous
+  run, evaluator dropdown and ground-truth guidance.
 - **Observability**: trace timeline/waterfall, span filtering, redaction-safe view,
   OTel context, latency/cost/failure correlations.
 - **Governance and security**: time-range and tenant/app/user filters, alerts
@@ -70,20 +72,21 @@
 | UX6 | Admin/tenancy safety UX | #135 | Shipped 2026-11-05 | `ui/admin.py`, `tests/test_ui_admin_safety.py` |
 | UX7 | Polish, a11y, empty states | #136 | Shipped 2026-11-05 | `ui/polish.py`, `tests/test_ui_polish.py` |
 | UX8 | Persistent workspace and shareable deep links | #151 | Shipped 2026-11-07 | `ui/workspace.py`, `tests/test_ui_workspace.py`, workspace URL/sync wiring in `ui/app.py` |
+| UX9 | Background evaluation jobs | #152 | Shipped 2026-11-11 | `ui/eval_jobs.py`, `tests/test_ui_eval_jobs.py`, jobs panel + auto-refresh fragment in `ui/app.py` |
 
 The delivered scope is also recorded in `docs/ux-and-api.md` section 6 and the
 delivery record in section 7.
 
-## New UX/UI proposals (UX9-UX15 opened; UX8 delivered)
+## New UX/UI proposals (UX10-UX15 opened; UX8/UX9 delivered)
 
-UX8 (#151) is delivered. UX9-UX15 remain opened as #152-#158. Tracking: label `ux`,
-link to umbrella #43, Project #8 **Workstream M**, milestone **H4**, and keep the
+UX8 (#151) and UX9 (#152) are delivered. UX10-UX15 remain opened as #153-#158. Tracking:
+label `ux`, link to umbrella #43, Project #8 **Workstream M**, milestone **H4**, and keep the
 HTTP-only rule plus AST/client tests for every change.
 
 | ID | Proposal | Priority | User problem | Key deliverables | Acceptance | Dependencies |
 |---|---|---|---|---|---|---|
 | UX8 (#151, **shipped**) | Persistent workspace and shareable deep links | P0 | Reloading or sharing a screen loses query history, filters, selected runs, datasets and comparisons. | URL state for screen/request id/tenant/filters; saved views and saved runs; recent-runs panel; copy-link; export/import workspace JSON. | Reload resumes the same screen and filters; a deep link reproduces a trace or governance view; no secrets in URLs; bounded saved-item cap. | Possible `/v1/runs` list or client-side persistence; URL/state contract. |
-| UX9 (#152) | Background evaluation jobs with progress, cancel and resume | P0 | Dataset runs block the UI, stop at 20 cases, and cannot be cancelled or resumed after a failure. | Job submission, per-case progress, cancel, retry failed cases, partial results, job history, >20-case runs, export. | 100-case run stays responsive; cancel takes effect within one case; resume retries only failures; results survive refresh; failures remain isolated. | Backend job/queue or an extension of `/v1/experiments`; HTTP-only client. |
+| UX9 (#152, **shipped**) | Background evaluation jobs with progress, cancel and resume | P0 | Dataset runs block the UI, stop at 20 cases, and cannot be cancelled or resumed after a failure. | Job submission, per-case progress, cancel, retry failed cases, partial results, job history, >20-case runs, export. | 100-case run stays responsive; cancel takes effect within one case; resume retries only failures; results survive refresh; failures remain isolated. | Delivered UI-side (`ui/eval_jobs.py` + console panel); a backend job/queue API remains optional follow-up. |
 | UX10 (#153) | Dataset Studio authoring | P1 | Users must hand-write JSON; there is no way to edit cases, references, docs, tags or validation errors in the console. | Case table editor; add/remove/reorder; document editor; reference/GT field; tags; inline validation; preview; import/export; save/duplicate. | Author a 20-case/10-doc dataset without JSON; validation is inline; export round-trips; no secrets or raw config leakage. | UX8 saved datasets; optional dataset persistence API. |
 | UX11 (#154) | Cross-link and compare operational evidence | P1 | Trace, audit, metrics and governance views are disconnected; comparing two requests is manual. | Universal request-id search/copy; trace -> audit -> metrics -> governance links; two-trace side-by-side diff; saved filter context; evidence-pack export. | Reach audit/metrics from a trace in <=2 clicks; trace diff highlights stage latency/failure/document/guardrail deltas; links preserve tenant/role scope. | Possible audit filter by request id; trace search/list endpoint. |
 | UX12 (#155) | Command palette and accessibility hardening | P1 | Navigation is mouse-first; keyboard/screen-reader flows and WCAG 2.2 AA are not formally verified. | Ctrl/Cmd+K palette for screens, request ids, tenants and actions; shortcuts and help overlay; skip link; focus states; ARIA labels; reduced motion; contrast fixes; WCAG checklist. | All primary flows work keyboard-only; no critical/serious automated a11y findings; usable at 200% zoom; palette actions are keyboard-completable. | UX8 for deep-link targets. |
@@ -94,7 +97,7 @@ HTTP-only rule plus AST/client tests for every change.
 ### Recommended execution order
 
 1. **UX8** - persistence and deep links unlock the rest. **Done (#151).**
-2. **UX9** - removes the biggest evaluation workflow blocker.
+2. **UX9** - removes the biggest evaluation workflow blocker. **Done (#152).**
 3. **UX12** - accessibility and keyboard access are enterprise adoption gates.
 4. **UX10** - dataset authoring turns evaluation into a repeatable workflow.
 5. **UX11** - cross-object evidence reduces debugging time.
@@ -115,5 +118,5 @@ HTTP-only rule plus AST/client tests for every change.
 
 UX1-UX7 turned the console from a functional API demo into a role-aware, guided
 workflow surface. The next tranche should make it persistent, asynchronous,
-accessible and collaborative: UX8 and UX9 are the highest-value changes, with UX12
-as the enterprise accessibility gate.
+accessible and collaborative: UX8 and UX9 (persistence, background jobs) are now
+delivered, leaving UX12 as the enterprise accessibility gate.

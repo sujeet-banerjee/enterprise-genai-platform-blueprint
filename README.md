@@ -196,9 +196,14 @@ the redacted trail (`limit`/`event_type` filters) and **Access / RBAC** shows th
 persona's role/capabilities. The
 **Evaluation** screen adds a dataset picker (built-in benchmark summary or custom
 query/response), ground-truth guidance, metric explanations and a run comparison matrix. Its
-**Dataset evaluation** panel executes every built-in or pasted case through `/v1/query` and
-`/v1/evaluate`, isolates per-case failures, and shows a case-by-metric matrix, average-score
-bar chart and delta against the previous run. **Traces** renders a stage timeline/waterfall;
+**Dataset evaluation** panel runs every built-in or pasted case as a **background job**
+(#152): each case still goes through `/v1/query` and `/v1/evaluate` with per-case failure
+isolation, but the console stays responsive for datasets up to 200 cases. The job panel
+auto-refreshes with live progress, cancellation that takes effect between cases,
+**Retry failed cases**, **Resume unfinished cases** (retry results overlay the original
+rows), a bounded job history, a case-by-metric matrix, average-score chart, delta against
+the previous run and JSON/CSV export. Jobs survive a page refresh within the console
+process and are deep-linkable via the workspace (`eval_job` parameter). **Traces** renders a stage timeline/waterfall;
 **Governance & Cost** adds time/tenant/app/user filters, alert previews and CSV/JSON export;
 **Admin** adds scope indicators, confirmation prompts and audit export. API failures render as
 the failure taxonomy plus a remediation hint (`failure_type` + `failure_tags`), not stack
@@ -282,10 +287,13 @@ in `config/retrieval.yaml` under `evaluation.active_evaluator`.
    this explicitly.
 
    **Dataset evaluation** (same screen): choose **Built-in benchmark** or **Paste JSON**,
-   pick the evaluator and `top_k`, then click **Run dataset evaluation**. Each case calls
+   pick the evaluator and `top_k`, then click **Start background job**. Each case calls
    `/v1/query` and scores its answer with `/v1/evaluate`; a failed case is listed without
-   stopping the run. Results include a case-by-metric matrix, average-score bar chart and a
-   delta table against the previous dataset run.
+   stopping the job. The job panel refreshes automatically while it runs: watch live
+   progress, cancel it (stops after the current case), retry just the failed cases or
+   resume the unfinished ones after a cancel - retried rows overlay the originals. Results
+   include a case-by-metric matrix, average-score bar chart, a delta table against the
+   previous run and JSON/CSV export; the focused job is kept in the workspace URL.
 
 5. **Compare embedding models / chunking** (same *Evaluation* screen, **Launch experiment**).
    - **kind**: `compare_embedding_models` (or `compare_chunking_strategies`).
