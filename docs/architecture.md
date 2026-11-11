@@ -684,6 +684,9 @@ regexes) plus an **optional** pluggable classifier (`classifier`, default
 The `pii` provider detects personal data with deterministic regexes (email,
 phone, credit card — **Luhn validated**, national id, IPv4/IPv6) and an
 **optional** NER detector (`ner.enabled`, e.g. spaCy) for names and addresses.
+`national_id` covers US SSN, India PAN and Aadhaar (Verhoeff checksum) and UK
+National Insurance by default; `national_id_patterns` replaces those built-ins
+with an operator scheme.
 Overlaps are resolved by class priority, so a card number is never split into
 phone-like fragments.
 
