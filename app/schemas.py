@@ -285,7 +285,12 @@ class ApprovalRequestResponse(BaseModel):
     reason: str = ""
     context: Dict[str, Any] = {}
     policy: Dict[str, Any] = {}
+    tenant: Optional[str] = None
+    requester: Optional[str] = None
+    workspace: Optional[str] = None
+    app: Optional[str] = None
     created_at: float
+    updated_at: Optional[float] = None
     decided_at: Optional[float] = None
     decided_by: Optional[str] = None
     decision_note: Optional[str] = None
@@ -294,6 +299,12 @@ class ApprovalRequestResponse(BaseModel):
 class ApprovalListResponse(BaseModel):
     enabled: bool = False
     count: int = 0
+    total: int = 0
+    page: int = 1
+    page_size: int = 50
+    pages: int = 0
+    sort_by: str = "created_at"
+    order: str = "desc"
     requests: List[ApprovalRequestResponse] = []
     request_id: Optional[str] = None
 

@@ -129,7 +129,7 @@ Legend: **[E]**xisting. Every row is asserted by `tests/test_api_contract.py`
 | 10e | `GET /v1/admin/tenants` | Admin | tenant list with policy/limits; requires the `admin` (or `rebuild`) capability (#57) |
 | 10f | `POST /v1/admin/tenants/{tenant_id}` | Admin | apply a tenant policy update (budget cap etc.); returns the updated tenant list (#57) |
 | 10g | `GET /v1/admin/users` | Admin | identity/SCIM directory users; empty when identity is disabled (#57) |
-| 10h | `GET /v1/approvals`, `GET /v1/approvals/{request_id}`, `POST /v1/approvals/{request_id}/decision` | Governance / HITL | config-driven HITL approval workflow (off by default): list/get requests, submit approve/reject decisions; emits `policy/approval_decision` audit events (#123) |
+| 10h | `GET /v1/approvals`, `GET /v1/approvals/{request_id}`, `POST /v1/approvals/{request_id}/decision` | Governance / HITL | config-driven HITL approval workflow (off by default): paginated list (`page`/`page_size`, bounded by `api.approvals_page_size_max`) with server-side filters (`status`, `action`, `policy`, `requester`, `tenant`, created/updated ranges), deterministic `sort_by`/`order`, tenant scoping; get requests, submit approve/reject decisions; emits `policy/approval_decision` audit events (#123, #175) |
 | 11 | `POST /v1/evaluate` | Evaluation | active or named evaluator; auto-retrieval; ground truth only when supported |
 | 11a | `GET /v1/eval/trends` | Evaluation | metric trend series/summaries over recent eval points (tenant-scoped) |
 | 11b | `GET /v1/eval/alerts` | Evaluation | regression alerts derived from `eval_datasets.regression` thresholds (firing/warning/critical) |

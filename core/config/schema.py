@@ -230,6 +230,7 @@ class ApiConfig(_StrictModel):
     trace_store_max: Optional[int] = None
     max_batch_size: Optional[int] = None
     batch_max_workers: Optional[int] = None
+    approvals_page_size_max: Optional[int] = None
 
 
 # -- audit.yaml ----------------------------------------------------------

@@ -266,6 +266,7 @@ def create_app(
     allow_rebuild = bool(api_config.get("allow_rebuild", False))
     max_batch_size = int(api_config.get("max_batch_size", 25))
     batch_max_workers = int(api_config.get("batch_max_workers", 4))
+    approvals_page_size_max = int(api_config.get("approvals_page_size_max", 100))
 
     access_config = _load_config(access_control_config_path) or {}
     access_controller = AccessController.from_config(access_config)
@@ -410,6 +411,7 @@ def create_app(
     application.state.tenants = tenant_resolver
     application.state.identity = identity_resolver
     application.state.access = access_controller
+    application.state.approvals_page_size_max = approvals_page_size_max
 
     def _path_capability(path: str) -> Optional[str]:
         """Map a request path to the capability required to access it (issue #29).

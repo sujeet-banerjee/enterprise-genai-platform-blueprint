@@ -24,3 +24,8 @@ max_batch_size: 25
 # Thread-pool concurrency cap for parallel batches (POST /v1/query:batch with
 # ``parallel: true``; issue #27). Request ``max_workers`` is clamped to this.
 batch_max_workers: 4
+
+# Upper bound for ``page_size`` on the HITL approvals queue (issue #175).
+# ``GET /v1/approvals`` rejects larger pages with a 400 ``approval_invalid``
+# envelope; the default page size is 50.
+approvals_page_size_max: 100
