@@ -31,6 +31,7 @@ from ui.approvals import (
     PAGE_SIZE_OPTIONS,
     SORT_OPTIONS,
 )
+from ui.dataset_studio import normalize_saved_datasets
 from ui.navigation import can_access, landing_screen
 
 WORKSPACE_VERSION = 1
@@ -252,7 +253,7 @@ def _normalize_compare(value: Any) -> Dict[str, Any]:
 def _normalize_evaluation(value: Any) -> Dict[str, Any]:
     data = value if isinstance(value, Mapping) else {}
     source = _clean_text(data.get("dataset_source"), 40)
-    if source not in ("Built-in benchmark", "Paste JSON"):
+    if source not in ("Built-in benchmark", "Paste JSON", "Dataset Studio"):
         source = "Built-in benchmark"
     return {
         "query": _clean_text(data.get("query"), MAX_QUERY_CHARS) or DEFAULT_QUERY,
@@ -267,6 +268,7 @@ def _normalize_evaluation(value: Any) -> Dict[str, Any]:
         "dataset_evaluator": _clean_text(data.get("dataset_evaluator"), 80) or "(active)",
         "dataset_top_k": _as_int(data.get("dataset_top_k"), 3, 1, 10),
         "job_id": _clean_id(data.get("job_id")),
+        "datasets": normalize_saved_datasets(data.get("datasets")),
     }
 
 
@@ -531,6 +533,7 @@ def workspace_from_session(
             "dataset_evaluator": state.get("dataset_evaluator"),
             "dataset_top_k": state.get("dataset_top_k"),
             "job_id": state.get("eval_job_id"),
+            "datasets": state.get("saved_datasets"),
         }
     )
     workspace["governance"] = _normalize_governance(
@@ -666,6 +669,7 @@ def apply_workspace(
     state["dataset_evaluator"] = evaluation["dataset_evaluator"]
     state["dataset_top_k"] = evaluation["dataset_top_k"]
     state["eval_job_id"] = evaluation["job_id"]
+    state["saved_datasets"] = copy.deepcopy(evaluation["datasets"])
     state["gov_time_range"] = governance["time_range"]
     state["gov_tenant"] = governance["tenant"]
     state["gov_app"] = governance["app"]
@@ -734,6 +738,7 @@ def _state_defaults() -> Dict[str, Any]:
         "dataset_evaluator": evaluation["dataset_evaluator"],
         "dataset_top_k": evaluation["dataset_top_k"],
         "eval_job_id": evaluation["job_id"],
+        "saved_datasets": [],
         "gov_time_range": governance["time_range"],
         "gov_tenant": governance["tenant"],
         "gov_app": governance["app"],
@@ -987,7 +992,7 @@ def workspace_from_query_params(
         evaluation["dataset_choice"] = _clean_text(value("eval_dataset_choice"), 120)
     if has("eval_dataset_source"):
         source = _clean_text(value("eval_dataset_source"), 40)
-        if source in ("Built-in benchmark", "Paste JSON"):
+        if source in ("Built-in benchmark", "Paste JSON", "Dataset Studio"):
             evaluation["dataset_source"] = source
     if has("eval_dataset_evaluator"):
         evaluation["dataset_evaluator"] = _clean_text(
@@ -1198,6 +1203,7 @@ def _strip_bulk(workspace: Mapping[str, Any]) -> Dict[str, Any]:
     stripped["evaluation"]["dataset_json"] = ""
     stripped["evaluation"]["response"] = ""
     stripped["evaluation"]["ground_truth"] = ""
+    stripped["evaluation"]["datasets"] = []
     stripped["query_studio"]["query"] = stripped["query_studio"]["query"][:500]
     stripped["compare"]["query"] = stripped["compare"]["query"][:500]
     return stripped
