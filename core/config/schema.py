@@ -466,6 +466,24 @@ class EvalDatasetsConfig(_StrictModel):
     regression: EvalDatasetsRegressionConfig = Field(default_factory=EvalDatasetsRegressionConfig)
 
 
+# -- optimization.yaml (issue #181) -------------------------------------
+
+
+class OptimizationObjective(_OpenModel):
+    quality: Optional[str] = None
+    cost_budget_usd: Optional[float] = None
+    latency_budget_ms: Optional[float] = None
+    min_quality: Optional[float] = None
+
+
+class OptimizationConfig(_StrictModel):
+    enabled: bool = False
+    dataset: Optional[str] = None
+    max_combinations: Optional[int] = None
+    parameters: Dict[str, List[Any]] = Field(default_factory=dict)
+    objective: OptimizationObjective = Field(default_factory=OptimizationObjective)
+
+
 
 #: Map of config file stem -> (schema, human label).
 SCHEMAS: Dict[str, Any] = {
@@ -487,4 +505,5 @@ SCHEMAS: Dict[str, Any] = {
     "ingestion": IngestionConfig,
     "policies": PoliciesConfig,
     "eval_datasets": EvalDatasetsConfig,
+    "optimization": OptimizationConfig,
 }
