@@ -1,0 +1,52 @@
+# Showcase benchmark suites (issue #195, Workstream K).
+# Disabled by default: nothing runs unless a harness is invoked explicitly.
+#
+# Datasets are synthetic and committed under `benchmarks/data/` (see its README
+# for schema, provenance and licensing). Suites are bounded by
+# `max_combinations` and, for quick runs, `max_cases`.
+#
+# Run the report generator (issue #196):
+#   python -m app.benchmark_report --suite quick --config-dir config
+enabled: false
+default_suite: showcase
+
+datasets:
+  enterprise-it:
+    path: benchmarks/data/enterprise-it/benchmark.json
+    domain: enterprise-it
+    description: "Identity, RBAC, audit, crypto, resilience, vendor risk and FinOps"
+  product-docs:
+    path: benchmarks/data/product-docs/benchmark.json
+    domain: product-docs
+    description: "Fictional Atlas API platform documentation"
+  support:
+    path: benchmarks/data/support/benchmark.json
+    domain: support
+    description: "Support runbooks and FAQs"
+
+suites:
+  # Full reference run (local models). Bounded so it stays tractable on a CPU.
+  showcase:
+    description: "All three corpora across the core retrieval levers"
+    datasets: [enterprise-it, product-docs, support]
+    max_cases: 0
+    max_combinations: 24
+    parameters:
+      top_k: [3, 5]
+      reranker: [true, false]
+    objective:
+      quality: context_recall
+      cost_budget_usd: 0.01
+      latency_budget_ms: 1500
+
+  # Fast CI profile: dummy providers + a deterministic subset.
+  quick:
+    description: "Bounded subset for CI and smoke runs"
+    datasets: [support]
+    max_cases: 8
+    max_combinations: 4
+    parameters:
+      top_k: [3]
+      reranker: [false]
+    objective:
+      quality: context_recall

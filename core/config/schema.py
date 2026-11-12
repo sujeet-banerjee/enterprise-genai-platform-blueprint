@@ -484,6 +484,31 @@ class OptimizationConfig(_StrictModel):
     objective: OptimizationObjective = Field(default_factory=OptimizationObjective)
 
 
+# -- benchmarks.yaml (issue #195) ---------------------------------------
+
+
+class BenchmarkDatasetSpec(_OpenModel):
+    path: Optional[str] = None
+    domain: Optional[str] = None
+    description: Optional[str] = None
+
+
+class BenchmarkSuite(_OpenModel):
+    description: Optional[str] = None
+    datasets: List[str] = Field(default_factory=list)
+    max_cases: int = 0
+    max_combinations: Optional[int] = None
+    parameters: Dict[str, List[Any]] = Field(default_factory=dict)
+    objective: OptimizationObjective = Field(default_factory=OptimizationObjective)
+
+
+class BenchmarksConfig(_StrictModel):
+    enabled: bool = False
+    default_suite: Optional[str] = None
+    datasets: Dict[str, Union[BenchmarkDatasetSpec, str]] = Field(default_factory=dict)
+    suites: Dict[str, BenchmarkSuite] = Field(default_factory=dict)
+
+
 
 #: Map of config file stem -> (schema, human label).
 SCHEMAS: Dict[str, Any] = {
@@ -506,4 +531,5 @@ SCHEMAS: Dict[str, Any] = {
     "policies": PoliciesConfig,
     "eval_datasets": EvalDatasetsConfig,
     "optimization": OptimizationConfig,
+    "benchmarks": BenchmarksConfig,
 }
