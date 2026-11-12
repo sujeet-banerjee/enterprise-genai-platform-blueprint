@@ -899,6 +899,17 @@ with per-run cost/latency/quality plus the best-quality, cheapest and fastest ca
 (issue #179). This is the telemetry consumed by budget-aware regression gates (#180) and the
 config sweep (#181).
 
+### Budget-aware regression gates
+
+`app.eval_gate` accepts quality floors (`context_precision`, `context_recall`) and budget
+ceilings (`max_cost_per_request_usd`, `max_p95_latency_ms`, `max_avg_latency_ms`,
+`max_total_latency_ms`). Quality metrics are lower bounds; budgets are upper bounds, so a
+config that is cheaper-but-worse or better-but-slower/pricier fails. With
+`--report <experiment-report.json>` the CLI gates a pre-computed experiment/comparison report;
+the IR-benchmark mode is unchanged. A configured metric that is missing from the report fails
+the gate (an unmeasured budget is not proven). CI runs the step unconditionally; it is a no-op
+unless `eval_datasets.regression.enabled: true`.
+
 ---
 
 # 11. Cost Transparency
