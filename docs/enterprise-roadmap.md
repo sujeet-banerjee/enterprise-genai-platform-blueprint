@@ -1,13 +1,14 @@
 # Enterprise Roadmap — From Reference Blueprint to Production AI Platform
 
-> **Status: tracked and partially delivered (reconciled 2026-11-09).** This north star is
+> **Status: tracked and partially delivered (reconciled 2026-11-12).** This north star is
 > tracked by umbrella issue **#43** and the GitHub Project board. H0/H1, Workstream G,
 > Workstream H (ingestion #115-#117), operational DR (#118-#120), workstream M UX
-> polish (#130-#136, #145), UX8 persistence/deep links (#151), policy-as-code
+> polish (#130-#136, #145), UX8 persistence/deep links (#151), UX9 background jobs (#152),
+> UX10 Dataset Studio (#153), UX11 cross-object evidence (#154), policy-as-code
 > (#121-#123), eval expansion/CI gates (#124-#126), golden path templates
 > (#127), the `genai init` scaffolding CLI (#128) and the onboarding guide
 > (#129) are landed — Workstream L is complete. The open bridge is the remaining UX
-> tranche (#152-#158). It maps the current reference blueprint to what an
+> tranche (#155-#158). It maps the current reference blueprint to what an
 > enterprise actually needs to run GenAI in production.
 
 ---
@@ -447,16 +448,17 @@ later deployment item.
   `H3 - Enterprise scale & compliance`, `H4 - Post-G6 hardening & UX`.
 - H0, H1, H2 and Workstream G are **complete**. Workstream H ingestion (#115-#117),
   operational DR (#118-#120), workstream M UX polish (#130-#136, #145), UX8
-  persistence/deep links (#151), policy-as-code J (#121-#123), eval expansion/CI gates
+  persistence/deep links (#151), UX9 background jobs (#152), UX10 Dataset Studio (#153),
+  UX11 cross-object evidence (#154), policy-as-code J (#121-#123), eval expansion/CI gates
   K (#124-#126), golden path templates L (#127, `deployment/templates/`) and the
   `genai init` CLI (#128, `app/cli.py`) and the onboarding guide (#129,
   `docs/onboarding.md`) are **landed**; Workstream L is complete. The active bridge
-  is the remaining UX tranche (#152-#158) on H4.
+  is the remaining UX tranche (#155-#158) on H4.
 - The Project v2 board (**#8**) carries a **Workstream** field; options A-M plus
   Cross-cutting are configured and every open issue is assigned.
 - Contribution workflow (branching, PR checklist, release tags) is in
   [`CONTRIBUTING.md`](../CONTRIBUTING.md).
-- **Addendum (fact-check):** [enterprise-roadmap-gaps-addendum.md](enterprise-roadmap-gaps-addendum.md) + [analysis/fact_check_usability_value_for_enterprise_architects.pdf](analysis/fact_check_usability_value_for_enterprise_architects.pdf) define the H4 workstreams H–L (#115–#129) for connectors/ingestion, multi-region/DR operations, policy-as-code, eval expansion/CI gates, and onboarding/golden paths. **UX addendum:** [analysis/ux_roadmap_fact_check.pdf](analysis/ux_roadmap_fact_check.pdf) / [analysis/ux_roadmap_fact_check.md](analysis/ux_roadmap_fact_check.md) define Workstream M — UX polish for the existing console, kept separate from Workstream F (console build-out): delivered #130–#136/#145 and #151, with the remaining tranche #152–#158.
+- **Addendum (fact-check):** [enterprise-roadmap-gaps-addendum.md](enterprise-roadmap-gaps-addendum.md) + [analysis/fact_check_usability_value_for_enterprise_architects.pdf](analysis/fact_check_usability_value_for_enterprise_architects.pdf) define the H4 workstreams H–L (#115–#129) for connectors/ingestion, multi-region/DR operations, policy-as-code, eval expansion/CI gates, and onboarding/golden paths. **UX addendum:** [analysis/ux_roadmap_fact_check.pdf](analysis/ux_roadmap_fact_check.pdf) / [analysis/ux_roadmap_fact_check.md](analysis/ux_roadmap_fact_check.md) define Workstream M — UX polish for the existing console, kept separate from Workstream F (console build-out): delivered #130–#136/#145 and #151–#154, with the remaining tranche #155–#158.
 
 
 - HITL console UI: #163 (review/decision console) and #164 (filters/SLA/safe export/

@@ -208,7 +208,12 @@ process and are deep-linkable via the workspace (`eval_job` parameter). The **Da
 reference/ground-truth and tag fields, inline case-numbered validation (invalid rows stay in
 the editor), preview, benchmark-shaped or bare-list import, round-trip export with redaction,
 and save/load/duplicate/delete of up to 10 named datasets persisted through the workspace
-layer. **Traces** renders a stage timeline/waterfall;
+layer. **Traces** renders a stage timeline/waterfall and now links one request across
+trace, audit, metrics and governance (#154): copy the `request_id`, pivot in one click,
+filter **Audit** by request id, compare two requests side by side (stage latency, failure
+type/tags, retrieved documents, guardrail decisions, resilience, cost when recorded) and
+download a redacted JSON/Markdown **evidence pack** (summary + timeline + matching audit
+events + metrics scope + diff); request ids are deep-linkable through the workspace.
 **Governance & Cost** adds time/tenant/app/user filters, alert previews and CSV/JSON export;
 **Admin** adds scope indicators, confirmation prompts and audit export. API failures render as
 the failure taxonomy plus a remediation hint (`failure_type` + `failure_tags`), not stack
@@ -312,7 +317,10 @@ in `config/retrieval.yaml` under `evaluation.active_evaluator`.
 
 6. **Inspect the trace & governance** (sidebar *Operate* -> *Traces*, then *Governance & security* -> *Governance & Cost*).
    - *Traces*: paste the `request_id` from step 3 and click **Look up trace** to see the exact
-     redacted trace the server logged plus a per-stage latency table.
+     redacted trace the server logged plus a per-stage latency table. Use the cross-link
+     buttons to jump to **Audit**/**Metrics** for the same request, paste a second
+     `request_id` under **Compare with request_id** to diff the two runs, and download the
+     redacted **evidence pack** (JSON or Markdown).
    - *Governance & Cost*: confirm **Governance** = `enabled`, the **Max cost / request** cap,
      and the rolling **spend window**; the **Metrics** block shows the running totals
      (`Total runs`, `Successes`, `Failures`, `Failure rate`) and `Failures by type`.

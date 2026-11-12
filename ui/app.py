@@ -51,7 +51,7 @@ from ui.approvals import (
     sort_approval_records,
     summary_counts,
 )
-from ui.client import ApiClient
+from ui.client import ApiClient, ApiResult
 from ui.common import api_base_url, latency_rows, metric_rows, require_ok
 from ui.dataset_studio import (
     MAX_SAVED_DATASETS,
@@ -96,6 +96,22 @@ from ui.evaluation import (
     metric_summary,
     metric_table_with_tooltips,
     parse_dataset_json,
+)
+from ui.evidence import (
+    AUDIT_SCREEN,
+    GOVERNANCE_SCREEN,
+    TRACE_SCREEN,
+    audit_events_for,
+    build_evidence_pack,
+    changed_rows,
+    clean_request_id,
+    cross_scope_notice,
+    diff_traces,
+    evidence_pack_filename,
+    evidence_pack_markdown,
+    lookup_links,
+    trace_summary,
+    validate_request_id,
 )
 from ui.governance import (
     alerts_preview,
@@ -857,6 +873,14 @@ def _render_query_result(item: Dict[str, Any], query: str = "") -> None:
         else:
             st.write(item.get("response"))
         st.caption(f"request_id: {request_id or '-'}")
+        if request_id:
+            e1, e2, e3 = st.columns(3)
+            if e1.button("Open trace", key=f"qs_trace::{request_id}"):
+                _open_evidence(TRACE_SCREEN, request_id)
+            if e2.button("Open audit", key=f"qs_audit::{request_id}"):
+                _open_evidence(AUDIT_SCREEN, request_id)
+            if e3.button("Open governance", key=f"qs_gov::{request_id}"):
+                _open_evidence(GOVERNANCE_SCREEN, request_id)
         if item.get("failure_tags"):
             st.caption("failure_tags: " + ", ".join(item.get("failure_tags") or []))
         c1, c2, c3 = st.columns(3)
@@ -1627,6 +1651,16 @@ def screen_governance() -> None:
     st.header("Governance & Cost")
     api = client()
 
+    focus = clean_request_id(st.session_state.get("gov_request_id"))
+    if focus:
+        st.info(f"Evidence focus: request_id={focus}")
+        f1, f2 = st.columns(2)
+        if f1.button("Open trace for this request", key="gov_open_trace"):
+            _open_evidence(TRACE_SCREEN, focus)
+        if f2.button("Clear evidence focus", key="gov_clear_focus"):
+            st.session_state.gov_request_id = ""
+            st.rerun()
+
     status = api.governance_status()
     if require_ok(status):
         st.session_state.last_governance_seen = True
@@ -2270,7 +2304,7 @@ def screen_audit() -> None:
         "Append-only, redacted trail. Queries and pipeline rebuilds write events; "
         "no secrets or PII values are stored."
     )
-    col1, col2 = st.columns(2)
+    col1, col2, col3 = st.columns(3)
     with col1:
         limit = st.number_input(
             "Limit", min_value=1, max_value=1000, step=10, key="audit_limit"
@@ -2278,6 +2312,10 @@ def screen_audit() -> None:
     with col2:
         event_type = st.text_input(
             "event_type filter (optional)", key="audit_event_type"
+        )
+    with col3:
+        request_filter = st.text_input(
+            "request_id filter (optional)", key="audit_request_id"
         )
 
     result = api.audit(limit=int(limit), event_type=event_type or None)
@@ -2291,6 +2329,19 @@ def screen_audit() -> None:
     st.caption(f"Total retained: {data.get('total')}")
 
     events = data.get("events") or []
+    rid = clean_request_id(request_filter)
+    if rid:
+        error = validate_request_id(rid)
+        if error:
+            st.warning(error)
+        else:
+            events = audit_events_for(events, rid, limit=max(1, len(events)))
+            st.caption(
+                f"Showing {len(events)} event(s) for request_id={rid} "
+                "(client-side filter over the returned page)."
+            )
+            if st.button("Open trace for this request", key="audit_open_trace"):
+                _open_evidence(TRACE_SCREEN, rid)
     if events:
         st.dataframe(
             [
@@ -2407,9 +2458,184 @@ def screen_admin() -> None:
             st.rerun()
 
 
+def _validation_failure(message: str) -> ApiResult:
+    return ApiResult(
+        ok=False,
+        status_code=400,
+        data={"error": message, "failure_type": "validation_failure", "failure_tags": []},
+    )
+
+
+def _fetch_trace(api: ApiClient, request_id: str) -> ApiResult:
+    """Fetch a trace, validating the id first and caching success/failure (#154)."""
+    rid = clean_request_id(request_id)
+    if not rid:
+        return _validation_failure("Request id is required.")
+    error = validate_request_id(rid)
+    if error:
+        return _validation_failure(error)
+    cache = st.session_state.setdefault("evidence_trace_cache", {})
+    key = f"{api.base_url}|{api.api_key}|{rid}"
+    cached = cache.get(key)
+    if cached is not None:
+        return ApiResult(
+            ok=cached["ok"],
+            status_code=cached["status_code"],
+            data=dict(cached["data"]),
+        )
+    result = api.trace(rid)
+    cache[key] = {
+        "ok": result.ok,
+        "status_code": result.status_code,
+        "data": dict(result.data),
+    }
+    if len(cache) > 20:
+        for stale in list(cache)[: len(cache) - 20]:
+            cache.pop(stale, None)
+    return result
+
+
+def _open_evidence(screen: str, request_id: str) -> None:
+    """Jump to another operational screen, carrying the request id (#154)."""
+    rid = clean_request_id(request_id)
+    if screen == TRACE_SCREEN and rid:
+        st.session_state.trace_request_id = rid
+        st.session_state.trace_autoload = True
+    elif screen == AUDIT_SCREEN and rid:
+        st.session_state.audit_request_id = rid
+    elif screen == GOVERNANCE_SCREEN and rid:
+        st.session_state.gov_request_id = rid
+    _navigate(screen)
+
+
+def _render_evidence_links(request_id: str, *, key_prefix: str, exclude: str = "") -> None:
+    links = [link for link in lookup_links(request_id) if link["target"] != exclude]
+    if not links:
+        return
+    columns = st.columns(len(links))
+    for column, link in zip(columns, links):
+        if column.button(
+            link["label"],
+            key=f"{key_prefix}::{link['target']}",
+            help=link["help"],
+        ):
+            _open_evidence(link["screen"], request_id)
+
+
+def _evidence_scope() -> Dict[str, str]:
+    return _access_scope(st.session_state.get("access_context") or {})
+
+
+def _render_trace_summary_card(container: Any, trace: Dict[str, Any]) -> None:
+    summary = trace_summary(trace)
+    container.metric("request_id", summary["request_id"] or "-")
+    container.caption(
+        f"status={summary['status']} | docs={summary['documents']} | "
+        f"latency={summary['total_ms'] if summary['total_ms'] is not None else '-'} ms | "
+        f"cost={summary['cost_usd'] if summary['cost_usd'] is not None else 'n/a'}"
+    )
+    if summary["failure_type"]:
+        container.warning(f"failure_type={summary['failure_type']}")
+    if summary["failure_tags"]:
+        container.caption("failure_tags: " + summary["failure_tags"])
+
+
+def _render_trace_view(trace: Dict[str, Any], *, key_prefix: str) -> None:
+    ctx = trace_context(trace)
+    if ctx:
+        st.caption(" | ".join(f"{k}={v}" for k, v in ctx.items()))
+    otel = trace.get("otel") or {}
+    if otel.get("trace_id") and not ctx.get("trace_id"):
+        st.caption(
+            f"OTel correlation: trace_id={otel.get('trace_id')} "
+            f"span_id={otel.get('span_id')}"
+        )
+    timeline = build_timeline(trace)
+    if timeline:
+        st.subheader("Timeline / waterfall")
+        st.dataframe(timeline, use_container_width=True, hide_index=True)
+        stages = span_filters(timeline)
+        if stages:
+            st.caption("Spans: " + ", ".join(stages))
+    resilience = trace.get("resilience")
+    if resilience:
+        st.subheader("Provider resilience")
+        st.json(resilience)
+    decisions = trace.get("guardrail_decisions") or []
+    if decisions:
+        st.subheader("Guardrail decisions")
+        _render_guardrail_decisions(decisions)
+    st.subheader("Trace (redaction-safe view)")
+    st.json(redaction_safe_view(trace))
+    rows = latency_rows(trace.get("latency", {}))
+    if rows:
+        st.dataframe(rows, use_container_width=True)
+    with st.expander("Raw trace payload"):
+        st.code(json.dumps(redaction_safe_view(trace), indent=2, default=str), language="json")
+
+
+def _render_evidence_pack(
+    api: ApiClient,
+    trace: Dict[str, Any],
+    comparison_rows: Optional[List[Dict[str, Any]]],
+    *,
+    key_prefix: str,
+) -> None:
+    rid = clean_request_id(trace.get("request_id")) or clean_request_id(
+        st.session_state.get("trace_request_id")
+    )
+    metrics_data: Dict[str, Any] = {}
+    metrics_res = api.metrics()
+    if metrics_res.ok:
+        metrics_data = metrics_res.data
+    governance_data: Dict[str, Any] = {}
+    gov_res = api.governance_status()
+    if gov_res.ok:
+        governance_data = gov_res.data
+    audit_events: List[Dict[str, Any]] = []
+    audit_res = api.audit(limit=200)
+    if audit_res.ok:
+        audit_events = list(audit_res.data.get("events") or [])
+    pack = build_evidence_pack(
+        request_id=rid,
+        trace=trace,
+        audit_events=audit_events,
+        metrics=metrics_data,
+        governance=governance_data,
+        comparison=changed_rows(comparison_rows or []),
+        scope=_evidence_scope(),
+        generated_at=datetime.now(timezone.utc).isoformat(timespec="seconds"),
+    )
+    st.subheader("Evidence pack")
+    st.caption(
+        "Redacted JSON/Markdown bundle for incident review: summary, timeline, matching audit "
+        "events, metrics scope and (when loaded) the comparison with the other request."
+    )
+    payload = json.dumps(pack, indent=2, default=str)
+    markdown = evidence_pack_markdown(pack)
+    d1, d2 = st.columns(2)
+    d1.download_button(
+        "Download JSON",
+        data=payload,
+        file_name=evidence_pack_filename(rid, "json"),
+        mime="application/json",
+        key=f"{key_prefix}::pack_json",
+    )
+    d2.download_button(
+        "Download Markdown",
+        data=markdown,
+        file_name=evidence_pack_filename(rid, "md"),
+        mime="text/markdown",
+        key=f"{key_prefix}::pack_md",
+    )
+    with st.expander("Preview evidence pack"):
+        st.code(markdown, language="markdown")
+
+
 def screen_traces() -> None:
     st.header("Traces")
     api = client()
+    scope = _evidence_scope()
 
     if not st.session_state.get("trace_request_id"):
         st.session_state.trace_request_id = (
@@ -2417,46 +2643,78 @@ def screen_traces() -> None:
             or st.session_state.get("last_request_id")
             or ""
         )
-    request_id = st.text_input("request_id", key="trace_request_id")
+
+    col1, col2 = st.columns([3, 2])
+    request_id = col1.text_input("request_id", key="trace_request_id")
+    compare_request_id = col2.text_input(
+        "Compare with request_id (optional)", key="trace_compare_request_id"
+    )
+
+    lookup_col, compare_col, clear_col = st.columns(3)
     autoload = bool(st.session_state.pop("trace_autoload", False))
-    lookup = st.button("Look up trace", key="trace_lookup")
-    if request_id and (autoload or lookup):
-        result = api.trace(request_id)
+    compare_autoload = bool(st.session_state.pop("trace_compare_autoload", False))
+    lookup = lookup_col.button("Look up trace", key="trace_lookup")
+    compare = compare_col.button("Compare requests", key="trace_compare")
+    if clear_col.button("Clear", key="trace_clear"):
+        st.session_state.trace_request_id = ""
+        st.session_state.trace_compare_request_id = ""
+        st.session_state.last_trace_request_id = ""
+        st.rerun()
+
+    primary_error = validate_request_id(request_id) if request_id else ""
+    compare_error = validate_request_id(compare_request_id) if compare_request_id else ""
+    if primary_error and (autoload or lookup):
+        st.error(primary_error)
+    if compare_error and (compare or compare_autoload):
+        st.error("Compare field: " + compare_error)
+
+    want_compare = bool(compare_request_id) and not compare_error and (
+        compare or compare_autoload
+    )
+    primary: Optional[Dict[str, Any]] = None
+    secondary: Optional[Dict[str, Any]] = None
+
+    if request_id and not primary_error and (autoload or lookup or want_compare):
+        result = _fetch_trace(api, request_id)
         if require_ok(result):
-            st.session_state.last_trace_request_id = request_id
-            ctx = trace_context(result.data)
-            if ctx:
-                st.caption(" | ".join(f"{k}={v}" for k, v in ctx.items()))
-            otel = result.data.get("otel") or {}
-            if otel.get("trace_id") and not ctx.get("trace_id"):
-                st.caption(
-                    f"OTel correlation: trace_id={otel.get('trace_id')} "
-                    f"span_id={otel.get('span_id')}"
+            primary = result.data
+            st.session_state.last_trace_request_id = clean_request_id(request_id)
+            notice = cross_scope_notice(primary, scope.get("tenant", ""))
+            if notice:
+                st.warning(notice)
+            else:
+                _render_evidence_links(
+                    primary.get("request_id") or request_id,
+                    key_prefix="trace_primary",
+                    exclude="trace",
                 )
-            tl = build_timeline(result.data)
-            if tl:
-                st.subheader("Timeline / waterfall")
-                st.dataframe(tl, use_container_width=True, hide_index=True)
-                stages = span_filters(tl)
-                if stages:
-                    st.caption("Spans: " + ", ".join(stages))
-            resilience = result.data.get("resilience")
-            if resilience:
-                st.subheader("Provider resilience")
-                st.json(resilience)
-            decisions = result.data.get("guardrail_decisions") or []
-            if decisions:
-                st.subheader("Guardrail decisions")
-                _render_guardrail_decisions(decisions)
-            st.subheader("Trace (redaction-safe view)")
-            st.json(redaction_safe_view(result.data))
-            latency = result.data.get("latency", {})
-            rows = latency_rows(latency)
-            if rows:
-                st.dataframe(rows, use_container_width=True)
-            _failure_taxonomy(result)
+            _render_trace_view(primary, key_prefix="trace_primary")
         else:
             _failure_taxonomy(result)
+
+    comparison_rows: Optional[List[Dict[str, Any]]] = None
+    if want_compare and primary is not None:
+        result = _fetch_trace(api, compare_request_id)
+        if require_ok(result):
+            secondary = result.data
+            comparison_rows = diff_traces(primary, secondary)
+            st.subheader("Compare requests")
+            left, right = st.columns(2)
+            _render_trace_summary_card(left, primary)
+            _render_trace_summary_card(right, secondary)
+            highlights = changed_rows(comparison_rows)
+            st.caption(
+                f"{len(highlights)} meaningful difference(s) across "
+                f"{len(comparison_rows)} compared metrics."
+            )
+            st.dataframe(highlights or comparison_rows, use_container_width=True, hide_index=True)
+            with st.expander("All compared metrics"):
+                st.dataframe(comparison_rows, use_container_width=True, hide_index=True)
+        else:
+            _failure_taxonomy(result)
+
+    if primary is not None:
+        _render_evidence_pack(api, primary, comparison_rows, key_prefix="trace_pack")
 
     _render_saved_views("traces")
 

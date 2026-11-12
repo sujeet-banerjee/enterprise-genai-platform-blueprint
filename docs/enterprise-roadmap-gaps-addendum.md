@@ -58,7 +58,7 @@ Workstream F** (enterprise console build-out): F delivers capabilities, M makes 
 |---|---|---|---|
 | #152 | UX9: Background evaluation jobs | P0 | **Landed** - Worker-thread dataset jobs (<=200 cases) with live progress, cancel between cases, retry failed/resume unfinished, partial results, bounded history, JSON/CSV export, deep-linkable focus |
 | #153 | UX10: Dataset Studio authoring | P1 | **Landed** - Structured case/document editors with add/remove/reorder, reference/GT and tags, inline validation (invalid rows kept), preview, benchmark-shaped or bare-list import, round-trip export with redaction, save/duplicate/delete persisted via UX8 |
-| #154 | UX11: Cross-link and compare operational evidence | P1 | Request-id search, trace/audit/metrics/governance links and two-trace diff |
+| #154 | UX11: Cross-link and compare operational evidence | P1 | **Landed** - Request-id copy/validation, trace/audit/metrics/governance cross-links, two-request diff (latency/failures/docs/guardrails/resilience/cost), client-side audit request filter, redacted JSON/Markdown evidence pack, deep links |
 | #155 | UX12: Command palette and WCAG 2.2 AA hardening | P1 | Keyboard-first navigation, shortcuts, focus/ARIA, contrast and 200% zoom |
 | #156 | UX13: Responsive, compact and theme system | P2 | Breakpoints, density, table-to-card, light/dark/high-contrast themes |
 | #157 | UX14: Role-based journeys and demo mode | P2 | Persona tours, seeded demo data, reset and expanded onboarding checklist |
@@ -66,7 +66,7 @@ Workstream F** (enterprise console build-out): F delivers capabilities, M makes 
 | #163 | UX16: HITL Approvals review & decision console | P0 | **Delivered** - HTTP-only Approvals/HITL Review screen consuming #123 (`GET/POST /v1/approvals*`); queue/detail/approve-reject, RBAC/tenant-aware, redaction-safe; depends on #123 backend; owner `ui/` bot-win per split |
 | #164 | UX17: HITL Approvals queue operations, SLA & evidence export | P1 | **Delivered** - client-side filters/search/sort/pagination, SLA/aging thresholds, safe metadata-only JSON/CSV export, sequential bulk approve/reject with explicit confirmation + partial-failure reporting; UI-only until backend #175 adds server-side pagination/filtering/tenant scope |
 
-**Notes:** Keep HTTP-only (`ui/` never imports `app.*`/`core.*`), extend `ui/client.py`/`ui/common.py`, add AST + client tests. Link to #43, Workstream M. Delivered M work (#130-#136, #145) targeted milestone H2; #151 (UX8), #152 (UX9), #153 (UX10), #163 (UX16) and #164 (UX17) have since landed against milestone H4, and the remaining tranche (#154-#158) targets H4. #163/#164 close the roadmap B6 HITL queue/UI gap (backend #121-#123); server-side queue scale-out is #175. Do not fold M into F.
+**Notes:** Keep HTTP-only (`ui/` never imports `app.*`/`core.*`), extend `ui/client.py`/`ui/common.py`, add AST + client tests. Link to #43, Workstream M. Delivered M work (#130-#136, #145) targeted milestone H2; #151 (UX8), #152 (UX9), #153 (UX10), #154 (UX11), #163 (UX16) and #164 (UX17) have since landed against milestone H4, and the remaining tranche (#155-#158) targets H4. #163/#164 close the roadmap B6 HITL queue/UI gap (backend #121-#123); server-side queue scale-out is #175. Do not fold M into F.
 
 ## Tracking Updates
 - Add to `docs/enterprise-roadmap.md` as Workstreams H-L and M (post-G6/H4)

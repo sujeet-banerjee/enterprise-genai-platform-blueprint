@@ -2,7 +2,7 @@
 
 Reconciled 2026-11-11 from `origin/main` @ `e78ba03` (after #175/#162 merged). No open PRs.
 
-Open items at reconciliation: umbrella **#43**; Workstream M UX **#154-#158** (UX1-UX10 delivered).
+Open items at reconciliation: umbrella **#43**; Workstream M UX **#155-#158** (UX1-UX11 delivered).
 Workstream B redaction **#162** and Workstream J backend queue **#175** are closed.
 Re-check open issues and PRs before each item.
 
@@ -36,16 +36,16 @@ contract (server-side pagination/filter/sort/tenant scope).
 
 | Order | Item | Notes |
 |---|---|---|
-| 1 | **#154 UX11 - Cross-link and compare operational evidence** (H4, P1) | Trace/audit/metrics/governance links and two-trace diff; #164 deliberately left broader navigation here. |
-| 2 | **#155 UX12 - Command palette + WCAG 2.2 AA** (H4, P1) | A11y/UI shell. |
-| 3 | **#156 UX13 - Responsive/compact/themes** (H4, P2) | UI polish. |
-| 4 | **#157 UX14 - Role journeys + demo mode** (H4, P2) | Onboarding experience. |
-| 5 | **#158 UX15 - Collaboration and feedback** (H4, P2) | UI feature. |
-| 6 | **Roadmap/docs reconciliation** | Low-risk docs sync after merges. |
+| 1 | **#155 UX12 - Command palette + WCAG 2.2 AA** (H4, P1) | A11y/UI shell. |
+| 2 | **#156 UX13 - Responsive/compact/themes** (H4, P2) | UI polish. |
+| 3 | **#157 UX14 - Role journeys + demo mode** (H4, P2) | Onboarding experience. |
+| 4 | **#158 UX15 - Collaboration and feedback** (H4, P2) | UI feature. |
+| 5 | **Roadmap/docs reconciliation** | Low-risk docs sync after merges. |
 
 Completed by this workstream since the last split: #130-#136, #145, #151 (workspace/deep
-links), #152 (background evaluation jobs), #153 (Dataset Studio authoring), #163 (HITL
-review console) and #164 (queue operations/SLA/safe export).
+links), #152 (background evaluation jobs), #153 (Dataset Studio authoring), #154
+(cross-object evidence), #163 (HITL review console) and #164 (queue
+operations/SLA/safe export).
 
 ## Suggested operating rules (to avoid collisions)
 

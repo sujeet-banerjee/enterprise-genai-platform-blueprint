@@ -150,7 +150,8 @@ TOUR_STEPS: List[TourStep] = [
         body=(
             "Read the append-only, redacted audit trail (`GET /v1/audit`) with `limit` and "
             "`event_type` filters. Events are written by queries (governance/PII decisions) and "
-            "pipeline rebuilds; values are never stored."
+            "pipeline rebuilds; values are never stored. Paste a request id to filter events "
+            "client-side and jump straight to that request's trace."
         ),
         try_it="Enable `config/audit.yaml`, run a query, then filter by `event_type = governance`.",
     ),
@@ -180,9 +181,11 @@ TOUR_STEPS: List[TourStep] = [
             "Paste a `request_id` (from a Query Studio result) and click **Look up trace** "
             "to see the exact redacted trace the server logged, guardrail decisions, the "
             "`resilience` block (served_by/retries/failovers), OTel `trace_id`/`span_id` "
-            "correlation and a per-stage latency table."
+            "correlation and a per-stage latency table. Cross-link to audit/metrics/governance "
+            "for the same request, compare two requests side by side, and download a redacted "
+            "JSON/Markdown evidence pack."
         ),
-        try_it="Look up the request_id shown after your Query Studio run.",
+        try_it="Look up the request_id shown after your Query Studio run, then compare two runs.",
     ),
     TourStep(
         title="15. Settings (read-only)",
