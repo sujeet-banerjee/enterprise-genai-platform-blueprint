@@ -371,6 +371,7 @@ All behaviour is driven by YAML in config/:
 - config/policies.yaml - Policy-as-Code engine/bundles (CEL/Rego), dry-run and HITL hooks (disabled by default)
 - config/eval_datasets.yaml - domain-specific evaluation dataset registry/loaders + regression gates (disabled by default; #124, #125)
 - config/optimization.yaml - config-driven parameter sweep (Pareto cost/quality/latency + recommended overlay; disabled by default; #181)
+- config/benchmarks.yaml - showcase benchmark suites over the synthetic corpora in `benchmarks/data/` (disabled by default; #195)
 - config/residency.yaml - multi-region/residency routing (disabled by default)
 - config/dr.yaml - disaster recovery backup/restore (disabled by default)
 
