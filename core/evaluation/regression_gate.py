@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Mapping, Optional, Sequence, Union
+from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple, Union
 
 import yaml
 
@@ -30,6 +30,36 @@ METRIC_ALIASES = {
     "context_recall": "context_recall",
 }
 
+# Budget metrics are *upper bounds* (issue #180): a candidate config must stay
+# at or below the configured maximum. Quality metrics remain lower bounds.
+BUDGET_METRIC_ALIASES = {
+    "cost_per_request_usd": "max_cost_per_request_usd",
+    "cost_usd": "max_cost_per_request_usd",
+    "max_cost_usd": "max_cost_per_request_usd",
+    "max_cost_per_request": "max_cost_per_request_usd",
+    "max_cost_per_request_usd": "max_cost_per_request_usd",
+    "p95_latency_ms": "max_p95_latency_ms",
+    "latency_p95_ms": "max_p95_latency_ms",
+    "max_p95_latency": "max_p95_latency_ms",
+    "max_p95_latency_ms": "max_p95_latency_ms",
+    "avg_latency_ms": "max_avg_latency_ms",
+    "latency_avg_ms": "max_avg_latency_ms",
+    "max_avg_latency": "max_avg_latency_ms",
+    "max_avg_latency_ms": "max_avg_latency_ms",
+    "total_latency_ms": "max_total_latency_ms",
+    "latency_ms": "max_total_latency_ms",
+    "max_total_latency": "max_total_latency_ms",
+    "max_total_latency_ms": "max_total_latency_ms",
+}
+BUDGET_METRICS = frozenset(BUDGET_METRIC_ALIASES.values())
+THRESHOLD_ALIASES = {**METRIC_ALIASES, **BUDGET_METRIC_ALIASES}
+
+
+def _direction(metric: str) -> str:
+    """Return ``min`` for quality floors and ``max`` for budget ceilings."""
+    return "max" if metric in BUDGET_METRICS else "min"
+
+
 
 def _to_float(value: Any) -> Optional[float]:
     if value is None:
@@ -41,7 +71,7 @@ def _to_float(value: Any) -> Optional[float]:
 
 
 def normalize_thresholds(raw: Any) -> Dict[str, float]:
-    """Return a metric->minimum mapping from flexible config shapes."""
+    """Return a quality metric->minimum mapping from flexible config shapes."""
     if not isinstance(raw, Mapping):
         return {}
     out: Dict[str, float] = {}
@@ -63,12 +93,48 @@ def normalize_thresholds(raw: Any) -> Dict[str, float]:
     return out
 
 
+def normalize_threshold_spec(raw: Any) -> Dict[str, Tuple[float, str]]:
+    """Return ``{canonical_metric: (limit, direction)}`` for quality + budgets.
+
+    Quality metrics are lower bounds (``min``); budget metrics are upper bounds
+    (``max``). Accepts scalar values or ``{min|minimum|gte}`` /
+    ``{max|maximum|lte}`` mappings.
+    """
+    if not isinstance(raw, Mapping):
+        return {}
+    out: Dict[str, Tuple[float, str]] = {}
+    for key, value in raw.items():
+        metric = THRESHOLD_ALIASES.get(str(key).strip().lower())
+        if not metric:
+            continue
+        direction = _direction(metric)
+        if isinstance(value, Mapping):
+            keys = (
+                ("max", "maximum", "lte", "min", "minimum", "gte")
+                if direction == "max"
+                else ("min", "minimum", "gte", "max", "maximum", "lte")
+            )
+            candidate: Any = None
+            for candidate_key in keys:
+                if value.get(candidate_key) is not None:
+                    candidate = value.get(candidate_key)
+                    break
+        else:
+            candidate = value
+        num = _to_float(candidate)
+        if num is not None:
+            out[metric] = (num, direction)
+    return out
+
+
+
 @dataclass
 class GateResult:
     dataset: str
     passed: bool
     metrics: Dict[str, float] = field(default_factory=dict)
     thresholds: Dict[str, float] = field(default_factory=dict)
+    directions: Dict[str, str] = field(default_factory=dict)
     failures: List[str] = field(default_factory=list)
     details: Dict[str, Any] = field(default_factory=dict)
 
@@ -78,9 +144,67 @@ class GateResult:
             "passed": self.passed,
             "metrics": dict(self.metrics),
             "thresholds": dict(self.thresholds),
+            "directions": dict(self.directions),
             "failures": list(self.failures),
             "details": dict(self.details),
         }
+
+
+def _nested(mapping: Mapping[str, Any], *keys: str) -> Any:
+    current: Any = mapping
+    for key in keys:
+        if not isinstance(current, Mapping) or key not in current:
+            return None
+        current = current[key]
+    return current
+
+
+def _extract_metric(report: Mapping[str, Any], metric: str) -> Optional[float]:
+    """Resolve a metric from flat, experiment-run or comparison report shapes."""
+    if metric not in BUDGET_METRICS:
+        nested_metrics = report.get("metrics")
+        if isinstance(nested_metrics, Mapping) and nested_metrics.get(metric) is not None:
+            return _to_float(nested_metrics.get(metric))
+        summary = report.get("summary")
+        if isinstance(summary, Mapping) and summary.get(metric) is not None:
+            return _to_float(summary.get(metric))
+        return _to_float(report.get(metric))
+
+    candidates: List[Any]
+    if metric == "max_cost_per_request_usd":
+        candidates = [
+            _nested(report, "cost", "estimated_cost_usd"),
+            report.get("cost_usd"),
+            report.get("estimated_cost_usd"),
+            report.get("cost_per_request_usd"),
+            report.get("avg_cost_usd"),
+        ]
+    elif metric == "max_p95_latency_ms":
+        candidates = [
+            _nested(report, "latency_summary", "p95_ms"),
+            _nested(report, "latency", "p95_ms"),
+            report.get("p95_latency_ms"),
+            report.get("latency_p95_ms"),
+        ]
+    elif metric == "max_avg_latency_ms":
+        candidates = [
+            report.get("avg_total_latency_ms"),
+            _nested(report, "latency", "total_ms"),
+            _nested(report, "latency_summary", "total_ms"),
+            report.get("avg_latency_ms"),
+        ]
+    else:  # max_total_latency_ms
+        candidates = [
+            report.get("total_latency_ms"),
+            _nested(report, "latency", "total_ms"),
+            _nested(report, "latency_summary", "total_ms"),
+            report.get("latency_ms"),
+        ]
+    for candidate in candidates:
+        num = _to_float(candidate)
+        if num is not None:
+            return num
+    return None
 
 
 def evaluate_report_thresholds(
@@ -89,24 +213,32 @@ def evaluate_report_thresholds(
     *,
     dataset: str = "dataset",
 ) -> GateResult:
-    """Pure gate: compare a metrics report to thresholds."""
-    mins = normalize_thresholds(thresholds)
+    """Pure gate: compare a metrics report to quality floors and budget ceilings."""
+    spec = normalize_threshold_spec(thresholds)
     metrics: Dict[str, float] = {}
+    directions: Dict[str, str] = {}
     failures: List[str] = []
-    for metric, minimum in mins.items():
-        actual = _to_float(report.get(metric))
+    for metric, (limit, direction) in spec.items():
+        directions[metric] = direction
+        actual = _extract_metric(report, metric)
         if actual is None:
-            failures.append(f"{metric}: missing (required >= {minimum})")
+            operator = ">=" if direction == "min" else "<="
+            failures.append(f"{metric}: missing (required {operator} {limit})")
             continue
         metrics[metric] = actual
-        if actual + 1e-12 < minimum:
-            failures.append(f"{metric}: {actual:.6f} < {minimum:.6f}")
-    passed = not failures and bool(mins)
+        if direction == "min":
+            if actual + 1e-12 < limit:
+                failures.append(f"{metric}: {actual:.6f} < {limit:.6f}")
+        else:
+            if actual - 1e-12 > limit:
+                failures.append(f"{metric}: {actual:.6f} > {limit:.6f}")
+    passed = not failures and bool(spec)
     return GateResult(
         dataset=dataset,
         passed=passed,
         metrics=metrics,
-        thresholds=mins,
+        thresholds={metric: limit for metric, (limit, _) in spec.items()},
+        directions=directions,
         failures=failures,
         details={
             "num_cases": report.get("num_cases"),
@@ -130,6 +262,19 @@ def _eval_cfg(config_dir: Union[str, Path]) -> Dict[str, Any]:
     return cfg if isinstance(cfg, dict) else {}
 
 
+def configured_regression_thresholds(
+    config_dir: Union[str, Path] = DEFAULT_CONFIG_DIR,
+) -> Dict[str, Any]:
+    """Return the raw ``regression.thresholds`` mapping from ``eval_datasets.yaml``."""
+    cfg = _eval_cfg(config_dir)
+    regression = cfg.get("regression")
+    if isinstance(regression, Mapping):
+        raw = regression.get("thresholds")
+        if isinstance(raw, Mapping):
+            return dict(raw)
+    return {}
+
+
 def _dataset_thresholds(
     dataset: EvalDataset, spec: Any, regression_cfg: Mapping[str, Any]
 ) -> Dict[str, float]:
@@ -144,10 +289,11 @@ def _dataset_thresholds(
         if isinstance(entry, Mapping):
             candidates.extend([entry.get("thresholds"), entry, entry.get("metrics")])
     for candidate in candidates:
-        mins = normalize_thresholds(candidate)
-        if mins:
-            return mins
-    return normalize_thresholds(regression_cfg.get("thresholds"))
+        spec = normalize_threshold_spec(candidate)
+        if spec:
+            return {metric: limit for metric, (limit, _) in spec.items()}
+    spec = normalize_threshold_spec(regression_cfg.get("thresholds"))
+    return {metric: limit for metric, (limit, _) in spec.items()}
 
 
 def run_ir_benchmark_dataset(

@@ -11,6 +11,7 @@ Usage::
     python -m app.eval_gate                 # uses config/eval_datasets.yaml
     python -m app.eval_gate --config-dir config
     python -m app.eval_gate --dataset data/benchmark.json --threshold context_recall=0.5
+    python -m app.eval_gate --report report.json --threshold max_cost_per_request_usd=0.01
     python -m app.eval_gate --json
 """
 
@@ -19,11 +20,13 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from typing import Dict, List, Optional
+from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 from core.evaluation.eval_datasets import EvalDatasetValidationError, load_eval_dataset
 from core.evaluation.regression_gate import (
     DEFAULT_CONFIG_DIR,
+    configured_regression_thresholds,
     evaluate_report_thresholds,
     run_ir_benchmark_dataset,
     run_regression_gates,
@@ -38,6 +41,16 @@ def _parse_threshold(arg: str) -> Dict[str, float]:
         return {metric.strip(): float(value)}
     except ValueError as exc:
         raise argparse.ArgumentTypeError(f"threshold value must be numeric: {arg}") from exc
+
+
+def _load_reports(path: str) -> List[Dict[str, Any]]:
+    """Load one JSON report object, or a JSON list of report objects."""
+    data = json.loads(Path(path).read_text(encoding="utf-8"))
+    if isinstance(data, list):
+        return [item for item in data if isinstance(item, dict)]
+    if isinstance(data, dict):
+        return [data]
+    raise ValueError("report must be a JSON object or a list of objects")
 
 
 def _print_summary(summary: Dict[str, object]) -> None:
@@ -81,6 +94,11 @@ def main(argv: Optional[List[str]] = None) -> int:
         help="Metric threshold, e.g. context_recall=0.8 (repeatable).",
     )
     parser.add_argument("--top-k", type=int, default=None)
+    parser.add_argument(
+        "--report",
+        default=None,
+        help="JSON experiment/eval report to gate (quality + cost + latency).",
+    )
     parser.add_argument("--json", action="store_true")
     parser.add_argument(
         "--force",
@@ -94,7 +112,36 @@ def main(argv: Optional[List[str]] = None) -> int:
         thresholds.update(item)
 
     try:
-        if args.dataset or thresholds:
+        if args.report:
+            # Gate a pre-computed experiment/eval report (quality + cost + latency).
+            reports = _load_reports(args.report)
+            gate_thresholds: Dict[str, Any] = dict(thresholds)
+            if not gate_thresholds:
+                gate_thresholds = configured_regression_thresholds(args.config_dir)
+            if not gate_thresholds:
+                raise EvalDatasetValidationError(
+                    "--report requires --threshold or regression.thresholds in eval_datasets.yaml"
+                )
+            results = []
+            for index, report in enumerate(reports):
+                name = str(
+                    report.get("dataset")
+                    or report.get("name")
+                    or f"{Path(args.report).stem}-{index}"
+                )
+                results.append(
+                    evaluate_report_thresholds(report, gate_thresholds, dataset=name).to_dict()
+                )
+            evaluated = [r for r in results if r.get("thresholds")]
+            summary = {
+                "ok": all(r.get("passed") for r in evaluated) and bool(evaluated),
+                "skipped": False,
+                "results": results,
+                "num_datasets": len(results),
+                "num_evaluated": len(evaluated),
+                "num_failed": sum(1 for r in evaluated if not r.get("passed")),
+            }
+        elif args.dataset or thresholds:
             # Explicit invocation: evaluate given datasets against given thresholds.
             datasets = [load_eval_dataset(path) for path in args.dataset] or []
             if not datasets:

@@ -391,6 +391,26 @@ Injector) or a Kubernetes `secretKeyRef` so the value is present in the process 
 — the same `${ENV_VAR}` syntax works unchanged. Set `config_version` at the top of a file to
 pin the schema; a newer version warns (with migration note) rather than failing.
 
+### Gate cost and latency in CI
+
+`config/eval_datasets.yaml` can gate **quality floors** (`context_precision`,
+`context_recall`) and **budgets** (`max_cost_per_request_usd`, `max_p95_latency_ms`,
+`max_avg_latency_ms`, `max_total_latency_ms`). Quality metrics are lower bounds; budgets are
+upper bounds, so a config that is cheaper-but-worse or better-but-slower/pricier fails. The
+gate is a no-op until `eval_datasets.regression.enabled: true`.
+
+```bash
+# Gate the configured datasets (CI runs this; safe when disabled)
+python -m app.eval_gate --config-dir config --json
+
+# Gate a pre-computed experiment report (quality + cost + latency)
+python -m app.eval_gate --report report.json \
+  --threshold context_recall=0.8 --threshold max_cost_per_request_usd=0.01
+```
+
+`--report` accepts the JSON returned by an experiment run/comparison (or a list of reports).
+Exit codes: `0` pass, `1` regression, `2` unreadable config/report.
+
 ### Golden path templates
 
 Don't start from an empty `config/` directory. [`deployment/templates/`](deployment/templates/README.md)
