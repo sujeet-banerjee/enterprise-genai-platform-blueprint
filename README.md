@@ -203,7 +203,12 @@ auto-refreshes with live progress, cancellation that takes effect between cases,
 **Retry failed cases**, **Resume unfinished cases** (retry results overlay the original
 rows), a bounded job history, a case-by-metric matrix, average-score chart, delta against
 the previous run and JSON/CSV export. Jobs survive a page refresh within the console
-process and are deep-linkable via the workspace (`eval_job` parameter). **Traces** renders a stage timeline/waterfall;
+process and are deep-linkable via the workspace (`eval_job` parameter). The **Dataset Studio**
+(#153) authors datasets without raw JSON: case and document tables with add/remove/reorder,
+reference/ground-truth and tag fields, inline case-numbered validation (invalid rows stay in
+the editor), preview, benchmark-shaped or bare-list import, round-trip export with redaction,
+and save/load/duplicate/delete of up to 10 named datasets persisted through the workspace
+layer. **Traces** renders a stage timeline/waterfall;
 **Governance & Cost** adds time/tenant/app/user filters, alert previews and CSV/JSON export;
 **Admin** adds scope indicators, confirmation prompts and audit export. API failures render as
 the failure taxonomy plus a remediation hint (`failure_type` + `failure_tags`), not stack
@@ -286,8 +291,12 @@ in `config/retrieval.yaml` under `evaluation.active_evaluator`.
    value is echoed for traceability with `ground_truth_used=false` - the console tells you
    this explicitly.
 
-   **Dataset evaluation** (same screen): choose **Built-in benchmark** or **Paste JSON**,
-   pick the evaluator and `top_k`, then click **Start background job**. Each case calls
+   **Dataset evaluation** (same screen): choose **Built-in benchmark**, **Paste JSON** or
+   **Dataset Studio**, pick the evaluator and `top_k`, then click **Start background job**.
+   The **Dataset Studio** source lets you author a dataset entirely in the console: edit the
+   case table (query, reference, comma-separated tags) and document table, add/remove/reorder
+   rows, watch inline validation errors per case, preview, then save it (up to 10 named
+   datasets, persisted in your workspace) or export/import the JSON. Each case calls
    `/v1/query` and scores its answer with `/v1/evaluate`; a failed case is listed without
    stopping the job. The job panel refreshes automatically while it runs: watch live
    progress, cancel it (stops after the current case), retry just the failed cases or

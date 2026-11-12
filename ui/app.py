@@ -13,7 +13,7 @@ import json
 import sys
 import time
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 from urllib.parse import parse_qsl, urlsplit
 
 import streamlit as st
@@ -53,6 +53,25 @@ from ui.approvals import (
 )
 from ui.client import ApiClient
 from ui.common import api_base_url, latency_rows, metric_rows, require_ok
+from ui.dataset_studio import (
+    MAX_SAVED_DATASETS,
+    apply_case_rows,
+    apply_doc_rows,
+    case_rows,
+    delete_dataset,
+    doc_rows,
+    duplicate_dataset,
+    export_dataset,
+    find_dataset,
+    import_guidance,
+    move_case,
+    new_dataset,
+    normalize_dataset,
+    parse_import,
+    save_dataset,
+    to_evaluation_cases,
+    validate_dataset,
+)
 from ui.eval_jobs import (
     ACTIVE_STATUSES,
     MAX_JOB_CASES,
@@ -1178,6 +1197,218 @@ def _render_eval_jobs(api: ApiClient) -> None:
         _eval_jobs_panel_body(api)
 
 
+def _editor_records(edited: Any) -> List[Dict[str, Any]]:
+    """Normalize ``st.data_editor`` output (DataFrame or list of dicts) to rows."""
+    if edited is None:
+        return []
+    if hasattr(edited, "to_dict"):
+        return list(edited.to_dict("records"))
+    return [dict(row) for row in edited if isinstance(row, dict)]
+
+
+def _studio_dataset() -> Dict[str, Any]:
+    if "studio_dataset" not in st.session_state:
+        st.session_state.studio_dataset = new_dataset()
+    st.session_state.studio_dataset = normalize_dataset(st.session_state.studio_dataset)
+    return st.session_state.studio_dataset
+
+
+def _studio_saved() -> List[Dict[str, Any]]:
+    if "saved_datasets" not in st.session_state:
+        st.session_state.saved_datasets = []
+    return st.session_state.saved_datasets
+
+
+def _studio_revision() -> int:
+    if "studio_revision" not in st.session_state:
+        st.session_state.studio_revision = 0
+    return int(st.session_state.studio_revision)
+
+
+def _bump_studio_revision() -> None:
+    st.session_state.studio_revision = _studio_revision() + 1
+
+
+def _load_studio_dataset(dataset: Dict[str, Any]) -> None:
+    st.session_state.studio_dataset = normalize_dataset(dataset)
+    st.session_state.studio_dataset_name = st.session_state.studio_dataset["name"]
+    _bump_studio_revision()
+
+
+def _render_dataset_studio() -> None:
+    """Structured dataset authoring (issue #153): no raw JSON required."""
+    dataset = _studio_dataset()
+    saved = _studio_saved()
+    st.caption(import_guidance())
+
+    name = st.text_input("Dataset name", key="studio_dataset_name")
+    if name and name.strip() and name.strip() != dataset["name"]:
+        dataset["name"] = name.strip()
+
+    saved_names = [ds["name"] for ds in saved]
+    load_col, actions_col = st.columns([1.3, 2])
+    with load_col:
+        _ensure_choice("studio_saved_choice", saved_names or ["(none saved)"])
+        choice = st.selectbox(
+            f"Saved datasets ({len(saved)}/{MAX_SAVED_DATASETS})",
+            saved_names or ["(none saved)"],
+            key="studio_saved_choice",
+        )
+    with actions_col:
+        st.write("")
+        new_col, load_btn_col, save_col, dup_col, del_col = st.columns(5)
+        with new_col:
+            if st.button("New", key="studio_new"):
+                _load_studio_dataset(new_dataset())
+                st.rerun()
+        with load_btn_col:
+            if st.button("Load", key="studio_load", disabled=not saved_names):
+                found = find_dataset(saved, choice)
+                if found:
+                    _load_studio_dataset(found)
+                    st.rerun()
+        with save_col:
+            if st.button("Save", key="studio_save", type="primary"):
+                saved = save_dataset(saved, dataset)
+                st.session_state.saved_datasets = saved
+                st.success(f"Saved '{dataset['name']}'.")
+                st.rerun()
+        with dup_col:
+            if st.button("Duplicate", key="studio_duplicate"):
+                _load_studio_dataset(duplicate_dataset(dataset, saved=saved_names))
+                st.rerun()
+        with del_col:
+            if st.button("Delete", key="studio_delete", disabled=not saved_names):
+                st.session_state.saved_datasets = delete_dataset(saved, choice)
+                st.rerun()
+
+    export_col, _ = st.columns([1, 2])
+    with export_col:
+        filename = (
+            "".join(ch if ch.isalnum() or ch in "-_" else "-" for ch in dataset["name"]).strip("-")
+            or "dataset"
+        )
+        st.download_button(
+            "Download dataset JSON",
+            data=export_dataset(dataset),
+            file_name=f"{filename}.json",
+            mime="application/json",
+            key="studio_export",
+        )
+
+    cases_tab, docs_tab, import_tab = st.tabs(["Cases", "Documents", "Import / validate"])
+    revision = _studio_revision()
+    with cases_tab:
+        st.caption(
+            "Add rows in the table (or the Add case button), edit query/reference/tags "
+            "inline, and remove rows with the row selector. Tags are comma-separated."
+        )
+        edited = st.data_editor(
+            case_rows(dataset),
+            num_rows="dynamic",
+            use_container_width=True,
+            key=f"studio_cases_editor_{revision}",
+        )
+        apply_case_rows(dataset, _editor_records(edited))
+        if st.button("Add case", key="studio_add_case"):
+            dataset["cases"].append({"query": "", "reference": "", "tags": []})
+            _bump_studio_revision()
+            st.rerun()
+        total = len(dataset["cases"])
+        if total > 1:
+            move_col, up_col, down_col = st.columns([1.4, 1, 1])
+            with move_col:
+                position = st.number_input(
+                    "Move case",
+                    min_value=1,
+                    max_value=total,
+                    value=1,
+                    key="studio_move_index",
+                )
+            with up_col:
+                st.write("")
+                if st.button("Move up", key="studio_move_up", disabled=position <= 1):
+                    if move_case(dataset, int(position) - 1, -1):
+                        _bump_studio_revision()
+                        st.rerun()
+            with down_col:
+                st.write("")
+                if st.button("Move down", key="studio_move_down", disabled=position >= total):
+                    if move_case(dataset, int(position) - 1, 1):
+                        _bump_studio_revision()
+                        st.rerun()
+
+        errors, warnings = validate_dataset(dataset)
+        if errors:
+            st.error(f"{len(errors)} issue(s) must be fixed before running:")
+            for message in errors:
+                st.write(f"- {message}")
+        if warnings:
+            with st.expander(f"{len(warnings)} warning(s)"):
+                for message in warnings:
+                    st.write(f"- {message}")
+        if not errors:
+            st.success(f"Dataset is valid: {len(dataset['cases'])} cases.")
+        with st.expander("Preview cases"):
+            st.dataframe(
+                dataset_preview_rows(to_evaluation_cases(dataset)),
+                use_container_width=True,
+                hide_index=True,
+            )
+
+    with docs_tab:
+        st.caption(
+            "Optional corpus entries used for reference/IR-style evaluation. "
+            "Documents are exported with the dataset and preserved on re-import."
+        )
+        edited_docs = st.data_editor(
+            doc_rows(dataset),
+            num_rows="dynamic",
+            use_container_width=True,
+            key=f"studio_docs_editor_{revision}",
+            column_config={
+                "doc": st.column_config.NumberColumn("#", disabled=True),
+                "chars": st.column_config.NumberColumn("chars", disabled=True),
+            },
+        )
+        apply_doc_rows(dataset, _editor_records(edited_docs))
+        if st.button("Add document", key="studio_add_doc"):
+            dataset["docs"].append({"content": "", "title": ""})
+            _bump_studio_revision()
+            st.rerun()
+        st.caption(f"{len(dataset['docs'])} document(s).")
+
+    with import_tab:
+        st.caption("Paste a bare case list or a benchmark-shaped payload.")
+        if "studio_import_json" not in st.session_state:
+            st.session_state.studio_import_json = ""
+        raw = st.text_area(
+            "Dataset JSON",
+            height=200,
+            key="studio_import_json",
+            placeholder='[{"query": "...", "reference": "...", "tags": ["tag"]}]',
+        )
+        if st.button("Import into studio", key="studio_import"):
+            parsed, import_errors = parse_import(raw)
+            syntax_error = bool(import_errors) and import_errors[0].startswith("Invalid JSON")
+            if syntax_error:
+                for message in import_errors:
+                    st.error(message)
+            else:
+                _load_studio_dataset(parsed)
+                if import_errors:
+                    st.warning(
+                        "Imported with issues (rows kept in the editor): "
+                        + "; ".join(import_errors)
+                    )
+                else:
+                    st.success(
+                        f"Imported {len(parsed['cases'])} cases and {len(parsed['docs'])} documents."
+                    )
+                st.rerun()
+        st.caption("Export uses the benchmark shape so queries, references, tags and documents round-trip.")
+
+
 def screen_evaluation() -> None:
     st.header("Evaluation")
     api = client()
@@ -1250,7 +1481,7 @@ def screen_evaluation() -> None:
         "resume of unfinished cases, partial results and export are supported. Jobs "
         "survive a page refresh within this console process."
     )
-    source_options = ("Built-in benchmark", "Paste JSON")
+    source_options = ("Built-in benchmark", "Paste JSON", "Dataset Studio")
     _ensure_choice("evaluation_dataset_source", list(source_options))
     source = st.radio(
         "Dataset source",
@@ -1259,12 +1490,29 @@ def screen_evaluation() -> None:
         key="evaluation_dataset_source",
     )
     cases = []
+    studio_name = ""
     if source == "Built-in benchmark":
         cases = load_benchmark_cases()
         if cases:
             st.caption(f"Loaded {len(cases)} labeled cases from `data/benchmark.json`.")
         else:
             st.warning("Built-in benchmark is unavailable; paste a dataset instead.")
+    elif source == "Dataset Studio":
+        _render_dataset_studio()
+        studio = normalize_dataset(st.session_state.get("studio_dataset"))
+        studio_name = studio["name"]
+        studio_errors, _ = validate_dataset(studio)
+        if studio_errors:
+            st.warning(
+                "Fix the dataset issues above before starting a background job; "
+                "invalid cases stay in the editor and are never dropped silently."
+            )
+        else:
+            cases = to_evaluation_cases(studio)
+            st.caption(
+                f"Studio dataset '{studio_name}': {len(cases)} cases, "
+                f"{len(studio['docs'])} documents."
+            )
     else:
         if "evaluation_dataset_json" not in st.session_state:
             st.session_state.evaluation_dataset_json = CUSTOM_DATASET_TEMPLATE
@@ -1304,7 +1552,11 @@ def screen_evaluation() -> None:
         label = (
             "Built-in benchmark"
             if source == "Built-in benchmark"
-            else f"Pasted dataset ({min(len(cases), MAX_JOB_CASES)} cases)"
+            else (
+                f"Studio dataset '{studio_name}' ({min(len(cases), MAX_JOB_CASES)} cases)"
+                if source == "Dataset Studio"
+                else f"Pasted dataset ({min(len(cases), MAX_JOB_CASES)} cases)"
+            )
         )
         if st.button("Start background job", key="eval_job_start", type="primary"):
             try:

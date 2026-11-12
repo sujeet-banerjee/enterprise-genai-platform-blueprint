@@ -3,8 +3,9 @@
 > **Status: DELIVERED (reconciled 2026-11-11).** The API surface, Streamlit console and
 > UX polish workstream M (#130-#136, #145) described here have shipped; §7 is a delivery
 > record rather than a proposal. The next UX tranche (#151-#158) is partly delivered
-> (#151 workspace/deep links, #152 background evaluation jobs, #163 HITL Approvals
-> console, #164 queue operations/SLA/safe export); the remaining items and the
+> (#151 workspace/deep links, #152 background evaluation jobs, #153 Dataset Studio,
+> #163 HITL Approvals console, #164 queue operations/SLA/safe export); the remaining
+> items and the
 > forward-looking roadmap (multi-region/DR operations,
 > eval expansion, golden paths, product UI) live in
 > [enterprise-roadmap.md](enterprise-roadmap.md). Bulk queue operations are UI-only until
@@ -169,7 +170,7 @@ from §3.2 applies to every UI: HTTP only, no `core.*` imports.
 | **Overview / Health** | status, readiness + config revision, active model/retriever/reranker/evaluator, Get started checklist | `/health`, `/ready`, `/v1/models`, `/v1/embedding-models`, `/v1/retrievers`, `/v1/rerankers`, `/v1/evaluators` |
 | **Query Studio** | task templates; enter query (or batch lines); `top_k`, rerank/include-trace; tabbed results (Answer, Documents, Trace, Guardrails, Resilience, Cache); copy/share Markdown + download; bounded local history with restore and **Compare with last run** deltas | `/v1/query`, `/v1/query:batch`, `/v1/config` |
 | **Compare (what-if)** | pick config overrides (metric, retriever, model); rebuild then run A/B queries | `/v1/pipeline:rebuild`, `/v1/query` |
-| **Evaluation** | dataset picker (built-in benchmark or pasted JSON), background dataset jobs (up to 200 cases: live progress, cancel between cases, retry failed / resume unfinished, partial results, bounded history, JSON/CSV export), case-by-metric matrix, average-score chart, delta vs previous run, evaluator dropdown, ground-truth guidance, metric explanations, run comparison matrix, optional ground truth, auto-retrieved docs; launch + poll experiments | `/v1/evaluators`, `/v1/query`, `/v1/evaluate`, `/v1/experiments`, `/v1/experiments/{exp_id}` |
+| **Evaluation** | dataset picker (built-in benchmark, pasted JSON, or Dataset Studio authoring with case/document editors, inline validation, save/duplicate and round-trip import/export), background dataset jobs (up to 200 cases: live progress, cancel between cases, retry failed / resume unfinished, partial results, bounded history, JSON/CSV export), case-by-metric matrix, average-score chart, delta vs previous run, evaluator dropdown, ground-truth guidance, metric explanations, run comparison matrix, optional ground truth, auto-retrieved docs; launch + poll experiments | `/v1/evaluators`, `/v1/query`, `/v1/evaluate`, `/v1/experiments`, `/v1/experiments/{exp_id}` |
 | **Governance & Cost** | budget limits, spend window, per-request cost, guardrail hit-rate, time range + tenant/app/user filters, alerts preview, CSV/JSON metric export, raw Prometheus scrape | `/v1/governance/status`, `/v1/metrics`, `/metrics` |
 | **Guardrails** | profile/enabled/providers, resolved chains, probe query decisions, hit-rate | `/v1/guardrails`, `/metrics` |
 | **Approvals** | HITL queue (default `pending`) with action/policy/requester/tenant/age filters, search, sorting, pagination and configurable SLA warning/critical thresholds; sequential bulk approve/reject with explicit confirmation and partial-failure reporting; safe metadata-only JSON/CSV export; request detail with redacted context/policy, correlation/evidence ids, audited decisions; requires `approve` capability | `/v1/approvals`, `/v1/approvals/{request_id}`, `/v1/approvals/{request_id}/decision`, `/v1/access` |
@@ -278,6 +279,14 @@ The pure workflow contract lives in `ui/query_studio.py` and is covered by
   also re-runs never-started cases after a cancel. The bounded job history (20 jobs) survives
   a page refresh within the console process, the focused job is deep-linkable
   (`eval_job` workspace parameter) and results export as JSON/CSV.
+- **Dataset Studio (#153):** authors datasets without raw JSON — a case table editor
+  (add/remove/reorder rows; query, reference/ground-truth, comma-separated tags), a
+  document editor for corpus entries, inline validation with case-numbered errors
+  (invalid rows are kept, never dropped silently), a case preview, benchmark-shaped or
+  bare-list JSON import, round-trip JSON export (queries, references, tags and documents
+  preserved, secrets redacted) and save/load/duplicate/delete of up to 10 named datasets.
+  Saved datasets persist through the UX8 workspace layer (export/import and reload);
+  bulk dataset payloads are stripped from share URLs to stay within budget.
 - **Traces (#133):** traces render a stage-ordered **timeline/waterfall** (milliseconds and
   percent of total), a span list for filtering, OTel `trace_id`/`span_id` context and a
   defensive redaction-safe view alongside the raw trace.
@@ -296,7 +305,9 @@ These helpers are pure and Streamlit-free (`ui/evaluation.py`, `ui/traces.py`,
 
 The background job engine lives in `ui/eval_jobs.py` (job state machine, bounded store,
 merge/export helpers; Streamlit-free and HTTP-only) and is covered by
-`tests/test_ui_eval_jobs.py`.
+`tests/test_ui_eval_jobs.py`. The Dataset Studio contract lives in
+`ui/dataset_studio.py` (editor operations, validation, import/export, saved-dataset store;
+Streamlit-free) and is covered by `tests/test_ui_dataset_studio.py`.
 
 ## 7. Delivery record (was: proposed issues)
 
@@ -324,6 +335,7 @@ merge/export helpers; Streamlit-free and HTTP-only) and is covered by
 | (added during delivery) | HITL Approvals console: queue/detail, redacted context, evidence ids, approve/reject decisions | #163 |
 | (added during delivery) | HITL queue operations: filters/search/sort/pagination, SLA/aging, safe metadata export, sequential bulk decisions with partial-failure reporting (UI-only; backend contract #175) | #164 |
 | (added during delivery) | background evaluation jobs: worker-thread dataset runs (<=200 cases) with live progress, cancel between cases, retry failed / resume unfinished, partial results, bounded history, JSON/CSV export | #152 |
+| (added during delivery) | Dataset Studio: case/document editors, inline validation, preview, save/load/duplicate/delete, benchmark-shaped or bare-list import, round-trip export with redaction, saved datasets persisted via UX8 | #153 |
 
 The forward roadmap (horizons H0-H4, workstreams A-M) is tracked in
 [enterprise-roadmap.md](enterprise-roadmap.md) and the GitHub Project board; API/UX
@@ -346,8 +358,8 @@ workstream F there.
 - **P3.2 — Next UX tranche (workstream M):** persistence/deep links (#151) **done**;
   HITL Approvals review/decision console (#163) **done**; approvals queue
   operations/SLA/safe export (#164) **done** (server-side queue landed as #175);
-  background evaluation jobs (#152) **done**; Dataset Studio (#153), cross-object
-  evidence (#154), command
+  background evaluation jobs (#152) **done**; Dataset Studio (#153) **done**;
+  cross-object evidence (#154), command
   palette/WCAG 2.2 AA (#155), responsive/theming (#156), persona journeys/demo mode
   (#157) and collaboration/feedback (#158) remain open on H4.
 - **P4 (optional, later)** — React/Next.js product frontend reusing the same OpenAPI
