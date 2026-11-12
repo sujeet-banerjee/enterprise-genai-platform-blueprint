@@ -103,8 +103,10 @@ DIRECT_PARAMS: Tuple[str, ...] = (
     "gov_tenant",
     "gov_app",
     "gov_user",
+    "gov_request",
     "audit_limit",
     "audit_event",
+    "audit_request",
     "approval_status",
     "approval_request",
     "approval_action",
@@ -119,6 +121,7 @@ DIRECT_PARAMS: Tuple[str, ...] = (
     "approval_warning_hours",
     "approval_critical_hours",
     "traces_request_id",
+    "traces_compare",
 )
 
 MANAGED_PARAMS = frozenset((URL_STATE_PARAM,) + DIRECT_PARAMS)
@@ -279,6 +282,7 @@ def _normalize_governance(value: Any) -> Dict[str, Any]:
         "tenant": _clean_text(data.get("tenant"), 80),
         "app": _clean_text(data.get("app"), 80),
         "user": _clean_text(data.get("user"), 80),
+        "request_id": _clean_id(data.get("request_id")),
     }
 
 
@@ -287,6 +291,7 @@ def _normalize_audit(value: Any) -> Dict[str, Any]:
     return {
         "limit": _as_int(data.get("limit"), 50, 1, 1000),
         "event_type": _clean_text(data.get("event_type"), 80),
+        "request_id": _clean_id(data.get("request_id")),
     }
 
 
@@ -331,7 +336,10 @@ def _normalize_approvals(value: Any) -> Dict[str, Any]:
 
 def _normalize_traces(value: Any) -> Dict[str, Any]:
     data = value if isinstance(value, Mapping) else {}
-    return {"request_id": _clean_id(data.get("request_id"))}
+    return {
+        "request_id": _clean_id(data.get("request_id")),
+        "compare_request_id": _clean_id(data.get("compare_request_id")),
+    }
 
 
 def _normalize_activity(value: Any) -> Dict[str, Any]:
@@ -542,10 +550,15 @@ def workspace_from_session(
             "tenant": state.get("gov_tenant"),
             "app": state.get("gov_app"),
             "user": state.get("gov_user"),
+            "request_id": state.get("gov_request_id"),
         }
     )
     workspace["audit"] = _normalize_audit(
-        {"limit": state.get("audit_limit"), "event_type": state.get("audit_event_type")}
+        {
+            "limit": state.get("audit_limit"),
+            "event_type": state.get("audit_event_type"),
+            "request_id": state.get("audit_request_id"),
+        }
     )
     workspace["approvals"] = _normalize_approvals(
         {
@@ -565,7 +578,10 @@ def workspace_from_session(
         }
     )
     workspace["traces"] = _normalize_traces(
-        {"request_id": state.get("trace_request_id") or state.get("last_trace_request_id")}
+        {
+            "request_id": state.get("trace_request_id") or state.get("last_trace_request_id"),
+            "compare_request_id": state.get("trace_compare_request_id"),
+        }
     )
     workspace["activity"] = _normalize_activity(
         {
@@ -628,6 +644,11 @@ def _trace_request_id(workspace: Mapping[str, Any]) -> str:
     )
 
 
+def _trace_compare_request_id(workspace: Mapping[str, Any]) -> str:
+    traces = workspace.get("traces") or {}
+    return _clean_id(traces.get("compare_request_id"))
+
+
 def apply_workspace(
     workspace: Mapping[str, Any],
     state: MutableMapping[str, Any],
@@ -674,8 +695,10 @@ def apply_workspace(
     state["gov_tenant"] = governance["tenant"]
     state["gov_app"] = governance["app"]
     state["gov_user"] = governance["user"]
+    state["gov_request_id"] = governance["request_id"]
     state["audit_limit"] = audit["limit"]
     state["audit_event_type"] = audit["event_type"]
+    state["audit_request_id"] = audit["request_id"]
     state["approval_status"] = approvals["status"]
     state["approval_request_id"] = approvals["request_id"]
     state["approval_action"] = approvals["action"]
@@ -696,7 +719,13 @@ def apply_workspace(
     state["last_evaluation_at"] = activity["last_evaluation_at"]
     state["last_governance_seen"] = activity["last_governance_seen"]
     state["trace_request_id"] = _trace_request_id(safe)
+    state["trace_compare_request_id"] = _trace_compare_request_id(safe)
     state["trace_autoload"] = screen == "Traces" and bool(state["trace_request_id"])
+    state["trace_compare_autoload"] = (
+        screen == "Traces"
+        and bool(state["trace_request_id"])
+        and bool(state["trace_compare_request_id"])
+    )
     state["query_history"] = [dict(run) for run in safe["recent_runs"]]
     state["qs_last_entry"] = None
     state["qs_last_baseline"] = None
@@ -743,8 +772,10 @@ def _state_defaults() -> Dict[str, Any]:
         "gov_tenant": governance["tenant"],
         "gov_app": governance["app"],
         "gov_user": governance["user"],
+        "gov_request_id": governance["request_id"],
         "audit_limit": audit["limit"],
         "audit_event_type": audit["event_type"],
+        "audit_request_id": audit["request_id"],
         "approval_status": approvals["status"],
         "approval_request_id": approvals["request_id"],
         "approval_action": approvals["action"],
@@ -760,7 +791,9 @@ def _state_defaults() -> Dict[str, Any]:
         "approval_critical_hours": approvals["critical_hours"],
         "approval_bulk_ids": [],
         "trace_request_id": "",
+        "trace_compare_request_id": "",
         "trace_autoload": False,
+        "trace_compare_autoload": False,
         "workspace_scope": {"tenant": "", "workspace": ""},
         "workspace_saved_views": {kind: [] for kind in SAVED_VIEW_KINDS},
         "workspace_saved_runs": [],
@@ -1012,10 +1045,14 @@ def workspace_from_query_params(
         governance["app"] = _clean_text(value("gov_app"), 80)
     if has("gov_user"):
         governance["user"] = _clean_text(value("gov_user"), 80)
+    if has("gov_request"):
+        governance["request_id"] = _clean_id(value("gov_request"))
     if has("audit_limit"):
         audit["limit"] = _as_int(value("audit_limit"), audit["limit"], 1, 1000)
     if has("audit_event"):
         audit["event_type"] = _clean_text(value("audit_event"), 80)
+    if has("audit_request"):
+        audit["request_id"] = _clean_id(value("audit_request"))
     if has("approval_status"):
         approvals["status"] = _normalize_approvals(
             {"status": value("approval_status")}
@@ -1062,6 +1099,8 @@ def workspace_from_query_params(
         scope["workspace"] = _normalize_scope({"workspace": value("workspace")})["workspace"]
     if has("traces_request_id"):
         workspace["traces"]["request_id"] = _clean_id(value("traces_request_id"))
+    if has("traces_compare"):
+        workspace["traces"]["compare_request_id"] = _clean_id(value("traces_compare"))
     if has("request_id"):
         workspace["traces"]["request_id"] = _clean_id(value("request_id"))
     return normalize_workspace(workspace)
@@ -1093,6 +1132,9 @@ def workspace_to_query_params(
         request_id = _trace_request_id(normalized)
         if request_id:
             params["request_id"] = request_id
+        compare_request_id = _trace_compare_request_id(normalized)
+        if compare_request_id:
+            params["traces_compare"] = compare_request_id
     if scope["tenant"]:
         params["tenant"] = scope["tenant"]
     if scope["workspace"]:
@@ -1125,10 +1167,14 @@ def workspace_to_query_params(
         params["gov_app"] = governance["app"]
     if governance["user"]:
         params["gov_user"] = governance["user"]
+    if governance["request_id"]:
+        params["gov_request"] = governance["request_id"]
     if audit["limit"] != 50:
         params["audit_limit"] = str(audit["limit"])
     if audit["event_type"]:
         params["audit_event"] = audit["event_type"]
+    if audit["request_id"]:
+        params["audit_request"] = audit["request_id"]
     if approvals["status"] != "pending":
         params["approval_status"] = approvals["status"]
     if normalized["screen"] == "Approvals" and approvals["request_id"]:

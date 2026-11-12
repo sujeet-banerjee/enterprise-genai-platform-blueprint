@@ -254,7 +254,7 @@ def test_governance_audit_and_trace_fields_persist():
     restored = workspace_from_query_params(workspace_to_query_params(workspace))
     assert restored["governance"]["tenant"] == "tenant-a"
     assert restored["governance"]["app"] == "support"
-    assert restored["audit"] == {"limit": 250, "event_type": "governance"}
+    assert restored["audit"] == {"limit": 250, "event_type": "governance", "request_id": ""}
     assert restored["traces"]["request_id"] == "req-trace-1"
 
 

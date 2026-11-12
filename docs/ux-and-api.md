@@ -177,7 +177,7 @@ from §3.2 applies to every UI: HTTP only, no `core.*` imports.
 | **Audit** | filter by `limit`/`event_type`; inspect redacted events | `/v1/audit` |
 | **Access / RBAC** | roles, capabilities, request caps, allowed models | `/v1/access` |
 | **Admin** | tenant scope indicator, confirmation prompts for sensitive updates, tenant policy view/update + identity directory users, audit export; requires `admin`/`rebuild` capability | `/v1/admin/tenants`, `/v1/admin/tenants/{tenant_id}`, `/v1/admin/users`, `/v1/access`, `/v1/audit` |
-| **Traces** | look up `request_id`; stage latency timeline/waterfall with span list, failure taxonomy, guardrail decisions, resilience, OTel ids, redaction-safe and raw trace views | `/v1/traces/{request_id}`, `/v1/metrics` |
+| **Traces** | look up `request_id`; stage latency timeline/waterfall with span list, failure taxonomy, guardrail decisions, resilience, OTel ids, redaction-safe and raw trace views; cross-links to audit/metrics/governance for the same request; two-request diff; redacted JSON/Markdown evidence pack | `/v1/traces/{request_id}`, `/v1/audit`, `/v1/metrics`, `/v1/governance/status` |
 | **Settings (read-only)** | effective config viewer (redacted), model/provider/guardrail lists | `/v1/config`, `/v1/models`, `/v1/embedding-models`, `/v1/retrievers`, `/v1/rerankers`, `/v1/evaluators`, `/v1/guardrails` |
 
 No config-editing UI in v1 (write path = files in `config/`); `pipeline:rebuild` in the
@@ -336,6 +336,7 @@ Streamlit-free) and is covered by `tests/test_ui_dataset_studio.py`.
 | (added during delivery) | HITL queue operations: filters/search/sort/pagination, SLA/aging, safe metadata export, sequential bulk decisions with partial-failure reporting (UI-only; backend contract #175) | #164 |
 | (added during delivery) | background evaluation jobs: worker-thread dataset runs (<=200 cases) with live progress, cancel between cases, retry failed / resume unfinished, partial results, bounded history, JSON/CSV export | #152 |
 | (added during delivery) | Dataset Studio: case/document editors, inline validation, preview, save/load/duplicate/delete, benchmark-shaped or bare-list import, round-trip export with redaction, saved datasets persisted via UX8 | #153 |
+| (added during delivery) | cross-object evidence: request-id copy/validation, trace/audit/metrics/governance cross-links, two-request diff (stage latency/failure/docs/guardrails/resilience/cost), client-side audit request filter, redacted JSON/Markdown evidence pack, workspace deep links | #154 |
 
 The forward roadmap (horizons H0-H4, workstreams A-M) is tracked in
 [enterprise-roadmap.md](enterprise-roadmap.md) and the GitHub Project board; API/UX
@@ -359,7 +360,7 @@ workstream F there.
   HITL Approvals review/decision console (#163) **done**; approvals queue
   operations/SLA/safe export (#164) **done** (server-side queue landed as #175);
   background evaluation jobs (#152) **done**; Dataset Studio (#153) **done**;
-  cross-object evidence (#154), command
+  cross-object evidence (#154) **done**; command
   palette/WCAG 2.2 AA (#155), responsive/theming (#156), persona journeys/demo mode
   (#157) and collaboration/feedback (#158) remain open on H4.
 - **P4 (optional, later)** — React/Next.js product frontend reusing the same OpenAPI
