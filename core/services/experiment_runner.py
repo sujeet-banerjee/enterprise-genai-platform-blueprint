@@ -53,7 +53,7 @@ class ExperimentRunner:
 
     def run_single_experiment(
         self,
-        docs: List[Union[dict, Document, str]],
+        docs: Optional[List[Union[dict, Document, str]]],
         query: str,
         embedding_model: Optional[str] = None,
         chunk_strategy: Optional[str] = None,
@@ -63,12 +63,16 @@ class ExperimentRunner:
     ) -> Dict[str, Any]:
         from app.bootstrap import assemble_components
 
-        if chunk_strategy:
+        if chunk_strategy and docs is not None:
             chunker = ChunkerFactory.create(
                 strategy=chunk_strategy, config_path=self.retrieval_config_path
             )
-            indexed_docs: Sequence[Union[dict, Document, str]] = chunker.chunk_documents(docs)
+            indexed_docs: Optional[Sequence[Union[dict, Document, str]]] = (
+                chunker.chunk_documents(docs)
+            )
         else:
+            # ``docs=None`` means "use the retriever's configured documents"
+            # (issue #181: sweep RAG datasets that ship only queries).
             indexed_docs = docs
 
         # Assemble via the shared composition root (issue #75): governance,
@@ -126,8 +130,9 @@ class ExperimentRunner:
             "reranker": reranker.__class__.__name__ if reranker is not None else None,
             "evaluator": evaluator.__class__.__name__,
             "chunk_strategy": chunk_strategy or "none",
-            "num_indexed_chunks": len(indexed_docs),
+            "num_indexed_chunks": len(indexed_docs) if indexed_docs is not None else 0,
             "retrieved_documents": pipeline_result.get("retrieved_docs", []),
+            "retrieved_docs_with_scores": pipeline_result.get("retrieved_docs_with_scores", []),
             "retrieval_scores": pipeline_result.get("retrieval_scores", []),
             "metrics": pipeline_result.get("metrics", {}),
             "cost": cost,

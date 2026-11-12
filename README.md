@@ -362,6 +362,7 @@ All behaviour is driven by YAML in config/:
 - config/ingestion.yaml - pluggable connectors + incremental sync (disabled by default)
 - config/policies.yaml - Policy-as-Code engine/bundles (CEL/Rego), dry-run and HITL hooks (disabled by default)
 - config/eval_datasets.yaml - domain-specific evaluation dataset registry/loaders + regression gates (disabled by default; #124, #125)
+- config/optimization.yaml - config-driven parameter sweep (Pareto cost/quality/latency + recommended overlay; disabled by default; #181)
 - config/residency.yaml - multi-region/residency routing (disabled by default)
 - config/dr.yaml - disaster recovery backup/restore (disabled by default)
 
@@ -419,6 +420,27 @@ python -m app.eval_gate --report report.json \
 
 `--report` accepts the JSON returned by an experiment run/comparison (or a list of reports).
 Exit codes: `0` pass, `1` regression, `2` unreadable config/report.
+
+### Tune cost/quality with a config sweep
+
+`config/optimization.yaml` sweeps a bounded grid of config levers (`top_k`, `reranker`,
+`chunk_strategy`, `embedding_model`, `retriever_backend`) against an evaluation dataset and
+reports quality, cost and latency per combination, the **Pareto frontier**, and a
+**recommended config overlay** you can paste into your config files. It is disabled by
+default; set `optimization.enabled: true` and edit `parameters`.
+
+```bash
+# Print the Pareto report as JSON (rows + frontier + recommendation + overlay)
+python -m app.optimize --config config/optimization.yaml --json
+
+# Fail the build when the recommendation misses a quality floor or a budget
+python -m app.optimize --gate --threshold context_recall=0.8
+```
+
+`--gate` reuses the budget-aware gate from the previous section; `--threshold` values win,
+then `objective.min_quality` / `objective.cost_budget_usd` / `objective.latency_budget_ms`,
+then the `eval_datasets.regression` thresholds. Exit codes: `0` pass/disabled, `1` gate
+failure, `2` invalid or oversized configuration.
 
 ### Golden path templates
 

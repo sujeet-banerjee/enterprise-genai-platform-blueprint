@@ -1,0 +1,26 @@
+# Config-driven parameter sweep (issue #181, Workstream K).
+# Disabled by default: `python -m app.optimize` is a no-op until enabled.
+#
+# The sweep expands `parameters` into a cartesian product (bounded by
+# `max_combinations`), runs each combination through ExperimentRunner against
+# `dataset`, and reports the cost/quality/latency trade-off with a Pareto
+# frontier and a recommended overlay.
+#
+# `python -m app.optimize --config config/optimization.yaml [--json] [--gate]`
+enabled: false
+dataset: data/benchmark.json
+max_combinations: 24
+
+# Supported levers: top_k, reranker, chunk_strategy, embedding_model,
+# retriever_backend (aliases: retriever, embedding, chunking).
+parameters:
+  top_k: [3, 5]
+  reranker: [true, false]
+
+# Quality is maximised; cost/latency are budgets (lower is better).
+# `--gate` reuses the #180 budget-aware regression gate with these values.
+objective:
+  quality: context_recall
+  cost_budget_usd: 0.01
+  latency_budget_ms: 1500
+  min_quality: 0.5

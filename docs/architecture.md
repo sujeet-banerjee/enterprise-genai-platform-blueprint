@@ -910,6 +910,33 @@ the IR-benchmark mode is unchanged. A configured metric that is missing from the
 the gate (an unmeasured budget is not proven). CI runs the step unconditionally; it is a no-op
 unless `eval_datasets.regression.enabled: true`.
 
+### Config-driven parameter sweep (#181)
+
+`config/optimization.yaml` turns tuning into a repeatable, config-driven experiment. The
+`parameters` block (`top_k`, `reranker`, `chunk_strategy`, `embedding_model`,
+`retriever_backend`) is expanded into a bounded cartesian product (`max_combinations` guards
+against accidental blow-ups), each combination is run through `ExperimentRunner` against the
+configured evaluation dataset, and the report contains per-combination quality, cost and
+latency together with:
+
+* `pareto_frontier` — combinations not dominated on quality (max), cost (min) and latency (min);
+* `recommended` — the best-quality combination that fits `objective.cost_budget_usd` and
+  `objective.latency_budget_ms` (or the cheapest frontier point when nothing fits), plus a
+  `config_overlay` you can paste into `retrieval.yaml` / `models.yaml`.
+
+```bash
+# Sweep the configured grid and print the Pareto report
+python -m app.optimize --config config/optimization.yaml --json
+
+# Gate the recommendation with the budget-aware gate (#180)
+python -m app.optimize --gate --threshold context_recall=0.8
+```
+
+`--gate` reuses `evaluate_report_thresholds`; explicit `--threshold` values win, then the
+objective budgets/`min_quality`, then `eval_datasets.regression` thresholds. Exit codes:
+`0` pass (or sweep disabled), `1` gate failure, `2` invalid/oversized configuration.
+Disabled by default, so existing deployments are unchanged.
+
 ---
 
 # 11. Cost Transparency
