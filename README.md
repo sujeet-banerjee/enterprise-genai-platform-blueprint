@@ -488,6 +488,28 @@ dataset SHA-256s). `--check` exits `1` when provenance or required fields are mi
 for invalid/oversized configuration, and `0` on success. CI runs the quick check, so a
 published report can be regenerated from its recorded commit and config hash.
 
+### Reference load and latency numbers
+
+Quality is only half the proof: [`benchmarks/load/run_load.py`](benchmarks/load/run_load.py)
+drives `health`, `ready`, `query` and `query:batch` at several concurrency levels and reports
+p50/p95/p99 latency, requests/sec, error rate and a per-stage breakdown. The committed
+baselines live in [`docs/benchmarks/load.md`](docs/benchmarks/load.md) (JSON alongside) and the
+methodology is in [`docs/benchmarks/load-methodology.md`](docs/benchmarks/load-methodology.md).
+These are **reference CPU baselines on a single machine**, not production throughput or SLO
+claims.
+
+```bash
+# Regenerate the committed report (dummy providers, boots uvicorn over HTTP)
+python benchmarks/load/run_load.py --config-dir deployment/smoke/config \
+  --concurrency 1,4,8,16 --requests 30 --warmup 3 \
+  --scenarios health,ready,query,batch \
+  --out docs/benchmarks/load.json --markdown docs/benchmarks/load.md
+
+# Fast in-process run (used by tests/CI)
+python benchmarks/load/run_load.py --in-process --config-dir deployment/smoke/config \
+  --concurrency 1 --requests 2 --scenarios health,ready,query
+```
+
 ### Golden path templates
 
 Don't start from an empty `config/` directory. [`deployment/templates/`](deployment/templates/README.md)
