@@ -473,6 +473,12 @@ failure, `2` invalid or oversized configuration.
 
 ### Reproduce the showcase numbers
 
+**Published results:** [`docs/benchmarks/README.md`](docs/benchmarks/README.md) indexes the
+committed reference run (quality, cost, latency, Pareto frontier and recommendation) with its
+generated Markdown/CSV/SVG artifacts and full provenance. The methodology, hardware profile and
+caveats are in [`docs/benchmarks/methodology.md`](docs/benchmarks/methodology.md). These are
+honest reference-CPU numbers, not vendor benchmarks.
+
 `config/benchmarks.yaml` defines bounded suites over the synthetic corpora in
 `benchmarks/data/` (enterprise IT, product docs and support). The report generator runs the
 configured matrix through the real pipeline and writes retrieval quality (precision, recall,
@@ -484,17 +490,23 @@ comes from the JSON report; **do not hand-edit published numbers** — regenerat
 python -m app.benchmark_report --quick --config-dir deployment/smoke/config \
   --out /tmp/showcase.json --check
 
-# Full local run: local models, all three corpora, top_k x reranker matrix
-python -m app.benchmark_report --full \
-  --out docs/showcase/report.json \
-  --markdown docs/showcase/report.md \
-  --csv docs/showcase/report.csv --check
+# Published reference run: local models, all three corpora, top_k x reranker matrix
+python -m app.benchmark_report --suite reference --config-dir config \
+  --out docs/benchmarks/results/$(date -u +%F)-<sha>.json \
+  --markdown docs/benchmarks/results/$(date -u +%F)-<sha>.md \
+  --csv docs/benchmarks/results/$(date -u +%F)-<sha>.csv \
+  --svg-dir docs/benchmarks/results
+
+# Validate committed reports (hashes, provenance, filenames) and regenerate the index
+python -m app.benchmark_results --check
 ```
 
-The JSON includes provenance (`git_sha`, timestamp, platform, Python, seed, config SHA-256,
-dataset SHA-256s). `--check` exits `1` when provenance or required fields are missing, `2`
-for invalid/oversized configuration, and `0` on success. CI runs the quick check, so a
-published report can be regenerated from its recorded commit and config hash.
+The JSON includes provenance (`git_sha`, timestamp, platform, Python, seed, config SHA-256 and
+snapshot, dataset SHA-256s). `--check` exits `1` when provenance or required fields are missing,
+`2` for invalid/oversized configuration, and `0` on success. `python -m app.benchmark_results
+--check` additionally fails on dataset/config drift, a non-canonical filename, an orphaned
+artifact or a stale index. CI runs a quick check, so a published report can be regenerated from
+its recorded commit and config snapshot.
 
 ### Reference load and latency numbers
 
