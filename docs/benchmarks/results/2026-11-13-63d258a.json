@@ -1,0 +1,571 @@
+{
+  "schema_version": "1.0",
+  "suite": {
+    "suite": "reference",
+    "description": "All three corpora, 6 cases each, top_k x reranker (real local models)",
+    "max_cases": 6,
+    "max_combinations": 4,
+    "parameters": {
+      "top_k": [
+        3,
+        5
+      ],
+      "reranker": [
+        false,
+        true
+      ]
+    },
+    "objective": {
+      "quality": "context_recall",
+      "cost_budget_usd": 0.01,
+      "latency_budget_ms": 1500
+    },
+    "datasets": [
+      {
+        "name": "enterprise-it",
+        "domain": "enterprise-it",
+        "num_docs": 50,
+        "num_cases": 6
+      },
+      {
+        "name": "product-docs",
+        "domain": "product-docs",
+        "num_docs": 46,
+        "num_cases": 6
+      },
+      {
+        "name": "support",
+        "domain": "support",
+        "num_docs": 40,
+        "num_cases": 6
+      }
+    ]
+  },
+  "provenance": {
+    "git_sha": "63d258a864c5aef1e0666a46ecf5291906a2f85b",
+    "timestamp": "2026-11-13T10:51:37.772840+00:00",
+    "platform": "Linux-6.18.58.1-microsoft-standard-WSL2-x86_64-with-glibc2.43",
+    "python_version": "3.13.15",
+    "seed": 0,
+    "config_path": "config/benchmarks.yaml",
+    "config_sha256": "e5a14eb494376a318021fdf1ede55c93a1715e7a7d4b4a557e12145a817dd87d",
+    "config_snapshot": "# Showcase benchmark suites (issue #195, Workstream K).\n# Disabled by default: nothing runs unless a harness is invoked explicitly.\n#\n# Datasets are synthetic and committed under `benchmarks/data/` (see its README\n# for schema, provenance and licensing). Suites are bounded by\n# `max_combinations` and, for quick runs, `max_cases`.\n#\n# Run the report generator (issue #196):\n#   python -m app.benchmark_report --suite quick --config-dir config\nenabled: false\ndefault_suite: showcase\n\ndatasets:\n  enterprise-it:\n    path: benchmarks/data/enterprise-it/benchmark.json\n    domain: enterprise-it\n    description: \"Identity, RBAC, audit, crypto, resilience, vendor risk and FinOps\"\n  product-docs:\n    path: benchmarks/data/product-docs/benchmark.json\n    domain: product-docs\n    description: \"Fictional Atlas API platform documentation\"\n  support:\n    path: benchmarks/data/support/benchmark.json\n    domain: support\n    description: \"Support runbooks and FAQs\"\n\nsuites:\n  # Full reference run (local models). Bounded so it stays tractable on a CPU.\n  showcase:\n    description: \"All three corpora across the core retrieval levers\"\n    datasets: [enterprise-it, product-docs, support]\n    max_cases: 0\n    max_combinations: 24\n    parameters:\n      top_k: [3, 5]\n      reranker: [true, false]\n    objective:\n      quality: context_recall\n      cost_budget_usd: 0.01\n      latency_budget_ms: 1500\n\n  # Fast CI profile: dummy providers + a deterministic subset.\n  quick:\n    description: \"Bounded subset for CI and smoke runs\"\n    datasets: [support]\n    max_cases: 8\n    max_combinations: 4\n    parameters:\n      top_k: [3]\n      reranker: [false]\n    objective:\n      quality: context_recall\n\n  # Published reference run: real local models, all three corpora, bounded so it\n  # reproduces on a CPU in ~15 minutes. Results are committed under\n  # docs/benchmarks/results/ with provenance (see docs/benchmarks/methodology.md).\n  reference:\n    description: \"All three corpora, 6 cases each, top_k x reranker (real local models)\"\n    datasets: [enterprise-it, product-docs, support]\n    max_cases: 6\n    max_combinations: 4\n    parameters:\n      top_k: [3, 5]\n      reranker: [false, true]\n    objective:\n      quality: context_recall\n      cost_budget_usd: 0.01\n      latency_budget_ms: 1500\n",
+    "packages": {
+      "torch": "2.15.0+cpu",
+      "sentence-transformers": "6.2.0",
+      "numpy": "2.5.4",
+      "pydantic": "2.12.5",
+      "fastapi": "0.135.1"
+    }
+  },
+  "datasets": [
+    {
+      "name": "enterprise-it",
+      "display_name": "Enterprise IT benchmark",
+      "path": "benchmarks/data/enterprise-it/benchmark.json",
+      "sha256": "0473d6a66e727450a4ebd23a79dbf409df793ae2881817bdcec9167653ba8235",
+      "num_docs": 50,
+      "num_cases": 6,
+      "domain": "enterprise-it"
+    },
+    {
+      "name": "product-docs",
+      "display_name": "Atlas product documentation benchmark",
+      "path": "benchmarks/data/product-docs/benchmark.json",
+      "sha256": "83d9ec9366d58bae92b0c11f2f1a7f903b45c25a0e95902c59f149cb603d1b78",
+      "num_docs": 46,
+      "num_cases": 6,
+      "domain": "product-docs"
+    },
+    {
+      "name": "support",
+      "display_name": "Support runbook benchmark",
+      "path": "benchmarks/data/support/benchmark.json",
+      "sha256": "3774ff6161da82adfaf6b5eb76eabb28dd912d7e979053ee446dc331f046196a",
+      "num_docs": 40,
+      "num_cases": 6,
+      "domain": "support"
+    }
+  ],
+  "parameters": {
+    "top_k": [
+      3,
+      5
+    ],
+    "reranker": [
+      false,
+      true
+    ]
+  },
+  "max_combinations": 4,
+  "num_combinations": 4,
+  "rows": [
+    {
+      "combination_id": "combo-0001",
+      "parameters": {
+        "reranker": false,
+        "top_k": 3
+      },
+      "metrics": {
+        "context_precision": 0.5,
+        "answer_relevance": 0.6905361666666666,
+        "faithfulness": 0.5124671111111111,
+        "context_recall": 1.0,
+        "mrr": 0.9722222222222222,
+        "ndcg": 0.9651283089005567
+      },
+      "quality": 1.0,
+      "quality_metric": "context_recall",
+      "cost_usd": 0.0004146666666666667,
+      "total_cost_usd": 0.007464,
+      "latency_ms": 9787.377405555557,
+      "p95_latency_ms": 18646.6179,
+      "num_cases": 18,
+      "datasets": [
+        {
+          "dataset": "enterprise-it",
+          "num_cases": 6,
+          "metrics": {
+            "context_precision": 0.4444444444444444,
+            "answer_relevance": 0.7354491666666667,
+            "faithfulness": 0.5120073333333334,
+            "context_recall": 1.0,
+            "mrr": 1.0,
+            "ndcg": 0.986620131524698
+          },
+          "cost_usd": 0.000377,
+          "total_cost_usd": 0.002262,
+          "latency_ms": 9758.628416666668,
+          "p95_latency_ms": 18646.6179
+        },
+        {
+          "dataset": "product-docs",
+          "num_cases": 6,
+          "metrics": {
+            "context_precision": 0.5,
+            "answer_relevance": 0.649114,
+            "faithfulness": 0.5112948333333334,
+            "context_recall": 1.0,
+            "mrr": 0.9166666666666666,
+            "ndcg": 0.9355245321275764
+          },
+          "cost_usd": 0.0004151666666666667,
+          "total_cost_usd": 0.002491,
+          "latency_ms": 9515.60145,
+          "p95_latency_ms": 10869.855
+        },
+        {
+          "dataset": "support",
+          "num_cases": 6,
+          "metrics": {
+            "context_precision": 0.5555555555555555,
+            "answer_relevance": 0.6870453333333333,
+            "faithfulness": 0.5140991666666667,
+            "context_recall": 1.0,
+            "mrr": 1.0,
+            "ndcg": 0.9732402630493958
+          },
+          "cost_usd": 0.00045183333333333333,
+          "total_cost_usd": 0.002711,
+          "latency_ms": 10087.902349999998,
+          "p95_latency_ms": 10339.6955
+        }
+      ]
+    },
+    {
+      "combination_id": "combo-0002",
+      "parameters": {
+        "reranker": false,
+        "top_k": 5
+      },
+      "metrics": {
+        "context_precision": 0.30000000000000004,
+        "answer_relevance": 0.7118615,
+        "faithfulness": 0.421423,
+        "context_recall": 1.0,
+        "mrr": 0.9722222222222222,
+        "ndcg": 0.9651283089005567
+      },
+      "quality": 1.0,
+      "quality_metric": "context_recall",
+      "cost_usd": 0.00048233333333333337,
+      "total_cost_usd": 0.008682,
+      "latency_ms": 11040.021744444444,
+      "p95_latency_ms": 14215.8918,
+      "num_cases": 18,
+      "datasets": [
+        {
+          "dataset": "enterprise-it",
+          "num_cases": 6,
+          "metrics": {
+            "context_precision": 0.26666666666666666,
+            "answer_relevance": 0.7509206666666667,
+            "faithfulness": 0.4386818333333333,
+            "context_recall": 1.0,
+            "mrr": 1.0,
+            "ndcg": 0.986620131524698
+          },
+          "cost_usd": 0.00045466666666666664,
+          "total_cost_usd": 0.002728,
+          "latency_ms": 9038.411716666667,
+          "p95_latency_ms": 12107.7115
+        },
+        {
+          "dataset": "product-docs",
+          "num_cases": 6,
+          "metrics": {
+            "context_precision": 0.3,
+            "answer_relevance": 0.6545195,
+            "faithfulness": 0.41208516666666667,
+            "context_recall": 1.0,
+            "mrr": 0.9166666666666666,
+            "ndcg": 0.9355245321275764
+          },
+          "cost_usd": 0.0004865,
+          "total_cost_usd": 0.002919,
+          "latency_ms": 11405.456533333332,
+          "p95_latency_ms": 11729.8453
+        },
+        {
+          "dataset": "support",
+          "num_cases": 6,
+          "metrics": {
+            "context_precision": 0.3333333333333333,
+            "answer_relevance": 0.7301443333333334,
+            "faithfulness": 0.413502,
+            "context_recall": 1.0,
+            "mrr": 1.0,
+            "ndcg": 0.9732402630493958
+          },
+          "cost_usd": 0.0005058333333333334,
+          "total_cost_usd": 0.0030350000000000004,
+          "latency_ms": 12676.196983333333,
+          "p95_latency_ms": 14215.8918
+        }
+      ]
+    },
+    {
+      "combination_id": "combo-0003",
+      "parameters": {
+        "reranker": true,
+        "top_k": 3
+      },
+      "metrics": {
+        "context_precision": 0.5,
+        "answer_relevance": 0.6958334444444445,
+        "faithfulness": 0.5031980555555555,
+        "context_recall": 1.0,
+        "mrr": 0.9722222222222222,
+        "ndcg": 0.9740482212174248
+      },
+      "quality": 1.0,
+      "quality_metric": "context_recall",
+      "cost_usd": 0.0004132222222222222,
+      "total_cost_usd": 0.007438,
+      "latency_ms": 9882.644083333333,
+      "p95_latency_ms": 11998.0087,
+      "num_cases": 18,
+      "datasets": [
+        {
+          "dataset": "enterprise-it",
+          "num_cases": 6,
+          "metrics": {
+            "context_precision": 0.4444444444444444,
+            "answer_relevance": 0.753942,
+            "faithfulness": 0.5117413333333333,
+            "context_recall": 1.0,
+            "mrr": 1.0,
+            "ndcg": 1.0
+          },
+          "cost_usd": 0.000363,
+          "total_cost_usd": 0.002178,
+          "latency_ms": 8130.58825,
+          "p95_latency_ms": 11998.0087
+        },
+        {
+          "dataset": "product-docs",
+          "num_cases": 6,
+          "metrics": {
+            "context_precision": 0.5,
+            "answer_relevance": 0.6641281666666666,
+            "faithfulness": 0.5195593333333334,
+            "context_recall": 1.0,
+            "mrr": 1.0,
+            "ndcg": 0.986620131524698
+          },
+          "cost_usd": 0.00044216666666666666,
+          "total_cost_usd": 0.002653,
+          "latency_ms": 10710.568866666667,
+          "p95_latency_ms": 10998.5527
+        },
+        {
+          "dataset": "support",
+          "num_cases": 6,
+          "metrics": {
+            "context_precision": 0.5555555555555555,
+            "answer_relevance": 0.6694301666666668,
+            "faithfulness": 0.4782935,
+            "context_recall": 1.0,
+            "mrr": 0.9166666666666666,
+            "ndcg": 0.9355245321275764
+          },
+          "cost_usd": 0.0004345,
+          "total_cost_usd": 0.002607,
+          "latency_ms": 10806.775133333334,
+          "p95_latency_ms": 11343.3372
+        }
+      ]
+    },
+    {
+      "combination_id": "combo-0004",
+      "parameters": {
+        "reranker": true,
+        "top_k": 5
+      },
+      "metrics": {
+        "context_precision": 0.30000000000000004,
+        "answer_relevance": 0.7185591666666666,
+        "faithfulness": 0.42571394444444444,
+        "context_recall": 1.0,
+        "mrr": 0.9351851851851851,
+        "ndcg": 0.9439793524136331
+      },
+      "quality": 1.0,
+      "quality_metric": "context_recall",
+      "cost_usd": 0.00048188888888888896,
+      "total_cost_usd": 0.008674000000000001,
+      "latency_ms": 10773.353527777777,
+      "p95_latency_ms": 12475.0217,
+      "num_cases": 18,
+      "datasets": [
+        {
+          "dataset": "enterprise-it",
+          "num_cases": 6,
+          "metrics": {
+            "context_precision": 0.26666666666666666,
+            "answer_relevance": 0.7432605,
+            "faithfulness": 0.4561393333333334,
+            "context_recall": 1.0,
+            "mrr": 1.0,
+            "ndcg": 1.0
+          },
+          "cost_usd": 0.0004936666666666667,
+          "total_cost_usd": 0.0029620000000000002,
+          "latency_ms": 10055.69375,
+          "p95_latency_ms": 12475.0217
+        },
+        {
+          "dataset": "product-docs",
+          "num_cases": 6,
+          "metrics": {
+            "context_precision": 0.3,
+            "answer_relevance": 0.6748761666666666,
+            "faithfulness": 0.401407,
+            "context_recall": 1.0,
+            "mrr": 0.9166666666666666,
+            "ndcg": 0.9284402864925534
+          },
+          "cost_usd": 0.00044950000000000003,
+          "total_cost_usd": 0.002697,
+          "latency_ms": 10330.539299999999,
+          "p95_latency_ms": 12153.8738
+        },
+        {
+          "dataset": "support",
+          "num_cases": 6,
+          "metrics": {
+            "context_precision": 0.3333333333333333,
+            "answer_relevance": 0.7375408333333334,
+            "faithfulness": 0.4195955,
+            "context_recall": 1.0,
+            "mrr": 0.8888888888888888,
+            "ndcg": 0.9034977707483458
+          },
+          "cost_usd": 0.0005025,
+          "total_cost_usd": 0.0030150000000000003,
+          "latency_ms": 11933.827533333335,
+          "p95_latency_ms": 12325.4417
+        }
+      ]
+    }
+  ],
+  "pareto_frontier": [
+    "combo-0001",
+    "combo-0003"
+  ],
+  "frontier": [
+    {
+      "combination_id": "combo-0001",
+      "parameters": {
+        "reranker": false,
+        "top_k": 3
+      },
+      "metrics": {
+        "context_precision": 0.5,
+        "answer_relevance": 0.6905361666666666,
+        "faithfulness": 0.5124671111111111,
+        "context_recall": 1.0,
+        "mrr": 0.9722222222222222,
+        "ndcg": 0.9651283089005567
+      },
+      "quality": 1.0,
+      "quality_metric": "context_recall",
+      "cost_usd": 0.0004146666666666667,
+      "total_cost_usd": 0.007464,
+      "latency_ms": 9787.377405555557,
+      "p95_latency_ms": 18646.6179,
+      "num_cases": 18,
+      "datasets": [
+        {
+          "dataset": "enterprise-it",
+          "num_cases": 6,
+          "metrics": {
+            "context_precision": 0.4444444444444444,
+            "answer_relevance": 0.7354491666666667,
+            "faithfulness": 0.5120073333333334,
+            "context_recall": 1.0,
+            "mrr": 1.0,
+            "ndcg": 0.986620131524698
+          },
+          "cost_usd": 0.000377,
+          "total_cost_usd": 0.002262,
+          "latency_ms": 9758.628416666668,
+          "p95_latency_ms": 18646.6179
+        },
+        {
+          "dataset": "product-docs",
+          "num_cases": 6,
+          "metrics": {
+            "context_precision": 0.5,
+            "answer_relevance": 0.649114,
+            "faithfulness": 0.5112948333333334,
+            "context_recall": 1.0,
+            "mrr": 0.9166666666666666,
+            "ndcg": 0.9355245321275764
+          },
+          "cost_usd": 0.0004151666666666667,
+          "total_cost_usd": 0.002491,
+          "latency_ms": 9515.60145,
+          "p95_latency_ms": 10869.855
+        },
+        {
+          "dataset": "support",
+          "num_cases": 6,
+          "metrics": {
+            "context_precision": 0.5555555555555555,
+            "answer_relevance": 0.6870453333333333,
+            "faithfulness": 0.5140991666666667,
+            "context_recall": 1.0,
+            "mrr": 1.0,
+            "ndcg": 0.9732402630493958
+          },
+          "cost_usd": 0.00045183333333333333,
+          "total_cost_usd": 0.002711,
+          "latency_ms": 10087.902349999998,
+          "p95_latency_ms": 10339.6955
+        }
+      ]
+    },
+    {
+      "combination_id": "combo-0003",
+      "parameters": {
+        "reranker": true,
+        "top_k": 3
+      },
+      "metrics": {
+        "context_precision": 0.5,
+        "answer_relevance": 0.6958334444444445,
+        "faithfulness": 0.5031980555555555,
+        "context_recall": 1.0,
+        "mrr": 0.9722222222222222,
+        "ndcg": 0.9740482212174248
+      },
+      "quality": 1.0,
+      "quality_metric": "context_recall",
+      "cost_usd": 0.0004132222222222222,
+      "total_cost_usd": 0.007438,
+      "latency_ms": 9882.644083333333,
+      "p95_latency_ms": 11998.0087,
+      "num_cases": 18,
+      "datasets": [
+        {
+          "dataset": "enterprise-it",
+          "num_cases": 6,
+          "metrics": {
+            "context_precision": 0.4444444444444444,
+            "answer_relevance": 0.753942,
+            "faithfulness": 0.5117413333333333,
+            "context_recall": 1.0,
+            "mrr": 1.0,
+            "ndcg": 1.0
+          },
+          "cost_usd": 0.000363,
+          "total_cost_usd": 0.002178,
+          "latency_ms": 8130.58825,
+          "p95_latency_ms": 11998.0087
+        },
+        {
+          "dataset": "product-docs",
+          "num_cases": 6,
+          "metrics": {
+            "context_precision": 0.5,
+            "answer_relevance": 0.6641281666666666,
+            "faithfulness": 0.5195593333333334,
+            "context_recall": 1.0,
+            "mrr": 1.0,
+            "ndcg": 0.986620131524698
+          },
+          "cost_usd": 0.00044216666666666666,
+          "total_cost_usd": 0.002653,
+          "latency_ms": 10710.568866666667,
+          "p95_latency_ms": 10998.5527
+        },
+        {
+          "dataset": "support",
+          "num_cases": 6,
+          "metrics": {
+            "context_precision": 0.5555555555555555,
+            "answer_relevance": 0.6694301666666668,
+            "faithfulness": 0.4782935,
+            "context_recall": 1.0,
+            "mrr": 0.9166666666666666,
+            "ndcg": 0.9355245321275764
+          },
+          "cost_usd": 0.0004345,
+          "total_cost_usd": 0.002607,
+          "latency_ms": 10806.775133333334,
+          "p95_latency_ms": 11343.3372
+        }
+      ]
+    }
+  ],
+  "recommended": {
+    "combination_id": "combo-0003",
+    "parameters": {
+      "reranker": true,
+      "top_k": 3
+    },
+    "metrics": {
+      "context_precision": 0.5,
+      "answer_relevance": 0.6958334444444445,
+      "faithfulness": 0.5031980555555555,
+      "context_recall": 1.0,
+      "mrr": 0.9722222222222222,
+      "ndcg": 0.9740482212174248
+    },
+    "quality": 1.0,
+    "quality_metric": "context_recall",
+    "cost_usd": 0.0004132222222222222,
+    "latency_ms": 9882.644083333333,
+    "p95_latency_ms": 11998.0087,
+    "config_overlay": {
+      "retrieval": {
+        "top_k": 3
+      },
+      "reranking": {
+        "enabled": true
+      }
+    },
+    "within_budget": false
+  }
+}
