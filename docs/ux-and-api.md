@@ -203,8 +203,24 @@ capabilities to:
 evaluate -> governance) whose progress is derived from completed actions in the session,
 not just from visiting a screen. `ui/navigation.py` holds the pure navigation contract
 (groups, capabilities, landing rules, checklist) so it is unit-tested without Streamlit.
-`ui/tour.py` guides a first-run user through 14 steps (connect, overview, checklist,
+`ui/tour.py` guides a first-run user through 15 steps (connect, overview, checklist,
 persistent workspace, then one per screen).
+
+### Keyboard access and accessibility (#155)
+
+The **Command palette** (sidebar button, or `?palette=1` deep link) is a keyboard-first
+launcher over screens, quick actions, recent request ids and tenants. Typing `Enter`
+runs the search, `Tab`/`Shift+Tab` moves through results and `Enter`/`Space` opens one;
+`/`, `>`, `#` and `@` filter by kind. Capability filtering reuses `ui/navigation.py`, so
+the palette never offers a screen the caller cannot open. Streamlit cannot bind a global
+`Ctrl/Cmd+K` without a custom component, so the shortcut is documented alongside the
+reachable alternatives.
+
+**Keyboard shortcuts** opens an in-app overlay with the keyboard map, the WCAG 2.2 AA
+checklist and the documented exceptions (`ui/palette.py`, `ui/a11y.py`). The console also
+injects a skip link (`Skip to main content`), a global `:focus-visible` ring, reduced-motion
+resets and table reflow rules. The decision record, screen-reader test script and known
+exceptions live in [accessibility.md](accessibility.md).
 
 ### Persistent workspace and shareable deep links (#151)
 
@@ -337,6 +353,7 @@ Streamlit-free) and is covered by `tests/test_ui_dataset_studio.py`.
 | (added during delivery) | background evaluation jobs: worker-thread dataset runs (<=200 cases) with live progress, cancel between cases, retry failed / resume unfinished, partial results, bounded history, JSON/CSV export | #152 |
 | (added during delivery) | Dataset Studio: case/document editors, inline validation, preview, save/load/duplicate/delete, benchmark-shaped or bare-list import, round-trip export with redaction, saved datasets persisted via UX8 | #153 |
 | (added during delivery) | cross-object evidence: request-id copy/validation, trace/audit/metrics/governance cross-links, two-request diff (stage latency/failure/docs/guardrails/resilience/cost), client-side audit request filter, redacted JSON/Markdown evidence pack, workspace deep links | #154 |
+| (added during delivery) | command palette (`/`, `>`, `#`, `@` prefixes), keyboard-shortcuts overlay, skip link, focus rings, reduced motion, WCAG 2.2 AA checklist + decision record, screen-reader script | #155 |
 
 The forward roadmap (horizons H0-H4, workstreams A-M) is tracked in
 [enterprise-roadmap.md](enterprise-roadmap.md) and the GitHub Project board; API/UX
@@ -361,7 +378,7 @@ workstream F there.
   operations/SLA/safe export (#164) **done** (server-side queue landed as #175);
   background evaluation jobs (#152) **done**; Dataset Studio (#153) **done**;
   cross-object evidence (#154) **done**; command
-  palette/WCAG 2.2 AA (#155), responsive/theming (#156), persona journeys/demo mode
-  (#157) and collaboration/feedback (#158) remain open on H4.
+  palette/WCAG 2.2 AA (#155) **done**; responsive/theming (#156), persona
+  journeys/demo mode (#157) and collaboration/feedback (#158) remain open on H4.
 - **P4 (optional, later)** — React/Next.js product frontend reusing the same OpenAPI
   contract; tracked as workstream F in the enterprise roadmap (not committed).

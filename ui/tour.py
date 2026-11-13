@@ -221,7 +221,10 @@ def render_help_expander() -> None:
     with st.expander("Help & tour guide", expanded=False):
         st.markdown(
             "New here? Click **Take the tour** in the sidebar for a step-by-step walkthrough, "
-            "or read the summary below."
+            "or read the summary below. Keyboard-first users can open the "
+            "**Command palette (Ctrl+K)** to jump to screens, quick actions, recent request ids "
+            "and tenants, or **Keyboard shortcuts** for the keyboard map, the WCAG 2.2 AA "
+            "checklist and the documented exceptions."
         )
         for step in TOUR_STEPS:
             st.markdown(f"**{step.title}** - _screen: {step.screen}_")
