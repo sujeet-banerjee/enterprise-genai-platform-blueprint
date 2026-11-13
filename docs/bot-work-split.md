@@ -1,12 +1,12 @@
 # Bot work split (H4/H5 — current open items)
 
-Reconciled 2026-11-12 from `origin/main` @ `8247f1a` (after #179/#180/#181 and
-#152/#153/#154). No open PRs.
+Reconciled 2026-11-13 from `origin/main` @ `8566826` (after #195/#196 and #152/#153/#154;
+#155 UX12 lands in this PR). No open PRs.
 
-Open items: umbrella **#43**; Workstream M UX **#155-#158** (bot-win); showcase/proof
-**#187-#193** and showcase harness **#195-#199** (H5, see below). Workstream G
-follow-ups (#64/#68-#71), #105/#109, #154 (UX11), #162 and #175 are **closed** — do
-not treat them as open.
+Open items: umbrella **#43**; Workstream M UX **#156-#158** (bot-win, UX1-UX12 delivered);
+showcase/proof **#187-#193** and showcase harness **#195-#199** (H5, see below). Workstream G
+follow-ups (#64/#68-#71), #105/#109, #154 (UX11), #155 (UX12), #162 and #175 are **closed** —
+do not treat them as open.
 Re-check open issues and PRs before each item.
 
 ## Bot identities
@@ -43,17 +43,16 @@ contract (server-side pagination/filter/sort/tenant scope).
 
 | Order | Item | Notes |
 |---|---|---|
-| 1 | **#155 UX12 - Command palette + WCAG 2.2 AA** (H4, P1) | A11y/UI shell. |
-| 2 | **#156 UX13 - Responsive/compact/themes** (H4, P2) | UI polish. |
-| 3 | **#157 UX14 - Role journeys + demo mode** (H4, P2) | Onboarding experience. |
-| 4 | **#158 UX15 - Collaboration and feedback** (H4, P2) | UI feature. |
-| 5 | **#189 showcase demo walkthrough** (H5) | 3-5 minute integrated demo + screenshots/recording; bot-uni supplies the known-good demo config/data. |
-| 6 | **Roadmap/docs reconciliation** | Low-risk docs sync after merges. |
+| 1 | **#156 UX13 - Responsive/compact/themes** (H4, P2) | UI polish. |
+| 2 | **#157 UX14 - Role journeys + demo mode** (H4, P2) | Onboarding experience. |
+| 3 | **#158 UX15 - Collaboration and feedback** (H4, P2) | UI feature. |
+| 4 | **#189 showcase demo walkthrough** (H5) | 3-5 minute integrated demo + screenshots/recording; bot-uni supplies the known-good demo config/data. |
+| 5 | **Roadmap/docs reconciliation** | Low-risk docs sync after merges. |
 
 Completed by this workstream since the last split: #130-#136, #145, #151 (workspace/deep
 links), #152 (background evaluation jobs), #153 (Dataset Studio authoring), #154
-(cross-object evidence), #163 (HITL review console) and #164 (queue
-operations/SLA/safe export).
+(cross-object evidence), #155 (command palette + WCAG 2.2 AA), #163 (HITL review console)
+and #164 (queue operations/SLA/safe export).
 
 ## Showcase/proof workstream (H5)
 

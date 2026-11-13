@@ -18,6 +18,15 @@ from urllib.parse import parse_qsl, urlsplit
 
 import streamlit as st
 
+from ui.a11y import (
+    checklist_rows,
+    checklist_summary,
+    exceptions_rows,
+    skip_link_html,
+)
+from ui.a11y import (
+    styles as a11y_styles,
+)
 from ui.admin import audit_export_rows, confirm_action, scope_indicator
 from ui.approvals import (
     AGE_FILTER_OPTIONS,
@@ -130,6 +139,15 @@ from ui.navigation import (
     quick_actions_for,
     role_label,
 )
+from ui.palette import (
+    KIND_LABELS,
+    PaletteItem,
+    build_items,
+    filter_items,
+    recent_request_ids,
+    resolve_action,
+    shortcut_help_markdown,
+)
 from ui.polish import error_remediation
 from ui.query_studio import (
     DEFAULT_QUERY,
@@ -238,6 +256,14 @@ def _bootstrap() -> None:
         st.session_state.workspace_pending = None
     if "access_context" not in st.session_state:
         st.session_state.access_context = {}
+    if "palette_open" not in st.session_state:
+        st.session_state.palette_open = False
+    if "show_shortcuts" not in st.session_state:
+        st.session_state.show_shortcuts = False
+    if "palette_param_consumed" not in st.session_state:
+        st.session_state.palette_param_consumed = False
+    if "known_tenants" not in st.session_state:
+        st.session_state.known_tenants = []
 
 
 def _failure_taxonomy(result) -> None:
@@ -276,6 +302,110 @@ def _access_context(api: ApiClient) -> Dict[str, Any]:
 def _navigate(screen: str) -> None:
     st.session_state.active_screen = screen
     st.rerun()
+
+
+def _known_tenants(access: Dict[str, Any]) -> List[str]:
+    """Tenants seen by the admin screen plus the current caller's tenant."""
+    seen = {str(value) for value in st.session_state.get("known_tenants") or [] if value}
+    current = ((access or {}).get("tenant") or {}).get("id")
+    if current:
+        seen.add(str(current))
+    return sorted(seen)
+
+
+def _palette_items(access: Dict[str, Any]) -> List[PaletteItem]:
+    """Catalogue for the command palette (screens, actions, ids, tenants)."""
+    return build_items(
+        screens=list(SCREENS.keys()),
+        capabilities=access.get("capabilities") or [],
+        recent_requests=recent_request_ids(st.session_state.get("query_history") or []),
+        tenants=_known_tenants(access),
+    )
+
+
+def _open_shortcuts() -> None:
+    st.session_state.show_shortcuts = True
+    st.rerun()
+
+
+def _apply_palette_item(item: PaletteItem) -> None:
+    """Navigate from a palette selection and restore sensible focus state."""
+    action = resolve_action(item)
+    st.session_state.palette_open = False
+    request_id = action.get("request_id")
+    if request_id:
+        st.session_state.trace_request_id = request_id
+        st.session_state.trace_autoload = True
+        st.session_state.last_trace_request_id = request_id
+    tenant = action.get("tenant")
+    if tenant:
+        st.session_state.gov_tenant = tenant
+    screen = action.get("screen")
+    if screen:
+        st.session_state.active_screen = screen
+        st.session_state.nav_initialized = True
+    if action.get("help"):
+        st.session_state.show_shortcuts = True
+    st.rerun()
+
+
+def _palette_from_query() -> None:
+    """Open the palette from a ?palette=1 deep link exactly once (#155)."""
+    if st.session_state.get("palette_param_consumed"):
+        return
+    value = st.query_params.to_dict().get("palette")
+    if isinstance(value, list):
+        value = value[0] if value else ""
+    if str(value or "").strip().lower() in ("1", "true", "yes"):
+        st.session_state.palette_open = True
+    st.session_state.palette_param_consumed = True
+
+
+@st.dialog("Command palette")
+def _palette_dialog(access: Dict[str, Any]) -> None:
+    """Keyboard-first launcher for screens, actions, request ids and tenants."""
+    st.caption(
+        "Type to search. Prefix with `/` screen, `>` action, `#` request id or `@` tenant. "
+        "Press Enter to search, Tab to a result, Enter to open."
+    )
+    with st.form("palette_form", clear_on_submit=False, border=False):
+        query = st.text_input(
+            "Search screens, actions, request ids and tenants",
+            key="palette_query",
+            placeholder="/ Query Studio, > approve, # req-123, @ acme",
+        )
+        st.form_submit_button("Search", type="primary")
+    results = filter_items(_palette_items(access), query)
+    st.caption(f"{len(results)} result(s) for `{query or 'everything'}`.")
+    for item in results:
+        if st.button(
+            f"{KIND_LABELS.get(item.kind, item.kind)}: {item.label}",
+            key=f"palette::{item.id}",
+            help=item.help,
+            use_container_width=True,
+        ):
+            _apply_palette_item(item)
+    if st.button("Close palette", key="palette_close"):
+        st.session_state.palette_open = False
+        st.rerun()
+
+
+@st.dialog("Keyboard shortcuts and accessibility")
+def _shortcuts_dialog() -> None:
+    """Discoverable keyboard map plus the WCAG 2.2 AA decision record (#155)."""
+    summary = checklist_summary()
+    st.caption(
+        f"WCAG 2.2 AA: {summary['meets']} of {summary['total']} criteria met; "
+        f"{summary['exceptions']} documented exceptions. Full record: docs/accessibility.md"
+    )
+    st.markdown(shortcut_help_markdown())
+    with st.expander("WCAG 2.2 AA checklist", expanded=False):
+        st.dataframe(checklist_rows(), use_container_width=True, hide_index=True)
+    with st.expander("Known exceptions", expanded=False):
+        st.dataframe(exceptions_rows(), use_container_width=True, hide_index=True)
+    if st.button("Close", key="shortcuts_close"):
+        st.session_state.show_shortcuts = False
+        st.rerun()
 
 
 def _access_scope(access: Dict[str, Any]) -> Dict[str, str]:
@@ -492,6 +622,26 @@ def _render_sidebar_navigation(access: Dict[str, Any]) -> None:
         st.sidebar.caption(f"Role **{role_label(access['role'])}**{suffix}  \nTenant `{scope}`")
     else:
         st.sidebar.warning("Access info unavailable - showing all screens.")
+
+    if st.sidebar.button(
+        "Command palette (Ctrl+K)",
+        key="open_palette",
+        use_container_width=True,
+        help=(
+            "Search screens, actions, request ids and tenants without a mouse. "
+            "Browsers may reserve Ctrl+K for the address bar: this button and the "
+            "?palette=1 deep link always work (see docs/accessibility.md)."
+        ),
+    ):
+        st.session_state.palette_open = True
+        st.rerun()
+    if st.sidebar.button(
+        "Keyboard shortcuts",
+        key="open_shortcuts",
+        use_container_width=True,
+        help="Keyboard map, WCAG 2.2 AA checklist and known exceptions.",
+    ):
+        _open_shortcuts()
 
     st.sidebar.checkbox(
         "Show all screens",
@@ -2413,6 +2563,13 @@ def screen_admin() -> None:
     if require_ok(t_res):
         st.subheader("Tenants")
         tenants = t_res.data.get("tenants") or []
+        st.session_state.known_tenants = sorted(
+            {
+                str(row.get("tenant") or row.get("id") or "")
+                for row in tenants
+                if (row.get("tenant") or row.get("id"))
+            }
+        )
         if tenants:
             st.dataframe(tenants, use_container_width=True)
         else:
@@ -2760,6 +2917,8 @@ SCREENS = {
 
 def main() -> None:
     _bootstrap()
+    st.markdown(a11y_styles(), unsafe_allow_html=True)
+    st.markdown(skip_link_html(), unsafe_allow_html=True)
     st.sidebar.title("GenAI RAG Console")
     st.session_state.api_base_url = st.sidebar.text_input(
         "API base URL", value=st.session_state.api_base_url
@@ -2774,10 +2933,15 @@ def main() -> None:
     st.session_state.access_context = access
     _apply_pending_workspace(access)
     _apply_incoming_workspace(access)
+    _palette_from_query()
     _render_sidebar_navigation(access)
     _render_workspace_sidebar(access)
     render_help_expander()
     render_tour()
+    if st.session_state.get("palette_open"):
+        _palette_dialog(access)
+    if st.session_state.get("show_shortcuts"):
+        _shortcuts_dialog()
     active = st.session_state.get("active_screen", "Overview / Health")
     SCREENS.get(active, screen_overview)()
     _sync_workspace_to_url(access)

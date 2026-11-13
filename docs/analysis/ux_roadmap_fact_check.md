@@ -1,13 +1,14 @@
 # UX Roadmap Fact-Check & Plan
 
-*Updated 2026-11-11. Streamlit console at `ui/`, HTTP-only, API-driven.*
+*Updated 2026-11-13. Streamlit console at `ui/`, HTTP-only, API-driven.*
 
-> **Status: UX1-UX11 delivered and closed.** Workstream M (UX polish) shipped in
+> **Status: UX1-UX12 delivered and closed.** Workstream M (UX polish) shipped in
 > #130-#136, with the Evaluation dataset-runner follow-up #145, persistent
-> workspace/deep links #151, background evaluation jobs #152 and Dataset Studio
-> authoring #153. This document now
+> workspace/deep links #151, background evaluation jobs #152, Dataset Studio
+> authoring #153, cross-object evidence #154 and the command palette / WCAG 2.2 AA
+> pass #155. This document now
 > (a) records the delivered state, and
-> (b) tracks the remaining next UX/UI tranche, **UX12-UX15**, opened as #155-#158 and
+> (b) tracks the remaining next UX/UI tranche, **UX13-UX15**, opened as #156-#158 and
 > mapped to Project #8 Workstream M.
 
 ## Assessment: "Don't make me think"
@@ -76,13 +77,14 @@
 | UX9 | Background evaluation jobs | #152 | Shipped 2026-11-11 | `ui/eval_jobs.py`, `tests/test_ui_eval_jobs.py`, jobs panel + auto-refresh fragment in `ui/app.py` |
 | UX10 | Dataset Studio authoring | #153 | Shipped 2026-11-12 | `ui/dataset_studio.py`, `tests/test_ui_dataset_studio.py`, Studio section + source option in `ui/app.py`, saved datasets in `ui/workspace.py` |
 | UX11 | Cross-link and compare operational evidence | #154 | Shipped 2026-11-12 | `ui/evidence.py`, `tests/test_ui_evidence.py`, evidence links/compare/evidence pack in `ui/app.py`, request-id deep links in `ui/workspace.py` |
+| UX12 | Command palette and WCAG 2.2 AA hardening | #155 | Shipped 2026-11-13 | `ui/palette.py`, `ui/a11y.py`, `tests/test_ui_palette.py`, `docs/accessibility.md`, palette/shortcuts dialogs + skip link in `ui/app.py` |
 
 The delivered scope is also recorded in `docs/ux-and-api.md` section 6 and the
 delivery record in section 7.
 
-## New UX/UI proposals (UX12-UX15 opened; UX8-UX11 delivered)
+## New UX/UI proposals (UX13-UX15 opened; UX8-UX12 delivered)
 
-UX8 (#151), UX9 (#152), UX10 (#153) and UX11 (#154) are delivered. UX12-UX15 remain opened as #155-#158. Tracking:
+UX8 (#151), UX9 (#152), UX10 (#153), UX11 (#154) and UX12 (#155) are delivered. UX13-UX15 remain opened as #156-#158. Tracking:
 label `ux`, link to umbrella #43, Project #8 **Workstream M**, milestone **H4**, and keep the
 HTTP-only rule plus AST/client tests for every change.
 
@@ -92,7 +94,7 @@ HTTP-only rule plus AST/client tests for every change.
 | UX9 (#152, **shipped**) | Background evaluation jobs with progress, cancel and resume | P0 | Dataset runs block the UI, stop at 20 cases, and cannot be cancelled or resumed after a failure. | Job submission, per-case progress, cancel, retry failed cases, partial results, job history, >20-case runs, export. | 100-case run stays responsive; cancel takes effect within one case; resume retries only failures; results survive refresh; failures remain isolated. | Delivered UI-side (`ui/eval_jobs.py` + console panel); a backend job/queue API remains optional follow-up. |
 | UX10 (#153, **shipped**) | Dataset Studio authoring | P1 | Users must hand-write JSON; there is no way to edit cases, references, docs, tags or validation errors in the console. | Case table editor; add/remove/reorder; document editor; reference/GT field; tags; inline validation; preview; import/export; save/duplicate. | Author a 20-case/10-doc dataset without JSON; validation is inline; export round-trips; no secrets or raw config leakage. | Delivered UI-side (`ui/dataset_studio.py` + console Studio section, saved via UX8); optional dataset persistence API remains follow-up. |
 | UX11 (#154, **shipped**) | Cross-link and compare operational evidence | P1 | Trace, audit, metrics and governance views are disconnected; comparing two requests is manual. | Universal request-id search/copy; trace -> audit -> metrics -> governance links; two-trace side-by-side diff; saved filter context; evidence-pack export. | Reach audit/metrics from a trace in <=2 clicks; trace diff highlights stage latency/failure/document/guardrail deltas; links preserve tenant/role scope. | Delivered UI-side (`ui/evidence.py` + console cross-links/diff/evidence pack, request-id deep links via UX8); trace search/list endpoint remains an optional backend follow-up. |
-| UX12 (#155) | Command palette and accessibility hardening | P1 | Navigation is mouse-first; keyboard/screen-reader flows and WCAG 2.2 AA are not formally verified. | Ctrl/Cmd+K palette for screens, request ids, tenants and actions; shortcuts and help overlay; skip link; focus states; ARIA labels; reduced motion; contrast fixes; WCAG checklist. | All primary flows work keyboard-only; no critical/serious automated a11y findings; usable at 200% zoom; palette actions are keyboard-completable. | UX8 for deep-link targets. |
+| UX12 (#155, **shipped**) | Command palette and accessibility hardening | P1 | Navigation is mouse-first; keyboard/screen-reader flows and WCAG 2.2 AA are not formally verified. | Ctrl/Cmd+K palette for screens, request ids, tenants and actions; shortcuts and help overlay; skip link; focus states; ARIA labels; reduced motion; contrast fixes; WCAG checklist. | All primary flows work keyboard-only; no critical/serious automated a11y findings; usable at 200% zoom; palette actions are keyboard-completable. | Delivered UI-side (`ui/palette.py`, `ui/a11y.py`, `docs/accessibility.md`); browser Ctrl/Cmd+K interception documented as a known exception with reachable alternatives. |
 | UX13 (#156) | Responsive, compact and theme system | P2 | Wide desktop layouts break on small screens; tables and colors are inconsistent across screens. | Responsive breakpoints; compact/density mode; sticky actions; table-to-card degradation; light/dark/high-contrast themes; semantic chart colors. | 375/768/1280 px layouts have no horizontal scroll on core flows; contrast >=4.5:1; themes pass checks; tables degrade without losing actions. | UX12 accessibility tokens. |
 | UX14 (#157) | Role-based guided journeys and demo mode | P2 | One generic tour serves every persona; there is no safe sample data or reset for demos and onboarding. | Tours for architect, analyst, security, ops and admin; guided sample scenario; demo mode with seeded state and reset; checklist extended to guardrails/audit/admin; doc deep links. | Each persona completes its journey in <10 minutes; reset returns a clean state; tour covers new screens; no production data is touched. | UX8/UX10; demo config/API fixtures. |
 | UX15 (#158) | Collaboration and feedback capture | P2 | Bad answers cannot be annotated or promoted into evaluation data; sharing evidence is copy/paste. | Run annotations/flags; comments/notes; "promote to dataset" from a bad answer; evidence-pack export (Markdown/JSON); optional review queue; share link. | Flagging a run creates an evaluation case in one click; annotations survive reload with UX8; exports are redacted; no PII or secrets. | UX8/UX10; optional annotation store. |
@@ -103,7 +105,7 @@ HTTP-only rule plus AST/client tests for every change.
 2. **UX9** - removes the biggest evaluation workflow blocker. **Done (#152).**
 3. **UX10** - dataset authoring turns evaluation into a repeatable workflow. **Done (#153).**
 4. **UX11** - cross-object evidence reduces debugging time. **Done (#154).**
-5. **UX12** - accessibility and keyboard access are enterprise adoption gates.
+5. **UX12** - accessibility and keyboard access are enterprise adoption gates. **Done (#155).**
 6. **UX13-UX15** - presentation, persona onboarding and collaboration polish.
 
 ## Implementation notes
@@ -121,5 +123,5 @@ HTTP-only rule plus AST/client tests for every change.
 
 UX1-UX7 turned the console from a functional API demo into a role-aware, guided
 workflow surface. UX8-UX11 (persistence, background jobs, dataset authoring,
-cross-object evidence) are delivered, leaving UX12 as the enterprise accessibility
-gate.
+cross-object evidence) and UX12 (keyboard-first palette + WCAG 2.2 AA pass) are
+delivered, leaving UX13-UX15 (responsive/theming, persona journeys, collaboration).

@@ -226,6 +226,17 @@ screen that role usually needs, and hides screens your capabilities cannot open 
 Overview walks connect -> query -> trace -> evaluate -> governance and tracks real
 actions, while **Quick actions** jump straight to the next task.
 
+**Command palette (Ctrl+K)** is the keyboard-first launcher (#155): search screens,
+quick actions, recent request ids and tenants with `/`, `>`, `#` and `@` prefixes
+(`?palette=1` opens it from a deep link, and the sidebar button is always available;
+browsers may reserve Ctrl+K, and this limitation is documented with the alternatives).
+The palette is a plain form, so it is fully keyboard-operable, and selecting a result
+navigates with the same workspace/deep-link state as a click. **Keyboard shortcuts**
+opens the same help overlay from the sidebar and lists the keyboard map, the
+WCAG 2.2 AA checklist and the documented exceptions. The console injects a skip link
+(`Skip to main content`), visible focus rings and a `prefers-reduced-motion` reset;
+see `docs/accessibility.md` for the decision record and screen-reader test script.
+
 The console keeps a **persistent workspace** across reloads and share links (#151).
 Screen, query, filters, selected trace, comparisons, datasets and saved views are encoded
 in managed URL parameters (`screen`, `request_id` and the compact `ws` payload), so
@@ -239,7 +250,8 @@ back/forward support.
 
 First-time users: click **Take the tour** in the sidebar for a guided, step-by-step
 walkthrough of every screen (Back / Next / Skip), or open the always-available
-**Help & tour guide** expander for the same reference at any time.
+**Help & tour guide** expander for the same reference at any time. Keyboard-first
+users can start with **Command palette (Ctrl+K)** and search for `shortcuts`.
 
 ## End-to-end scenario: real retrieval + all metrics via the console
 
@@ -516,7 +528,7 @@ config/     YAML configuration - the single source of truth for behaviour
 ui/         Streamlit console (HTTP-only client of the public API)
 tests/      pytest suite (behavioural tests drive real local models)
 data/       sample corpus (data/docs.json)
-docs/       onboarding.md, architecture.md, deployment.md, ux-and-api.md, enterprise-roadmap.md
+docs/       onboarding.md, architecture.md, deployment.md, ux-and-api.md, accessibility.md, enterprise-roadmap.md
 ```
 
 ### How to run the backend
@@ -572,7 +584,9 @@ If the backend has API-key auth enabled, paste the key into the console sidebar
 is not exposed, add an endpoint rather than importing backend code.
 
 First-time users can click **Take the tour** in the sidebar (a guided Back/Next/Skip
-walkthrough) or open the **Help & tour guide** expander at any time. See
+walkthrough) or open the **Help & tour guide** expander at any time. Keyboard-first
+users can open **Command palette (Ctrl+K)** or **Keyboard shortcuts**; accessibility
+details live in [docs/accessibility.md](docs/accessibility.md). See
 [End-to-end scenario](#end-to-end-scenario-real-retrieval--all-metrics-via-the-console)
 for a click-by-click example that runs a real retrieval and scores it with every metric.
 
