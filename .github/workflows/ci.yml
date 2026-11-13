@@ -180,6 +180,17 @@ jobs:
           # Enable regression thresholds in config/eval_datasets.yaml to block CI.
           python -m app.eval_gate --config-dir config --json
 
+      - name: Showcase benchmark quick check
+        run: |
+          # Reproducible report path (issue #196): dummy providers, 8 cases,
+          # one combination. --check fails if provenance/schema is incomplete.
+          python -m app.benchmark_report --quick \
+            --config-dir deployment/smoke/config \
+            --out "$RUNNER_TEMP/showcase.json" \
+            --markdown "$RUNNER_TEMP/showcase.md" \
+            --csv "$RUNNER_TEMP/showcase.csv" \
+            --check
+
       - name: Validate golden path templates
         run: |
           # Every deployment/templates/<path>/*.yaml is schema-validated exactly

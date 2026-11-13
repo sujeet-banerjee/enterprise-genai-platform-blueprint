@@ -344,6 +344,12 @@ def _run_combo(
             run_metrics["context_recall"] = Metrics.context_recall_at_ids(
                 case.relevant_doc_ids, retrieved_ids
             )
+            run_metrics["mrr"] = Metrics.mrr_at_ids(
+                case.relevant_doc_ids, retrieved_ids
+            )
+            run_metrics["ndcg"] = Metrics.ndcg_at_ids(
+                case.relevant_doc_ids, retrieved_ids
+            )
         for name, value in run_metrics.items():
             if isinstance(value, (int, float)) and not isinstance(value, bool):
                 metric_values[str(name)].append(float(value))
