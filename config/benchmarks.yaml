@@ -50,3 +50,19 @@ suites:
       reranker: [false]
     objective:
       quality: context_recall
+
+  # Published reference run: real local models, all three corpora, bounded so it
+  # reproduces on a CPU in ~15 minutes. Results are committed under
+  # docs/benchmarks/results/ with provenance (see docs/benchmarks/methodology.md).
+  reference:
+    description: "All three corpora, 6 cases each, top_k x reranker (real local models)"
+    datasets: [enterprise-it, product-docs, support]
+    max_cases: 6
+    max_combinations: 4
+    parameters:
+      top_k: [3, 5]
+      reranker: [false, true]
+    objective:
+      quality: context_recall
+      cost_budget_usd: 0.01
+      latency_budget_ms: 1500

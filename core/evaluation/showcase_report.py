@@ -53,15 +53,28 @@ class ShowcaseReportError(ValueError):
     """Raised when a showcase report cannot be produced or validated."""
 
 
-def _sha256_file(path: Optional[str]) -> str:
+def _resolve_repo_path(path: Optional[str]) -> Optional[Path]:
     if not path:
-        return ""
+        return None
     target = Path(path)
     if not target.is_absolute():
         target = REPO_ROOT / target
-    if not target.exists():
+    return target
+
+
+def _sha256_file(path: Optional[str]) -> str:
+    target = _resolve_repo_path(path)
+    if target is None or not target.exists():
         return ""
     return hashlib.sha256(target.read_bytes()).hexdigest()
+
+
+def _read_config_text(path: Optional[str]) -> str:
+    """Return the raw config text so a report can embed a verifiable snapshot."""
+    target = _resolve_repo_path(path or "config/benchmarks.yaml")
+    if target is None or not target.exists():
+        return ""
+    return target.read_text(encoding="utf-8")
 
 
 def _git_sha() -> str:
@@ -95,7 +108,14 @@ def collect_provenance(
     seed: int = 0,
     timestamp: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """Return a provenance block for a report."""
+    """Return a provenance block for a report.
+
+    ``config_snapshot`` embeds the exact benchmark config text so a published
+    result can be verified against ``config_sha256`` even after the live config
+    changes (see ``core.evaluation.benchmark_results``).
+    """
+    config_text = _read_config_text(config_path)
+    config_sha = hashlib.sha256(config_text.encode("utf-8")).hexdigest() if config_text else ""
     return {
         "git_sha": _git_sha(),
         "timestamp": timestamp or datetime.now(timezone.utc).isoformat(),
@@ -103,7 +123,8 @@ def collect_provenance(
         "python_version": platform.python_version(),
         "seed": int(seed),
         "config_path": str(config_path or "config/benchmarks.yaml"),
-        "config_sha256": _sha256_file(config_path or "config/benchmarks.yaml"),
+        "config_sha256": config_sha,
+        "config_snapshot": config_text,
         "packages": _package_versions(),
     }
 
