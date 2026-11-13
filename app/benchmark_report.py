@@ -54,6 +54,10 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--markdown", help="write a Markdown report here")
     parser.add_argument("--csv", dest="csv_path", help="write a CSV report here")
     parser.add_argument(
+        "--svg-dir",
+        help="write Pareto and latency SVG plots here (named after --out)",
+    )
+    parser.add_argument(
         "--check",
         action="store_true",
         help="validate provenance/schema; reuses --out when it already exists",
@@ -72,6 +76,7 @@ def _write_outputs(
     out: Optional[str],
     markdown: Optional[str],
     csv_path: Optional[str],
+    svg_dir: Optional[str],
 ) -> None:
     if out:
         _ensure_parent(out)
@@ -80,6 +85,10 @@ def _write_outputs(
     if csv_path:
         _ensure_parent(csv_path)
     write_report(report, out=out, markdown=markdown, csv_path=csv_path)
+    if svg_dir:
+        from core.evaluation.benchmark_plots import plot_stem_for, write_plots
+
+        write_plots(report, svg_dir, stem=plot_stem_for(out))
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
@@ -109,6 +118,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 out=args.out,
                 markdown=args.markdown,
                 csv_path=args.csv_path,
+                svg_dir=args.svg_dir,
             )
 
         problems = check_report(report)
