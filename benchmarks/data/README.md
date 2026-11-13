@@ -53,7 +53,8 @@ enough to run on a CPU and are **not** production datasets.
 - Distributed under the repository license (Apache-2.0). No third-party text is
   included, so the corpora can be redistributed and committed to results.
 - Any published result must record the dataset SHA-256 and the git commit that
-  produced it (see `docs/benchmarks/` once #198 lands).
+  produced it (see the quality report in `docs/showcase/` and the reference load
+  baselines + methodology in `docs/benchmarks/`).
 
 ## Maintenance rules
 
