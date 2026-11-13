@@ -237,6 +237,14 @@ WCAG 2.2 AA checklist and the documented exceptions. The console injects a skip 
 (`Skip to main content`), visible focus rings and a `prefers-reduced-motion` reset;
 see `docs/accessibility.md` for the decision record and screen-reader test script.
 
+The sidebar **Appearance** panel switches **theme** (Light, Dark, High contrast),
+**density** (Comfortable, Compact) and **table layout** (Table, Cards) without leaving
+the current screen (#156). Breakpoints are tuned for 375/768/1280 px; narrow views
+reduce padding and degrade tables to cards that keep every column and action, while
+desktop keeps the sidebar actions sticky. Every text/status token meets WCAG 2.2 AA
+(4.5:1) and chart colours meet 3:1. Tokens and the degradation contract are documented in
+[docs/layout-and-theme.md](docs/layout-and-theme.md); `ui/theme.py` holds the pure helpers.
+
 The console keeps a **persistent workspace** across reloads and share links (#151).
 Screen, query, filters, selected trace, comparisons, datasets and saved views are encoded
 in managed URL parameters (`screen`, `request_id` and the compact `ws` payload), so
@@ -550,7 +558,7 @@ config/     YAML configuration - the single source of truth for behaviour
 ui/         Streamlit console (HTTP-only client of the public API)
 tests/      pytest suite (behavioural tests drive real local models)
 data/       sample corpus (data/docs.json)
-docs/       onboarding.md, architecture.md, deployment.md, ux-and-api.md, accessibility.md, enterprise-roadmap.md
+docs/       onboarding.md, architecture.md, deployment.md, ux-and-api.md, accessibility.md, layout-and-theme.md, enterprise-roadmap.md
 ```
 
 ### How to run the backend

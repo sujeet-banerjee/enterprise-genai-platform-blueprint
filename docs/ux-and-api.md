@@ -1,11 +1,12 @@
 # UX & API Architecture — Fronting UI Plan
 
-> **Status: DELIVERED (reconciled 2026-11-11).** The API surface, Streamlit console and
+> **Status: DELIVERED (reconciled 2026-11-13).** The API surface, Streamlit console and
 > UX polish workstream M (#130-#136, #145) described here have shipped; §7 is a delivery
 > record rather than a proposal. The next UX tranche (#151-#158) is partly delivered
 > (#151 workspace/deep links, #152 background evaluation jobs, #153 Dataset Studio,
-> #163 HITL Approvals console, #164 queue operations/SLA/safe export); the remaining
-> items and the
+> #163 HITL Approvals console, #164 queue operations/SLA/safe export, #155 command
+> palette/WCAG 2.2 AA, #156 responsive layout/density/themes); the remaining
+> items (#157 persona journeys/demo mode, #158 collaboration/feedback) and the
 > forward-looking roadmap (multi-region/DR operations,
 > eval expansion, golden paths, product UI) live in
 > [enterprise-roadmap.md](enterprise-roadmap.md). Bulk queue operations are UI-only until
@@ -182,7 +183,8 @@ from §3.2 applies to every UI: HTTP only, no `core.*` imports.
 
 No config-editing UI in v1 (write path = files in `config/`); `pipeline:rebuild` in the
 UI is expressed as preset "what-if" selections, keeping humans as the owners of YAML.
-The sidebar also exposes the API base URL and the optional API key.
+The sidebar also exposes the API base URL, the optional API key and an **Appearance**
+panel (theme, density, table layout, #156).
 
 ### Role-aware navigation and onboarding (#130)
 
@@ -221,6 +223,21 @@ checklist and the documented exceptions (`ui/palette.py`, `ui/a11y.py`). The con
 injects a skip link (`Skip to main content`), a global `:focus-visible` ring, reduced-motion
 resets and table reflow rules. The decision record, screen-reader test script and known
 exceptions live in [accessibility.md](accessibility.md).
+
+### Responsive layout, density and themes (#156)
+
+`ui/theme.py` is the pure appearance contract: named breakpoints (`compact` 0-639 px,
+`tablet` 640-1023 px, `desktop` 1024-1439 px, `wide` 1440 px+), three themes
+(`Light`, `Dark`, `High contrast`), two densities (`Comfortable`, `Compact`) and a
+table-to-card mapper. The sidebar **Appearance** panel switches theme, density and
+table layout without leaving the current screen (the values live in session state, so
+query text, workspace and saved views survive). Every text/muted/accent/status token
+meets WCAG 2.2 AA (4.5:1) against its background and chart colours meet 3:1;
+`theme.theme_contrast_rows()` produces the evidence. Tables that cannot fit degrade to
+`.genai-card` cards that preserve **every** column and action, so no control disappears
+on narrow viewports. Tokens, breakpoints and the degradation contract are documented in
+[layout-and-theme.md](layout-and-theme.md); `tests/test_ui_theme.py` covers the helpers
+and the app wiring.
 
 ### Persistent workspace and shareable deep links (#151)
 
@@ -354,6 +371,7 @@ Streamlit-free) and is covered by `tests/test_ui_dataset_studio.py`.
 | (added during delivery) | Dataset Studio: case/document editors, inline validation, preview, save/load/duplicate/delete, benchmark-shaped or bare-list import, round-trip export with redaction, saved datasets persisted via UX8 | #153 |
 | (added during delivery) | cross-object evidence: request-id copy/validation, trace/audit/metrics/governance cross-links, two-request diff (stage latency/failure/docs/guardrails/resilience/cost), client-side audit request filter, redacted JSON/Markdown evidence pack, workspace deep links | #154 |
 | (added during delivery) | command palette (`/`, `>`, `#`, `@` prefixes), keyboard-shortcuts overlay, skip link, focus rings, reduced motion, WCAG 2.2 AA checklist + decision record, screen-reader script | #155 |
+| (added during delivery) | responsive breakpoints (375/768/1280 px), compact density, table-to-card degradation, light/dark/high-contrast themes, semantic status/chart colours, sticky sidebar actions, documented layout/theme tokens | #156 |
 
 The forward roadmap (horizons H0-H4, workstreams A-M) is tracked in
 [enterprise-roadmap.md](enterprise-roadmap.md) and the GitHub Project board; API/UX
@@ -378,7 +396,7 @@ workstream F there.
   operations/SLA/safe export (#164) **done** (server-side queue landed as #175);
   background evaluation jobs (#152) **done**; Dataset Studio (#153) **done**;
   cross-object evidence (#154) **done**; command
-  palette/WCAG 2.2 AA (#155) **done**; responsive/theming (#156), persona
-  journeys/demo mode (#157) and collaboration/feedback (#158) remain open on H4.
+  palette/WCAG 2.2 AA (#155) **done**; responsive layout/density/themes (#156) **done**;
+  persona journeys/demo mode (#157) and collaboration/feedback (#158) remain open on H4.
 - **P4 (optional, later)** — React/Next.js product frontend reusing the same OpenAPI
   contract; tracked as workstream F in the enterprise roadmap (not committed).
