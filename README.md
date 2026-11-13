@@ -451,6 +451,31 @@ then `objective.min_quality` / `objective.cost_budget_usd` / `objective.latency_
 then the `eval_datasets.regression` thresholds. Exit codes: `0` pass/disabled, `1` gate
 failure, `2` invalid or oversized configuration.
 
+### Reproduce the showcase numbers
+
+`config/benchmarks.yaml` defines bounded suites over the synthetic corpora in
+`benchmarks/data/` (enterprise IT, product docs and support). The report generator runs the
+configured matrix through the real pipeline and writes retrieval quality (precision, recall,
+MRR, nDCG), cost, latency, a Pareto frontier and a recommended config overlay. Every number
+comes from the JSON report; **do not hand-edit published numbers** — regenerate them.
+
+```bash
+# Fast CI profile: dummy providers, 8 cases, one combination
+python -m app.benchmark_report --quick --config-dir deployment/smoke/config \
+  --out /tmp/showcase.json --check
+
+# Full local run: local models, all three corpora, top_k x reranker matrix
+python -m app.benchmark_report --full \
+  --out docs/showcase/report.json \
+  --markdown docs/showcase/report.md \
+  --csv docs/showcase/report.csv --check
+```
+
+The JSON includes provenance (`git_sha`, timestamp, platform, Python, seed, config SHA-256,
+dataset SHA-256s). `--check` exits `1` when provenance or required fields are missing, `2`
+for invalid/oversized configuration, and `0` on success. CI runs the quick check, so a
+published report can be regenerated from its recorded commit and config hash.
+
 ### Golden path templates
 
 Don't start from an empty `config/` directory. [`deployment/templates/`](deployment/templates/README.md)

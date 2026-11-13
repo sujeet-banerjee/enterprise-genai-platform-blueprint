@@ -89,6 +89,47 @@ class Metrics:
         return len(relevant & retrieved) / len(relevant)
 
     @staticmethod
+    def mrr_at_ids(
+        relevant_doc_ids: Sequence[Any],
+        retrieved_doc_ids: Sequence[Any],
+    ) -> float:
+        """Mean reciprocal rank over ids (single query): 1/rank of first hit."""
+        relevant = set(relevant_doc_ids)
+        if not relevant:
+            return 0.0
+        for rank, doc_id in enumerate(retrieved_doc_ids, start=1):
+            if doc_id in relevant:
+                return 1.0 / rank
+        return 0.0
+
+    @staticmethod
+    def ndcg_at_ids(
+        relevant_doc_ids: Sequence[Any],
+        retrieved_doc_ids: Sequence[Any],
+        k: Optional[int] = None,
+    ) -> float:
+        """Binary-relevance nDCG@k over document ids (0.0 when no judgements)."""
+        import math
+
+        relevant = set(relevant_doc_ids)
+        if not relevant:
+            return 0.0
+        retrieved = list(retrieved_doc_ids)
+        if k is not None:
+            retrieved = retrieved[: max(0, int(k))]
+        if not retrieved:
+            return 0.0
+        dcg = 0.0
+        for index, doc_id in enumerate(retrieved):
+            if doc_id in relevant:
+                dcg += 1.0 / math.log2(index + 2)
+        ideal_hits = min(len(relevant), len(retrieved))
+        idcg = sum(1.0 / math.log2(index + 2) for index in range(ideal_hits))
+        if idcg <= 0.0:
+            return 0.0
+        return dcg / idcg
+
+    @staticmethod
     def retrieved_doc_ids(retrieved_docs: Optional[Sequence[Document]]) -> list:
         """Extract ``doc_id`` metadata from retrieved documents (order preserved)."""
         ids = []
