@@ -13,6 +13,7 @@ import json
 import sys
 import time
 from datetime import datetime, timezone
+from html import escape
 from typing import Any, Dict, List, Optional
 from urllib.parse import parse_qsl, urlsplit
 
@@ -159,6 +160,20 @@ from ui.query_studio import (
     history_rows,
     result_markdown,
 )
+from ui.theme import (
+    DEFAULT_DENSITY,
+    DEFAULT_TABLE_LAYOUT,
+    DEFAULT_THEME,
+    DENSITY_OPTIONS,
+    TABLE_LAYOUT_OPTIONS,
+    THEME_OPTIONS,
+    resolve_density,
+    resolve_theme,
+    table_to_cards,
+)
+from ui.theme import (
+    styles as theme_styles,
+)
 from ui.tour import render_help_expander, render_tour, start_tour
 from ui.traces import build_timeline, redaction_safe_view, span_filters, trace_context
 from ui.workspace import (
@@ -183,7 +198,11 @@ from ui.workspace import (
     workspace_to_query_params,
 )
 
-st.set_page_config(page_title="Enterprise GenAI RAG Console", layout="wide")
+st.set_page_config(
+    page_title="Enterprise GenAI RAG Console",
+    layout="wide",
+    initial_sidebar_state="auto",
+)
 
 
 def _parse_args() -> argparse.Namespace:
@@ -262,6 +281,12 @@ def _bootstrap() -> None:
         st.session_state.show_shortcuts = False
     if "palette_param_consumed" not in st.session_state:
         st.session_state.palette_param_consumed = False
+    if "ui_theme" not in st.session_state:
+        st.session_state.ui_theme = DEFAULT_THEME
+    if "ui_density" not in st.session_state:
+        st.session_state.ui_density = DEFAULT_DENSITY
+    if "ui_table_layout" not in st.session_state:
+        st.session_state.ui_table_layout = DEFAULT_TABLE_LAYOUT
     if "known_tenants" not in st.session_state:
         st.session_state.known_tenants = []
 
@@ -600,6 +625,51 @@ def _render_saved_views(kind: str) -> None:
                     "notice": f"Saved view {name.strip()}.",
                 }
                 st.rerun()
+
+
+def _render_appearance_sidebar() -> None:
+    with st.sidebar.expander("Appearance", expanded=False):
+        st.caption(
+            "Theme, density and table layout apply instantly and keep the current "
+            "screen. High contrast targets WCAG 2.2 AA on every supported token."
+        )
+        theme = st.selectbox(
+            "Theme",
+            THEME_OPTIONS,
+            key="ui_theme",
+            help="Light, dark or high-contrast palette.",
+        )
+        density = st.selectbox(
+            "Density",
+            DENSITY_OPTIONS,
+            key="ui_density",
+            help="Compact reduces row height and spacing for dense operational screens.",
+        )
+        st.radio(
+            "Tables",
+            TABLE_LAYOUT_OPTIONS,
+            key="ui_table_layout",
+            horizontal=True,
+            help="Cards keep every column and action visible on narrow viewports.",
+        )
+        st.caption(f"Active: {resolve_theme(theme)} / {resolve_density(density)}")
+
+
+def _render_card_rows(
+    rows: List[Dict[str, Any]],
+    columns: Optional[List[str]] = None,
+    title_columns: Optional[List[str]] = None,
+) -> None:
+    for card in table_to_cards(rows, columns, title_columns):
+        fields = "".join(
+            f"<dt>{escape(field['label'])}</dt><dd>{escape(field['value'])}</dd>"
+            for field in card["fields"]
+        )
+        st.markdown(
+            f'<div class="genai-card"><h4>{escape(card["title"])}</h4>'
+            f"<dl>{fields}</dl></div>",
+            unsafe_allow_html=True,
+        )
 
 
 def _render_sidebar_navigation(access: Dict[str, Any]) -> None:
@@ -1862,10 +1932,13 @@ def screen_governance() -> None:
         g3.metric("Guardrails seen", len(guardrails.get("by_guardrail") or {}))
         by_guardrail = guardrails.get("by_guardrail") or {}
         if by_guardrail:
-            st.dataframe(
-                [{"guardrail": name, **counts} for name, counts in by_guardrail.items()],
-                use_container_width=True,
-            )
+            guardrail_rows = [
+                {"guardrail": name, **counts} for name, counts in by_guardrail.items()
+            ]
+            if st.session_state.get("ui_table_layout") == "Cards":
+                _render_card_rows(guardrail_rows, title_columns=["guardrail"])
+            else:
+                st.dataframe(guardrail_rows, use_container_width=True)
         else:
             st.info("No guardrail decisions recorded yet (the feature may be disabled).")
         st.caption(
@@ -1911,20 +1984,21 @@ def _render_guardrail_decisions(decisions: list) -> None:
     if not decisions:
         st.info("No guardrail decisions on this request.")
         return
-    st.dataframe(
-        [
-            {
-                "guardrail": d.get("guardrail"),
-                "stage": d.get("stage"),
-                "decision": d.get("decision"),
-                "allowed": d.get("allowed"),
-                "reason": d.get("reason"),
-                "labels": ", ".join(d.get("labels") or []),
-            }
-            for d in decisions
-        ],
-        use_container_width=True,
-    )
+    rows = [
+        {
+            "guardrail": d.get("guardrail"),
+            "stage": d.get("stage"),
+            "decision": d.get("decision"),
+            "allowed": d.get("allowed"),
+            "reason": d.get("reason"),
+            "labels": ", ".join(d.get("labels") or []),
+        }
+        for d in decisions
+    ]
+    if st.session_state.get("ui_table_layout") == "Cards":
+        _render_card_rows(rows, title_columns=["guardrail"])
+    else:
+        st.dataframe(rows, use_container_width=True)
 
 
 def screen_guardrails() -> None:
@@ -1947,7 +2021,10 @@ def screen_guardrails() -> None:
     st.subheader("Resolved chains")
     rows = _chain_rows({"input": data.get("input") or [], "output": data.get("output") or []})
     if rows:
-        st.dataframe(rows, use_container_width=True)
+        if st.session_state.get("ui_table_layout") == "Cards":
+            _render_card_rows(rows, title_columns=["provider"])
+        else:
+            st.dataframe(rows, use_container_width=True)
         st.caption(
             "Preview only: guardrails execute when `enabled: true` in `config/guardrails.yaml`. "
             "A non-empty explicit `input`/`output` list replaces that edge's profile chain."
@@ -1991,10 +2068,13 @@ def screen_guardrails() -> None:
         by_guardrail = guardrails.get("by_guardrail") or {}
         c3.metric("Guardrails seen", len(by_guardrail))
         if by_guardrail:
-            st.dataframe(
-                [{"guardrail": name, **counts} for name, counts in by_guardrail.items()],
-                use_container_width=True,
-            )
+            guardrail_rows = [
+                {"guardrail": name, **counts} for name, counts in by_guardrail.items()
+            ]
+            if st.session_state.get("ui_table_layout") == "Cards":
+                _render_card_rows(guardrail_rows, title_columns=["guardrail"])
+            else:
+                st.dataframe(guardrail_rows, use_container_width=True)
         else:
             st.info("No guardrail decisions recorded yet.")
 
@@ -2918,6 +2998,13 @@ SCREENS = {
 def main() -> None:
     _bootstrap()
     st.markdown(a11y_styles(), unsafe_allow_html=True)
+    st.markdown(
+        theme_styles(
+            st.session_state.get("ui_theme"),
+            st.session_state.get("ui_density"),
+        ),
+        unsafe_allow_html=True,
+    )
     st.markdown(skip_link_html(), unsafe_allow_html=True)
     st.sidebar.title("GenAI RAG Console")
     st.session_state.api_base_url = st.sidebar.text_input(
@@ -2936,6 +3023,7 @@ def main() -> None:
     _palette_from_query()
     _render_sidebar_navigation(access)
     _render_workspace_sidebar(access)
+    _render_appearance_sidebar()
     render_help_expander()
     render_tour()
     if st.session_state.get("palette_open"):

@@ -1,12 +1,12 @@
 # Bot work split (H4/H5 — current open items)
 
-Reconciled 2026-11-13 from `origin/main` @ `8566826` (after #195/#196 and #152/#153/#154;
-#155 UX12 lands in this PR). No open PRs.
+Reconciled 2026-11-13 from `origin/main` @ `66d6d5e` (after #155 merged). No open PRs.
 
-Open items: umbrella **#43**; Workstream M UX **#156-#158** (bot-win, UX1-UX12 delivered);
-showcase/proof **#187-#193** and showcase harness **#195-#199** (H5, see below). Workstream G
-follow-ups (#64/#68-#71), #105/#109, #154 (UX11), #155 (UX12), #162 and #175 are **closed** —
-do not treat them as open.
+Open items: umbrella **#43**; Workstream M UX **#157-#158** (bot-win, UX1-UX13 delivered);
+showcase/proof **#187-#193**, showcase harness **#195-#199**, and new H5 qualification
+items **#204-#206** (H5, ownership to re-check, see below). Workstream G
+follow-ups (#64/#68-#71), #105/#109, #154 (UX11), #155 (UX12), #156 (UX13), #162 and #175
+are **closed** — do not treat them as open.
 Re-check open issues and PRs before each item.
 
 ## Bot identities
@@ -43,16 +43,16 @@ contract (server-side pagination/filter/sort/tenant scope).
 
 | Order | Item | Notes |
 |---|---|---|
-| 1 | **#156 UX13 - Responsive/compact/themes** (H4, P2) | UI polish. |
-| 2 | **#157 UX14 - Role journeys + demo mode** (H4, P2) | Onboarding experience. |
-| 3 | **#158 UX15 - Collaboration and feedback** (H4, P2) | UI feature. |
-| 4 | **#189 showcase demo walkthrough** (H5) | 3-5 minute integrated demo + screenshots/recording; bot-uni supplies the known-good demo config/data. |
-| 5 | **Roadmap/docs reconciliation** | Low-risk docs sync after merges. |
+| 1 | **#157 UX14 - Role journeys + demo mode** (H4, P2) | Onboarding experience. |
+| 2 | **#158 UX15 - Collaboration and feedback** (H4, P2) | UI feature. |
+| 3 | **#189 showcase demo walkthrough** (H5) | 3-5 minute integrated demo + screenshots/recording; bot-uni supplies the known-good demo config/data. |
+| 4 | **Roadmap/docs reconciliation** | Low-risk docs sync after merges. |
 
 Completed by this workstream since the last split: #130-#136, #145, #151 (workspace/deep
 links), #152 (background evaluation jobs), #153 (Dataset Studio authoring), #154
-(cross-object evidence), #155 (command palette + WCAG 2.2 AA), #163 (HITL review console)
-and #164 (queue operations/SLA/safe export).
+(cross-object evidence), #155 (command palette + WCAG 2.2 AA), #156 (responsive
+layout/density/themes), #163 (HITL review console) and #164 (queue operations/SLA/safe
+export).
 
 ## Showcase/proof workstream (H5)
 
@@ -65,11 +65,14 @@ and #164 (queue operations/SLA/safe export).
 | #191 capability-status audit | bot-uni | Todo | — |
 | #192 production-readiness gap assessment | bot-uni | Todo | — |
 | #193 LinkedIn project entry + announcement | bot-uni (user approves/publishes) | Todo | #187/#188/#189/#191 |
-| #195 showcase benchmark corpora + suite config | bot-uni | Todo | — |
-| #196 reproducible benchmark report generator + CI check | bot-uni | Todo | #195 |
+| #195 showcase benchmark corpora + suite config | bot-uni | Done (merged) | — |
+| #196 reproducible benchmark report generator + CI check | bot-uni | Done (merged) | #195 |
 | #197 reference load/latency harness + numbers | bot-uni | Todo | #195 |
 | #198 published benchmark results + methodology | bot-uni | Todo | #196 |
 | #199 comparison matrix vs alternatives | bot-uni | Todo | — |
+| #204 engineering-team adoption + pilot kit | unassigned (re-check) | Todo | — |
+| #205 security qualification: threat model + adversarial evidence | unassigned (re-check) | Todo | — |
+| #206 durable multi-replica deployment profile qualification | unassigned (re-check) | Todo | — |
 
 ## Suggested operating rules (to avoid collisions)
 

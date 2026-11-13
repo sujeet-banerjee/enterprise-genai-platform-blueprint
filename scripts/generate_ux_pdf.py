@@ -47,8 +47,8 @@ story.append(
 story.append(Spacer(1, 6))
 story.append(
     Paragraph(
-        "<b>Status:</b> UX1-UX12 are delivered and closed (#130-#136, #145, #151-#155). "
-        "The remaining tranche, UX13-UX15, is opened as #156-#158 and mapped to "
+        "<b>Status:</b> UX1-UX13 are delivered and closed (#130-#136, #145, #151-#156). "
+        "The remaining tranche, UX14-UX15, is opened as #157-#158 and mapped to "
         "Project #8 Workstream M.",
         styles["Body"],
     )
@@ -64,14 +64,15 @@ story.append(
         "trace waterfall; governance filters/export; admin safety; remediation hints; "
         "persistent workspace and shareable deep links; background evaluation jobs; "
         "Dataset Studio authoring; cross-object evidence and request diffs; keyboard-first "
-        "command palette plus a WCAG 2.2 AA decision record.",
+        "command palette plus a WCAG 2.2 AA decision record; responsive layout, compact "
+        "density and light/dark/high-contrast themes.",
         styles["Body"],
     )
 )
 story.append(
     Paragraph(
         "<b>Remaining friction:</b> one generic tour for every persona; no demo mode or "
-        "safe reset; no responsive/compact/high-contrast theme system; bad answers cannot "
+        "safe reset; bad answers cannot "
         "be annotated or promoted into evaluation data; no saved executive/ops dashboards.",
         styles["Body"],
     )
@@ -94,14 +95,15 @@ delivered = [
     ["UX10", "Dataset Studio authoring", "#153", "Shipped", "ui/dataset_studio.py; tests/test_ui_dataset_studio.py"],
     ["UX11", "Cross-object evidence", "#154", "Shipped", "ui/evidence.py; tests/test_ui_evidence.py"],
     ["UX12", "Command palette + WCAG 2.2 AA", "#155", "Shipped", "ui/palette.py; ui/a11y.py; tests/test_ui_palette.py; docs/accessibility.md"],
+    ["UX13", "Responsive layout, density + themes", "#156", "Shipped", "ui/theme.py; tests/test_ui_theme.py; docs/layout-and-theme.md"],
 ]
 story.append(table(delivered, [0.45 * inch, 1.5 * inch, 0.45 * inch, 0.55 * inch, 2.9 * inch], 6.5))
 story.append(Spacer(1, 8))
 
-story.append(Paragraph("Remaining UX/UI Proposals (UX13-UX15, Opened)", styles["H2"]))
+story.append(Paragraph("Remaining UX/UI Proposals (UX14-UX15, Opened)", styles["H2"]))
 story.append(
     Paragraph(
-        "Opened as #156-#158. Tracking: label ux, link to umbrella #43, Project #8 Workstream M, "
+        "Opened as #157-#158. Tracking: label ux, link to umbrella #43, Project #8 Workstream M, "
         "milestone H4, HTTP-only rule plus AST/client tests for every change.",
         styles["Small"],
     )
@@ -109,13 +111,6 @@ story.append(
 story.append(Spacer(1, 4))
 proposals = [
     ["ID", "Proposal", "Priority", "Problem", "Acceptance"],
-    [
-        "UX13",
-        "Responsive, compact and theme system",
-        "P2",
-        "Wide layouts break on small screens; tables/colors are inconsistent.",
-        "375/768/1280 px core flows have no horizontal scroll; contrast >=4.5:1; theme checks pass.",
-    ],
     [
         "UX14",
         "Role-based guided journeys and demo mode",
@@ -140,7 +135,8 @@ story.append(
         "1. UX8 persistence/deep links unlocked the rest. 2. UX9 removed the biggest "
         "evaluation blocker. 3. UX12 delivered the accessibility gate. "
         "4. UX10 made evaluation repeatable. 5. UX11 shortened debugging. "
-        "6. UX13-UX15 add presentation, persona onboarding and collaboration polish.",
+        "6. UX13 added the responsive/theming baseline. "
+        "7. UX14-UX15 add persona onboarding and collaboration polish.",
         styles["Body"],
     )
 )
@@ -150,8 +146,8 @@ story.append(Paragraph("Bottom Line", styles["H2"]))
 story.append(
     Paragraph(
         "UX1-UX7 turned the console from a functional API demo into a role-aware, guided "
-        "workflow surface. UX8-UX12 made it persistent, asynchronous, evidence-linked and "
-        "keyboard-accessible. The remaining tranche (#156-#158) should make it responsive, "
+        "workflow surface. UX8-UX13 made it persistent, asynchronous, evidence-linked, "
+        "keyboard-accessible and responsive. The remaining tranche (#157-#158) should make it "
         "persona-specific and collaborative.",
         styles["Body"],
     )
