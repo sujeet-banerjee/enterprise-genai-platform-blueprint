@@ -129,6 +129,19 @@ def collect_provenance(
     }
 
 
+def _repo_relative(path: Optional[str]) -> str:
+    """Return a repo-relative path when possible so reports stay portable."""
+    if not path:
+        return ""
+    target = Path(path)
+    if not target.is_absolute():
+        target = REPO_ROOT / target
+    try:
+        return target.resolve().relative_to(REPO_ROOT).as_posix()
+    except (OSError, ValueError):
+        return str(path)
+
+
 def _dataset_provenance(datasets: Sequence[EvalDataset]) -> List[Dict[str, Any]]:
     rows: List[Dict[str, Any]] = []
     for dataset in datasets:
@@ -136,7 +149,7 @@ def _dataset_provenance(datasets: Sequence[EvalDataset]) -> List[Dict[str, Any]]
             {
                 "name": dataset.name,
                 "display_name": dataset.metadata.get("display_name") or dataset.name,
-                "path": dataset.path,
+                "path": _repo_relative(dataset.path),
                 "sha256": _sha256_file(dataset.path),
                 "num_docs": len(dataset.docs),
                 "num_cases": len(dataset.cases),
