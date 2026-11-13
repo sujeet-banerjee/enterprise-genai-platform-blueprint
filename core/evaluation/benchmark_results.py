@@ -208,7 +208,7 @@ def _link(path: Optional[Path]) -> str:
 
 
 def _recommended_label(report: Mapping[str, Any]) -> str:
-    recommendation = report.get("recommendation") or {}
+    recommendation = report.get("recommended") or {}
     if not isinstance(recommendation, Mapping):
         return "-"
     combo = recommendation.get("combination_id")
