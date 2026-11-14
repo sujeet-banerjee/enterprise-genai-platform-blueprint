@@ -1,6 +1,14 @@
-# Enterprise-Grade GenAI Platform Blueprint
+# Enterprise GenAI Platform Blueprint
 
-A modular, vendor-neutral, evaluation-aware GenAI platform reference implementation. Behaviour is configuration-driven - models, retrievers, rerankers, evaluators, query expanders, chunking, token budgets, governance, and observability can be toggled or swapped without modifying orchestration or API code.
+**A modular, vendor-neutral, self-hostable reference implementation for enterprise GenAI and RAG workloads.** Configuration selects the models, embeddings, retrievers, rerankers, evaluators and guardrails; every request carries evaluation, cost, trace and audit metadata; and the same HTTP API backs the console, CI quality gates and operational review. Providers can be swapped and quality gates, budgets and guardrails tuned without editing orchestration or API code.
+
+This is a blueprint to extend and operate yourself: MIT licensed, explicit about maturity, and **not** a production-certified product or a replacement for a managed AI platform. Start with the [golden paths](deployment/templates/README.md), then use the [comparison](docs/comparison.md), [architecture](docs/architecture.md) and [deployment playbook](docs/deployment.md) to decide where it fits.
+
+- **What it is:** a reference implementation covering retrieval and generation, evaluation, governance and cost, identity/RBAC and security guardrails, observability and audit, plus the deployment and operations path.
+- **What it is not:** a managed service, a model provider, a connector catalogue, or evidence of customer adoption or enterprise-scale validation. Detailed capability status and production gaps are tracked separately in the showcase audit (#191, #192).
+
+Canonical positioning, GitHub metadata and maturity vocabulary live in
+[`docs/positioning.md`](docs/positioning.md).
 
 ## Architecture
 

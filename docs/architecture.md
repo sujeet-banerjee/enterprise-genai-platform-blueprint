@@ -1,6 +1,6 @@
-# Enterprise-Grade GenAI Platform Blueprint
+# Enterprise GenAI Platform Blueprint
 
-## Reusable Platform for Enterprise-grade LLM evaluation and governance
+## Reusable platform for enterprise GenAI evaluation and governance
 
 ---
 
@@ -31,8 +31,8 @@ the orchestration layer or the API layer**.
 
 ## 1.2 What we are building
 
-A reusable enterprise AI platform core — a reference architecture showing how to build a
-modular, enterprise-grade GenAI platform, which allows:
+A reusable enterprise AI platform core — a reference implementation showing how to build a
+modular, vendor-neutral GenAI platform, which allows:
 
 * Swap models without rewriting code.
 * Swap embedding models without breaking retrieval.
