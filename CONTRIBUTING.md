@@ -3,6 +3,11 @@
 Thanks for contributing to the enterprise-genai-platform-blueprint. This project is a
 config-driven, vendor-neutral GenAI/RAG platform; contributions should keep it that way.
 
+The end-to-end workflow - issue structure, branch/PR conventions, the checks that
+actually block a merge, evidence expectations and the agent working agreement - is in
+[`docs/engineering-lifecycle.md`](docs/engineering-lifecycle.md). Check branch protection
+before assuming a check is required; only the contexts listed there currently block merge.
+
 ## Ground rules
 
 - **Config-driven, vendor-neutral.** New backends are added behind a `core/interfaces/`
@@ -92,6 +97,11 @@ signed commits.
 The previous fake co-author hook (`.githooks/prepare-commit-msg`) has been removed. Commits
 that already contain the historical co-author trailer should not be rewritten.
 
+Agents must also follow the working agreement in
+[`docs/engineering-lifecycle.md`](docs/engineering-lifecycle.md): inspect the issue and code
+first, keep one issue per PR, avoid unrelated changes, report real verification evidence,
+and never claim a human review that did not happen.
+
 ## Releases
 
 - Releases are annotated git tags following **semantic versioning**: `v<major>.<minor>.<patch>`.
@@ -113,12 +123,10 @@ era complete).
   `H0 - Observability & hardening`, `H1 - Multi-tenant & governed`,
   `H2 - Product surface`, `H3 - Enterprise scale & compliance`,
   `H4 - Post-G6 hardening & UX`.
-- H0/H1, Workstream G (deployment/delivery), Workstream H (ingestion #115-#117),
-  operational DR (#118-#120) and workstream M UX polish (#130-#136, #145) are complete.
-  The open bridge is workstreams I-L (#121-#129: policy-as-code, eval expansion/CI gates,
-  onboarding/golden paths) plus the next UX tranche (#151-#158). Pick an open issue from
-  that set; the roadmap document and the GitHub Project board are the source of truth for
-  ordering.
+- The roadmap document, open issues and the GitHub Project board are the source of truth
+  for what is current and what comes next. Work is grouped by milestone/horizon; pick an
+  unclaimed issue with clear acceptance criteria and no open PR. Do not infer status from
+  an interface or a stub - see the capability matrix linked from the roadmap.
 
 ## License
 
