@@ -530,6 +530,13 @@ python benchmarks/load/run_load.py --in-process --config-dir deployment/smoke/co
   --concurrency 1 --requests 2 --scenarios health,ready,query
 ```
 
+### How this compares to alternatives
+
+Proof also means stating where other tools fit better. [`docs/comparison.md`](docs/comparison.md)
+compares this blueprint with orchestration frameworks, managed cloud AI platforms,
+evaluation/observability products and enterprise search, with sources and access dates. It is
+deliberately explicit about what this repository does **not** replace.
+
 ### Golden path templates
 
 Don't start from an empty `config/` directory. [`deployment/templates/`](deployment/templates/README.md)
