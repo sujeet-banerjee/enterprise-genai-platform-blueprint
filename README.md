@@ -12,7 +12,7 @@ Canonical positioning, GitHub metadata and maturity vocabulary live in
 
 ## Architecture
 
-See [docs/architecture.md](docs/architecture.md) for the full architecture, principles, composition root, registries, and contracts. To run it (Docker Compose, Kubernetes, air-gapped, BYO-model, embedded), see the [deployment playbook](docs/deployment.md) (multi-replica HA + HPA/KEDA via G3 #68).
+See [docs/architecture.md](docs/architecture.md) for the full architecture, principles, composition root, registries, and contracts, and the [high-level architecture diagram](docs/architecture-diagram.md) for the end-to-end system view and trust boundaries. To run it (Docker Compose, Kubernetes, air-gapped, BYO-model, embedded), see the [deployment playbook](docs/deployment.md) (multi-replica HA + HPA/KEDA via G3 #68).
 
 ## Quickstart
 
