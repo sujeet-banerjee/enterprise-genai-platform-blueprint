@@ -8,10 +8,12 @@
 > palette/WCAG 2.2 AA (#155), UX13 responsive layout/density/themes (#156), policy-as-code
 > (#121-#123), eval expansion/CI gates (#124-#126), golden path templates
 > (#127), the `genai init` scaffolding CLI (#128) and the onboarding guide
-> (#129) are landed — Workstream L is complete. The open bridge is the remaining UX
-> tranche (#157-#158), plus the H5 showcase/proof workstream (#187-#193, #204-#206) and harness
-> (#195-#199). It maps the current reference blueprint to what an
-> enterprise actually needs to run GenAI in production.
+> (#129) are landed — Workstream L is complete. The remaining work is the UX tranche (#157-#158), the H5 showcase closeout
+> (#189, #191-#193) and qualification (#204-#206); the H5 harness (#195-#199) and the
+> repository identity/diagram/lifecycle docs (#187/#188/#190) have landed.
+> Capability-by-capability status with code/test evidence:
+> [capability-status.md](capability-status.md). It maps the current reference blueprint to what
+> an enterprise actually needs to run GenAI in production.
 
 ---
 
@@ -39,10 +41,10 @@ This branch grew in three deliberate phases (`git log`):
   audit log, `/v1/metrics`.
 - **Safety**: input/doc redaction (#72), query-length bound (#73), and a pluggable
   input/output guardrail framework (#52).
-- **API + a proof-of-contract UI**: 20+ endpoints, OpenAPI, error envelope, RBAC, and a
+- **API + a proof-of-contract UI**: 40 endpoints, OpenAPI, error envelope, RBAC, and a
   Streamlit console that talks *only* HTTP.
-- **Engineering hygiene**: 507 tests + 2 skipped, coverage gate ≥78%, green CI on 3.11/3.13,
-  runnable examples.
+- **Engineering hygiene**: 1,400+ tests, coverage gate ≥78%, green CI on 3.11/3.13,
+  runnable examples and reproducible benchmarks.
 
 **What we do *not* yet have (the enterprise gap):** everything below is about the distance
 between "credible reference blueprint" and "a platform an enterprise can run, govern, and
@@ -108,7 +110,7 @@ Guiding principles (extend the existing ones):
 ## 4. Capability roadmap (broad level)
 
 Organized as **workstreams**. Each is independent enough to parallelize; sequencing is in §7.
-Issue IDs are placeholders (`E-*`) — not yet created.
+Issues are tracked in GitHub; see [capability-status.md](capability-status.md) for what is landed versus planned.
 
 ### Workstream A — Multi-tenancy, identity & attribution
 
@@ -171,10 +173,14 @@ Issue IDs are placeholders (`E-*`) — not yet created.
   detection (email/phone/Luhn-validated card/national id/IP), optional NER, redact-vs-block and
   class/count-only reporting; the `pii:` block of `config/observability.yaml` scrubs traces, logs
   and the model-facing query; audit records classes/counts, never values.
-  Still open: **#86** (`GET /v1/guardrails` introspection), **#87** (hit-rate metrics),
-  **#88** (adoptable standard profile) and per-tenant PII policy.
-- **B4. Policy-as-code engine** — declarative policies (OPA/Rego or an embedded rule DSL) that
-  gate ingress, retrieval, generation, and egress; versioned and testable.
+  **#86** (`GET /v1/guardrails`), **#87** (hit-rate metrics) and **#88** (standard/strict
+  profiles) are landed. Per-tenant PII policy and optional NER model provisioning remain
+  partial (see [capability-status.md](capability-status.md)).
+- **B4. Policy-as-code engine** — declarative policies that gate ingress, retrieval,
+  generation, and egress; versioned and testable.
+  **Landed (#121-#123):** CEL policy bundles (`config/policies/`), policy registry/engine and
+  the approvals contract. Automatic in-pipeline blocking of a `require_approval` decision
+  remains **partial** (tracked under #43).
 - **B5. Audit & compliance exports** — immutable (append-only/WORM) audit trail, retention
   policies, SOC2/EU-AI-Act/GDPR evidence packs, data-residency controls.
   **Landed (#55, PR #102):** hash-chained `ImmutableAuditStore` (`sequence`/`prev_hash`),
@@ -182,6 +188,9 @@ Issue IDs are placeholders (`E-*`) — not yet created.
   `/v1/audit/{verify,evidence,export,purge}`.
 - **B6. Human-in-the-loop (HITL) review** — queue + UI for flagging/escalating low-confidence
   or high-risk answers; approval workflow before release.
+  **Landed (#123 backend, #163/#164 console):** approval queue API with filtering/sort/
+  tenant scoping and the review console; runtime auto-gating of policy decisions remains
+  **partial** (see B4).
 
 ### Workstream C — Observability & evaluation as a product
 
@@ -189,20 +198,29 @@ Issue IDs are placeholders (`E-*`) — not yet created.
 
 - **C1. OpenTelemetry-native tracing** — emit spans/metrics/logs via OTLP so traces land in
   Jaeger/Tempo/Grafana/Datadog; keep the in-process trace as the source record.
-- **C2. Prometheus + Grafana stack** — `/metrics` Prometheus exposition (deferred in #38),
-  ship a **Grafana dashboard pack** (latency p50/p95/p99, cost, failure taxonomy, cache hit
-  rate, guardrail blocks) and **alert rules**; optional `docker-compose` profile for the stack.
+  *Landed (#47).*
+- **C2. Prometheus + Grafana stack** — `/metrics` Prometheus exposition, a **Grafana
+  dashboard pack** (latency p50/p95/p99, cost, failure taxonomy, cache hit rate, guardrail
+  blocks) and **alert rules**; optional `docker-compose` profile for the stack.
+  *Landed (#44).*
 - **C3. Behavioral quality metrics** — hallucination rate (schema + grounding failures),
   **prompt/model drift** across versions, groundedness, answer-relevance distributions,
   tool-call patterns; sampled offline evaluation of production traffic vs a golden set.
+  *Partial:* eval trends/alerts exist; production-traffic sampling and drift/hallucination
+  scoring do not (candidate follow-up under #43).
 - **C4. Continuous evaluation & regression gates** — scheduled eval runs against golden
   sets/benchmarks; **CI gate**: a prompt/model/config change that regresses a metric beyond a
   threshold fails the pipeline; leaderboards per use case.
+  *Landed (#124-#126)* (advisory CI job).
 - **C5. Prompt/model lifecycle & experiment registry (MLflow-style)** — version, diff, and
   roll back prompts, generation configs, and model routing; tie every eval/trace to a version;
   **GitOps** for AI assets.
+  *Partial:* GitOps for config/policies and benchmark provenance exist; prompt/model
+  versioning and rollback are not implemented (candidate follow-up under #43).
 - **C6. FinOps & ROI** — token/cost showback & chargeback per tenant/app/use-case; budget
   alerts; unit economics per accepted answer; a business-impact view in the UI.
+  *Partial:* per-request cost, spend windows and attributed counters exist; chargeback/ROI
+  reporting does not (candidate follow-up under #43).
 
 ### Workstream D — Serving, scale & reliability
 
@@ -210,18 +228,29 @@ Issue IDs are placeholders (`E-*`) — not yet created.
 
 - **D1. Provider resilience** — retries with backoff + jitter, circuit breakers, **multi-provider
   failover/routing** (cost/latency/capability-aware), rate-limit handling.
+  *Landed (#45), default off.* Cost/latency-aware routing beyond an ordered fallback chain
+  remains **partial**.
 - **D2. Semantic + exact caching tiers** — extend the exact-match `ResponseCache` with
   embedding/prefix-semantic caching and per-tenant cache namespaces; KV/prompt-cache affinity.
+  *Partial:* exact-match cache with per-tenant namespace is landed (#26) and process-local;
+  semantic/prefix caching is planned (candidate follow-up under #43).
 - **D3. Async & streaming** — async pipeline path, token **streaming** (SSE/WebSocket) end to
   end including the UI; backpressure and queueing.
+  *Planned:* the API is request/response only (candidate follow-up under #43).
 - **D4. Real vector scale** — production vector backends (pgvector, Qdrant, Milvus, Weaviate,
   Pinecone) behind the existing `BaseRetriever`; index lifecycle (build/refresh/reindex),
   hybrid at scale, metadata filtering.
+  *Partial:* FAISS/in-process retrieval is tested; production vector backends are planned
+  (candidate follow-up under #43).
 - **D5. Ingestion pipeline** — real document ingestion → parsing → chunking → embedding →
   indexing, with incremental/CDC sync, connectors (S3/SharePoint/Confluence/DB), and lineage.
+  *Landed (#115-#117):* ingestion service + S3/GCS/Azure Blob/Confluence/SharePoint connectors;
+  incremental/CDC sync remains **partial**.
 - **D6. Deployment & ops maturity** — hardened container (non-root, `pip install .`), Helm
   chart, Kubernetes deployment + HPA/KEDA autoscaling, health/readiness/liveness, graceful
   shutdown, blue-green/canary rollouts, rollback incl. model/prompt versions.
+  *Landed (#65-#71):* hardened image + Compose, Helm/Kustomize/GitOps, HA/autoscale,
+  progressive delivery; model/prompt version rollback is **partial** (see C5).
 
 ### Workstream E — Platform engineering
 
@@ -229,10 +258,14 @@ Issue IDs are placeholders (`E-*`) — not yet created.
 
 - **E1. Plugin/extension SDK** — a stable, documented way for teams to add providers,
   guardrails, evaluators, and connectors without forking core (formalize the registry `register`).
+  *Partial:* registries expose `register` and are documented; a versioned SDK contract with
+  compatibility guarantees is not yet published.
 - **E2. Config schema & validation** — JSON Schema/Pydantic for every `config/*.yaml`; typed
   settings, `config validate` command, migration/versioning, env/secret interpolation.
 - **E3. Secrets management** — Vault / cloud secret managers / K8s secrets; no secrets in YAML;
   rotation.
+  *Partial:* `${VAR}`/`env:VAR` interpolation, startup validation and Kubernetes secret wiring
+  are landed (#46, G2); Vault/cloud secret-manager integration and rotation are not.
 - **E4. State & persistence** — move run/trace/experiment/audit stores from in-memory to a
   pluggable persistence layer (Postgres) so they survive restarts and scale horizontally.
   **Landed (#56, PR #104):** `BaseStore` with `memory` (default), `sqlite` and `postgres`
@@ -393,8 +426,10 @@ A capability is only "done" when it is:
 |---|---|---|---|
 | **H0 — Now (0–1 mo)** | Finish the foundation & make it operable | C2 (Prometheus/Grafana + dashboard pack), D1 (resilience/failover), E2 (config schema/validation), E3 (secrets), C1 (OTel), **G0 (hardened container + Compose), G1 (deployment playbook — landed #66), B3-slice #72 (input/doc redaction before prompt)** | The platform is observable, hardened, **deployable**, and no longer leaks raw secrets in the query/doc path; ops can adopt it. |
 | **H1 (1–3 mo)** | Multi-tenant & governed | **A1 (tenant model — landed #48)**, **A2 (OIDC + SCIM — landed #49)**, **A3 (attribution - landed #50)**, **A4 (permission-aware retrieval - landed #51)**, B1–B3, **B5 (landed #55)**, E1, **E4 (landed #56)**, **F5 (landed #57)**, **G2 (Helm + Kustomize + GitOps example + CI deploy smoke, landed #67)** — *B1-B3 (#52/#53/#54) landed* | Teams can onboard safely; access and cost are attributable; guardrails + audit are real; it installs on Kubernetes. |
-| **H2 (3–6 mo)** | The product surface | C3–C6, D2–D5, F1–F4 (composer, graphs, experiments, governance console), **G3 (HA/autoscale), G4 (progressive delivery)** | This becomes a *platform teams want to use*: visual, measurable, ROI-provable, safely rollout-able. |
-| **H3 (6–12 mo)** | Enterprise scale & compliance | B4, B6, D6, E5, E6, F6, F7, **G5 (GitOps at scale), G6 (multi-region/DR + cloud IaC)** | Runs at scale, in-region, GitOps-managed, compliance-evidenced, multi-team. |
+| **H2 (3–6 mo)** | The product surface | C3–C6, D2–D5, F1–F4 (composer, graphs, experiments, governance console), **G3 (HA/autoscale - landed #68), G4 (progressive delivery - landed #69)** | This becomes a *platform teams want to use*: visual, measurable, ROI-provable, safely rollout-able. |
+| **H3 (6–12 mo)** | Enterprise scale & compliance | B4, B6, D6, E5, E6, F6, F7, **G5 (GitOps at scale - landed #70), G6 (multi-region/DR + cloud IaC - landed #71)** | Runs at scale, in-region, GitOps-managed, compliance-evidenced, multi-team. |
+| **H4 (hardening & UX)** | Post-G6 hardening + console UX | H (#115-#117), I (#118-#120), J (#121-#123), K (#124-#126), L (#127-#129), M (#130-#136, #145, #151-#156) — landed; **#157-#158 open** | Connectors, DR operations, policy-as-code, eval CI gates and golden paths landed; console UX tranche closeout remains. |
+| **H5 (proof & qualification)** | Make the shipped work legible and qualified | #187/#188/#190 landed; #191-#193 closeout; #189 demo (bot-win); #195-#199 harness landed; **#204-#206 qualification open** | Evidence, comparison and reproducibility assets; independent security and multi-replica qualification still open. |
 
 **Dependency notes:** A (identity) unblocks B/C attribution and F5; E2 unblocks F1 (schema-driven
 composer); C1 unblocks the trace-waterfall graph (F2); E4 should precede C5/C6 production use **and
@@ -440,11 +475,14 @@ later deployment item.
 - Deployment is a first-class workstream: umbrella **#64** (`[Roadmap] Workstream G - Deployment & delivery`).
 - Security audit follow-ups: **#72** (input-side redaction, H0) + umbrella **#73** (guardrail gaps
   across the RAG invocation flow) — #72, the query-length bound, the **#52** `BaseGuardrail`
-  framework, **#53** (injection) and **#54** (PII/DLP) are landed. Guardrail completeness follow-ups:
-  **#86** (`GET /v1/guardrails`), **#87** (hit-rate metrics), **#88** (standard profile).
+  framework, **#53** (injection) and **#54** (PII/DLP) are landed. Guardrail completeness
+  follow-ups **#86** (`GET /v1/guardrails`), **#87** (hit-rate metrics) and **#88**
+  (standard/strict profiles) are landed too.
 - Reconciliation & console-coverage follow-ups: **#81** (reconcile `docs/**` with the shipped
-  surface, H1) and **#82** (surface audit/RBAC/guardrails/resilience/OTel/cache + `/metrics` in the
-  Streamlit console, H2).
+  surface) and **#82** (surface audit/RBAC/guardrails/resilience/OTel/cache + `/metrics` in the
+  Streamlit console) are **landed**. Current reconciliation is tracked by **#191**
+  (capability status - see [capability-status.md](capability-status.md)) and **#192**
+  (production-readiness gap assessment).
 - Horizons are GitHub **milestones**: `H0 - Observability & hardening`,
   `H1 - Multi-tenant & governed`, `H2 - Product surface`,
   `H3 - Enterprise scale & compliance`, `H4 - Post-G6 hardening & UX`.
@@ -456,8 +494,10 @@ later deployment item.
   policy-as-code J (#121-#123), eval expansion/CI gates
   K (#124-#126), golden path templates L (#127, `deployment/templates/`) and the
   `genai init` CLI (#128, `app/cli.py`) and the onboarding guide (#129,
-  `docs/onboarding.md`) are **landed**; Workstream L is complete. The active bridge
-  is the remaining UX tranche (#157-#158) on H4.
+  `docs/onboarding.md`) are **landed**; Workstream L is complete. On H5 the harness
+  (#195-#199) and the repository identity/diagram/lifecycle docs (#187/#188/#190) are
+  **landed**. The active bridge is the H5 showcase closeout (#189, #191-#193) and
+  qualification (#204-#206), plus the remaining UX tranche (#157-#158) on H4.
 - The Project v2 board (**#8**) carries a **Workstream** field; options A-M plus
   Cross-cutting are configured and every open issue is assigned.
 - Contribution workflow (branching, PR checklist, release tags) is in
