@@ -576,6 +576,9 @@ your own `api_key`/secret references per [Validate config & manage secrets](#val
 
 ## Development notes
 
+Contributing workflow and the gates that actually block a merge:
+[CONTRIBUTING.md](CONTRIBUTING.md) and [docs/engineering-lifecycle.md](docs/engineering-lifecycle.md).
+
 ### Project layout
 
 ```text
@@ -585,7 +588,8 @@ config/     YAML configuration - the single source of truth for behaviour
 ui/         Streamlit console (HTTP-only client of the public API)
 tests/      pytest suite (behavioural tests drive real local models)
 data/       sample corpus (data/docs.json)
-docs/       onboarding.md, architecture.md, deployment.md, ux-and-api.md, accessibility.md, layout-and-theme.md, enterprise-roadmap.md
+docs/       onboarding.md, architecture.md, architecture-diagram.md, deployment.md, engineering-lifecycle.md,
+            ux-and-api.md, accessibility.md, layout-and-theme.md, enterprise-roadmap.md
 ```
 
 ### How to run the backend
