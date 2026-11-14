@@ -1,6 +1,6 @@
 # Comparison with alternatives
 
-> **Status:** reference architecture and config-driven control plane, not a drop-in
+> **Status:** reference implementation and config-driven control plane, not a drop-in
 > replacement for a managed AI platform or a production-certified product. This page
 > states where the repository overlaps with other tools, where those tools are stronger,
 > and what evidence backs each claim. Sources were accessed on **2026-11-14**; review
