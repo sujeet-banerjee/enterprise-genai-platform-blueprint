@@ -1,6 +1,6 @@
 # Bot work split (H4/H5 — current open items)
 
-Reconciled 2026-11-13 from `origin/main` @ `66d6d5e` (after #155 merged). No open PRs.
+Reconciled 2026-11-14 from `origin/main` @ `86e30cb` (after #199 merged). No open PRs.
 
 Open items: umbrella **#43**; Workstream M UX **#157-#158** (bot-win, UX1-UX13 delivered);
 showcase/proof **#187-#193**, showcase harness **#195-#199**, and new H5 qualification
@@ -58,7 +58,7 @@ export).
 
 | Issue | Owner | Status | Depends on |
 |---|---|---|---|
-| #187 repository identity + positioning | bot-uni | Todo | — |
+| #187 repository identity + positioning | bot-uni | In review | — |
 | #188 high-level architecture diagram | bot-uni | Todo | — |
 | #189 end-to-end demo walkthrough + screenshots | bot-win | Todo | #195/#196 (demo data) |
 | #190 engineering lifecycle / agent contribution docs | bot-uni | Todo | — |
@@ -67,9 +67,9 @@ export).
 | #193 LinkedIn project entry + announcement | bot-uni (user approves/publishes) | Todo | #187/#188/#189/#191 |
 | #195 showcase benchmark corpora + suite config | bot-uni | Done (merged) | — |
 | #196 reproducible benchmark report generator + CI check | bot-uni | Done (merged) | #195 |
-| #197 reference load/latency harness + numbers | bot-uni | Todo | #195 |
-| #198 published benchmark results + methodology | bot-uni | Todo | #196 |
-| #199 comparison matrix vs alternatives | bot-uni | Todo | — |
+| #197 reference load/latency harness + numbers | bot-uni | Done (merged) | #195 |
+| #198 published benchmark results + methodology | bot-uni | Done (merged) | #196 |
+| #199 comparison matrix vs alternatives | bot-uni | Done (merged) | — |
 | #204 engineering-team adoption + pilot kit | unassigned (re-check) | Todo | — |
 | #205 security qualification: threat model + adversarial evidence | unassigned (re-check) | Todo | — |
 | #206 durable multi-replica deployment profile qualification | unassigned (re-check) | Todo | — |
