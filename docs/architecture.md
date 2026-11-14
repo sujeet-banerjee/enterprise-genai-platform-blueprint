@@ -132,6 +132,11 @@ flowchart TD
     GuardrailRegistry --> Guardrail
 ```
 
+For the end-to-end system view - API middleware, composition root, pipeline stages,
+platform services, adapters, persistence, delivery artefacts and the external/planned
+boundary - see [architecture-diagram.md](architecture-diagram.md). The diagram above
+stays focused on the interface contracts and their factories.
+
 ## 2.3 Interface Contracts
 
 Each contract is an abstract base class in `core/interfaces/`. Implementations must satisfy the
