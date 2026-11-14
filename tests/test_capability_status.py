@@ -28,7 +28,7 @@ FORBIDDEN_CLAIMS = (
     "enterprise-grade",
 )
 # Every gap the matrix must keep visible (the current open roadmap/qualification set).
-REQUIRED_GAP_ISSUES = {"#43", "#192", "#204", "#205", "#206"}
+REQUIRED_GAP_ISSUES = {"#43", "#204", "#205", "#206"}
 # Sections the matrix must keep so coverage cannot silently shrink.
 REQUIRED_SECTIONS = (
     "## How to read the status",
