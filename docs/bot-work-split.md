@@ -1,6 +1,6 @@
 # Bot work split (H4/H5 — current open items)
 
-Reconciled 2026-11-14 from `origin/main` @ `e028b9f` (after #190 merged). No open PRs.
+Reconciled 2026-11-14 from `origin/main` @ `df88aa2` (after #191 merged). No open PRs.
 
 Open items: umbrella **#43**; Workstream M UX **#157-#158** (bot-win, UX1-UX13 delivered);
 showcase/proof **#187-#193**, showcase harness **#195-#199**, and new H5 qualification
@@ -62,8 +62,8 @@ export).
 | #188 high-level architecture diagram | bot-uni | Done (merged) | — |
 | #189 end-to-end demo walkthrough + screenshots | bot-win | Todo | #195/#196 (demo data) |
 | #190 engineering lifecycle / agent contribution docs | bot-uni | Done (merged) | — |
-| #191 capability-status audit | bot-uni | In review | — |
-| #192 production-readiness gap assessment | bot-uni | Todo | — |
+| #191 capability-status audit | bot-uni | Done (merged) | — |
+| #192 production-readiness gap assessment | bot-uni | In review | — |
 | #193 LinkedIn project entry + announcement | bot-uni (user approves/publishes) | Todo | #187/#188/#189/#191 |
 | #195 showcase benchmark corpora + suite config | bot-uni | Done (merged) | — |
 | #196 reproducible benchmark report generator + CI check | bot-uni | Done (merged) | #195 |
