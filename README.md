@@ -5,7 +5,7 @@
 This is a blueprint to extend and operate yourself: MIT licensed, explicit about maturity, and **not** a production-certified product or a replacement for a managed AI platform. Start with the [golden paths](deployment/templates/README.md), then use the [comparison](docs/comparison.md), [architecture](docs/architecture.md) and [deployment playbook](docs/deployment.md) to decide where it fits.
 
 - **What it is:** a reference implementation covering retrieval and generation, evaluation, governance and cost, identity/RBAC and security guardrails, observability and audit, plus the deployment and operations path.
-- **What it is not:** a managed service, a model provider, a connector catalogue, or evidence of customer adoption or enterprise-scale validation. Per-capability status with code/test evidence is in the [capability status matrix](docs/capability-status.md); production gaps are tracked in [#192](https://github.com/sujeet-banerjee/enterprise-genai-platform-blueprint/issues/192).
+- **What it is not:** a managed service, a model provider, a connector catalogue, or evidence of customer adoption or enterprise-scale validation. Per-capability status with code/test evidence is in the [capability status matrix](docs/capability-status.md); the operational gaps and their risk ranking are in the [production-readiness gap assessment](docs/production-readiness.md).
 
 Canonical positioning, GitHub metadata and maturity vocabulary live in
 [`docs/positioning.md`](docs/positioning.md).
@@ -547,7 +547,8 @@ deliberately explicit about what this repository does **not** replace.
 
 For what is actually implemented here - versus partial, planned or external - see the
 [capability status matrix](docs/capability-status.md), which maps every capability to code and
-test evidence and links the tracked gaps.
+test evidence and links the tracked gaps. For the honest gap between *implemented* and
+*production-ready*, see the [production-readiness gap assessment](docs/production-readiness.md).
 
 ### Golden path templates
 
@@ -593,8 +594,8 @@ ui/         Streamlit console (HTTP-only client of the public API)
 tests/      pytest suite (behavioural tests drive real local models)
 data/       sample corpus (data/docs.json)
 docs/       onboarding.md, architecture.md, architecture-diagram.md, capability-status.md,
-            deployment.md, engineering-lifecycle.md, positioning.md, comparison.md,
-            ux-and-api.md, accessibility.md, layout-and-theme.md, enterprise-roadmap.md
+            production-readiness.md, deployment.md, engineering-lifecycle.md, positioning.md,
+            comparison.md, ux-and-api.md, accessibility.md, layout-and-theme.md, enterprise-roadmap.md
 ```
 
 ### How to run the backend

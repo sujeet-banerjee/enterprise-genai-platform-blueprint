@@ -402,6 +402,8 @@ client → API (fast: validate, enqueue) → queue → worker pods → pipeline 
   schemas, validation, secrets interpolation.
 - [`architecture.md` §13](architecture.md#13-deployment-modes) — shadow vs. inline gateway patterns.
 - [`ux-and-api.md`](ux-and-api.md) — API surface and console.
+- [`production-readiness.md`](production-readiness.md) — where this deployment path stands against
+  production expectations (persistence, multi-replica, security, SLOs, DR) and what to do next.
 - [`enterprise-roadmap.md`](enterprise-roadmap.md) — workstreams G (delivery), D (serving) and E
   (platform engineering), including what lands in G2–G6.
 - `deployment/Dockerfile`, `deployment/docker-compose.yml`, `.env.example` — the shipped artifacts.

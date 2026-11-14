@@ -21,8 +21,7 @@ Two rules keep this honest:
    behaviour, not the existence of a contract.
 2. **Implemented is not production-validated.** Passing tests prove behaviour on a
    single reference node, not capacity, security certification or regulatory
-   fitness. See [production readiness](enterprise-roadmap.md#8-explicit-non-goals)
-   and the gap assessment in **#192**.
+   fitness. See the [production-readiness gap assessment](production-readiness.md).
 
 ## Platform core
 
@@ -100,7 +99,7 @@ Two rules keep this honest:
 
 | Capability | Status | Tracked by | Notes |
 | --- | --- | --- | --- |
-| Production-readiness gap assessment | Planned | #192 | This matrix separates implemented from production-validated; the assessment details the gaps. |
+| Production-readiness gap assessment | Implemented | [production-readiness.md](production-readiness.md) | Published; separates implemented from production-validated and prioritizes gaps by operational risk. |
 | Durable multi-replica deployment profile | Planned | #206 | Requires shared persistence, coordination and failover validation. |
 | Independent security validation (threat model, adversarial testing) | Planned | #205 | Unit tests are not a penetration test. |
 | Engineering-team adoption / pilot kit | Planned | #204 | Onboarding guide and golden paths exist; a packaged pilot kit does not. |
@@ -111,7 +110,7 @@ Two rules keep this honest:
 
 ## Where the gaps are tracked
 
-- **[#192](https://github.com/sujeet-banerjee/enterprise-genai-platform-blueprint/issues/192)** - production-readiness gap assessment (operational risk and recommendations).
+- **[Production-readiness gap assessment](production-readiness.md)** - the operational-risk view of where this matrix's *Partial*/*Implemented* rows fall short of a production deployment.
 - **[#204](https://github.com/sujeet-banerjee/enterprise-genai-platform-blueprint/issues/204)** / **[#205](https://github.com/sujeet-banerjee/enterprise-genai-platform-blueprint/issues/205)** / **[#206](https://github.com/sujeet-banerjee/enterprise-genai-platform-blueprint/issues/206)** - adoption kit, security qualification, durable multi-replica profile.
 - **[#43](https://github.com/sujeet-banerjee/enterprise-genai-platform-blueprint/issues/43)** - roadmap umbrella; carries roadmap-level candidates (semantic cache, streaming, real vector backends, behavioral metrics, prompt/model lifecycle, chargeback) until they are prioritized into dedicated issues.
 - **[#157](https://github.com/sujeet-banerjee/enterprise-genai-platform-blueprint/issues/157)** / **[#158](https://github.com/sujeet-banerjee/enterprise-genai-platform-blueprint/issues/158)** - remaining UX tranche (bot-win).
