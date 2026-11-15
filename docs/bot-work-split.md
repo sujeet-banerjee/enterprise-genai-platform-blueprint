@@ -1,10 +1,11 @@
 # Bot work split (H4/H5 — current open items)
 
-Reconciled 2026-11-15 from `origin/main` @ `1017dd3` (after #157 and #193 merged). One open PR: #204 adoption and pilot kit (in review). #193 draft merged; awaiting maintainer approval/publish.
+Reconciled 2026-11-15 from `origin/main` @ `ca95215` (after #157, #193 and #204 merged). No open PRs. #193 draft merged; awaiting maintainer approval/publish. #205 security qualification is in review; follow-ups #223 (tenant-header binding), #224 (rate limits) and #225 (CI supply-chain gates) are open.
 
 Open items: umbrella **#43**; Workstream M UX **#158** (bot-win, UX1-UX14 delivered);
 showcase/proof **#187-#193**, showcase harness **#195-#199**, and new H5 qualification
-items **#204-#206** (H5, ownership to re-check, see below). Workstream G
+items **#204-#206** (H5; #204 and #205 with bot-uni, #206 unassigned), security follow-ups
+**#223-#225**, and the LinkedIn approval (#193, user). Workstream G
 follow-ups (#64/#68-#71), #105/#109, #154 (UX11), #155 (UX12), #156 (UX13), #157 (UX14),
 #162 and #175 are **closed** — do not treat them as open.
 Re-check open issues and PRs before each item.
@@ -69,9 +70,12 @@ console) and #164 (queue operations/SLA/safe export).
 | #197 reference load/latency harness + numbers | bot-uni | Done (merged) | #195 |
 | #198 published benchmark results + methodology | bot-uni | Done (merged) | #196 |
 | #199 comparison matrix vs alternatives | bot-uni | Done (merged) | — |
-| #204 engineering-team adoption + pilot kit | bot-uni | In review (draft under `docs/adoption/`) | — |
-| #205 security qualification: threat model + adversarial evidence | unassigned (re-check) | Todo | — |
+| #204 engineering-team adoption + pilot kit | bot-uni | Done (merged) | — |
+| #205 security qualification: threat model + adversarial evidence | bot-uni | In review (`docs/security/`) | — |
 | #206 durable multi-replica deployment profile qualification | unassigned (re-check) | Todo | — |
+| #223 bind tenant header to authenticated identity | bot-uni | Todo (security follow-up) | — |
+| #224 configurable API rate limits and quotas | bot-uni | Todo (security follow-up) | — |
+| #225 required CodeQL + dependency/image scanning gates | bot-uni | Todo (security follow-up) | — |
 
 ## Suggested operating rules (to avoid collisions)
 
