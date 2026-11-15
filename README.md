@@ -550,6 +550,10 @@ For what is actually implemented here - versus partial, planned or external - se
 test evidence and links the tracked gaps. For the honest gap between *implemented* and
 *production-ready*, see the [production-readiness gap assessment](docs/production-readiness.md).
 
+Public presentation copy (profile entry and announcement draft, approved and published by the
+maintainer) lives in [`docs/showcase/linkedin.md`](docs/showcase/linkedin.md); it reuses this
+repository's canonical naming and capability language rather than inventing new claims.
+
 ### Golden path templates
 
 Don't start from an empty `config/` directory. [`deployment/templates/`](deployment/templates/README.md)
@@ -595,7 +599,8 @@ tests/      pytest suite (behavioural tests drive real local models)
 data/       sample corpus (data/docs.json)
 docs/       onboarding.md, architecture.md, architecture-diagram.md, capability-status.md,
             production-readiness.md, deployment.md, engineering-lifecycle.md, positioning.md,
-            comparison.md, ux-and-api.md, accessibility.md, layout-and-theme.md, enterprise-roadmap.md
+            comparison.md, ux-and-api.md, accessibility.md, layout-and-theme.md,
+            enterprise-roadmap.md, showcase/ (LinkedIn profile entry + announcement draft)
 ```
 
 ### How to run the backend
