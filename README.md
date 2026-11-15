@@ -561,7 +561,9 @@ deliberately explicit about what this repository does **not** replace.
 For what is actually implemented here - versus partial, planned or external - see the
 [capability status matrix](docs/capability-status.md), which maps every capability to code and
 test evidence and links the tracked gaps. For the honest gap between *implemented* and
-*production-ready*, see the [production-readiness gap assessment](docs/production-readiness.md).
+*production-ready*, see the [production-readiness gap assessment](docs/production-readiness.md). The
+[security qualification package](docs/security/README.md) records the threat model, validated
+controls, open findings and reproduction commands; it is evidence, not a certification.
 
 Evaluating it with a team? The [adoption and pilot kit](docs/adoption/README.md) is a bounded
 path: reproduce the demo, scope one workload, and record quality, latency, cost and security
@@ -617,8 +619,8 @@ data/       sample corpus (data/docs.json)
 docs/       onboarding.md, architecture.md, architecture-diagram.md, capability-status.md,
             production-readiness.md, deployment.md, engineering-lifecycle.md, positioning.md,
             comparison.md, ux-and-api.md, accessibility.md, layout-and-theme.md,
-            enterprise-roadmap.md, adoption/ (adoption and pilot kit), showcase/ (LinkedIn
-            profile entry + announcement draft)
+            enterprise-roadmap.md, adoption/ (adoption and pilot kit), security/ (threat model,
+            abuse-case/test plan, findings), showcase/ (LinkedIn profile entry + announcement draft)
 ```
 
 ### How to run the backend

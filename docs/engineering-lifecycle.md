@@ -127,8 +127,10 @@ These jobs run on the PR but are **not** configured as required status checks:
 | `Eval regression gates` | Config-driven eval/benchmark/golden-path/scaffold checks. |
 | `CodeQL` / `Analyze (python)` / `Analyze (actions)` | Security analysis (default setup; not a branch-protection context). |
 
-Treat advisory failures as blocking anyway; they catch deployment and security
-regressions that unit tests do not. Do not describe the PR as "reviewed" or
+The security qualification package ([`security/test-plan.md`](security/test-plan.md)) maps
+abuse cases to tests; the required-vs-advisory split above is itself a tracked gap when it
+leaves supply-chain scanning advisory (#225). Treat advisory failures as blocking anyway;
+they catch deployment and security regressions that unit tests do not. Do not describe the PR as "reviewed" or
 "approved" unless a human actually reviewed it - GitHub does not enforce an
 approval.
 

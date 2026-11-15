@@ -6,7 +6,9 @@
 > does **not** claim that the shipped Kubernetes manifests alone are sufficient for production.
 > Assessed **2026-11-14** against `main` @ `df88aa2`.
 
-Companion documents: [capability status](capability-status.md) answers *what exists*;
+Companion documents: [capability status](capability-status.md) answers *what exists*; the
+[security qualification package](security/README.md) records the threat model, abuse-case
+matrix and open findings;
 this document answers *what it takes to run it for real*. The
 [deployment playbook](deployment.md) covers *how to deploy it*; the
 [DR runbook](dr-runbook.md) covers recovery procedures.
@@ -176,19 +178,20 @@ hash-chained audit (`core/services/audit_store.py`) and secret redaction in logs
 **Gaps.**
 - **No threat model document** and **no independent penetration test**.
 - CodeQL runs as an **advisory** check, not a required status check.
-- Dependabot reports **3 open moderate alerts** (all in the `pytest` dev dependency);
-  no `dependabot.yml` configuration exists for scheduled/grouped updates.
+- Dependabot reports **3 open moderate alerts** (all in the `pytest` dev dependency, fixed
+  by the 9.0.3 pin); a `dependabot.yml` for scheduled version updates landed with #205, but
+  Dependabot security updates remain disabled and there is no dependency-audit gate.
 - No SBOM, image signing or provenance; no secrets scanning gate beyond CodeQL.
 - The guardrail and identity defaults are off (area 4), so the shipped posture is permissive
   until configured.
 
-**Impact.** High: without a threat model and independent validation, the security posture is
-reasoned about internally but not challenged externally. Unit tests are not a penetration
-test.
+**Impact.** High: a threat model and abuse-case matrix now exist (#205), but the posture has
+not been challenged by an independent assessment. Unit tests are not a penetration test.
 
-**Recommended next step.** Write a threat model, promote CodeQL to a required check, add a
-`dependabot.yml`, and commission independent validation. Tracked by **#205** (security
-qualification); no new duplicate issues are opened by this assessment.
+**Recommended next step.** Promote CodeQL to a required check, add the dependency-audit and
+image-scan gates (**#225**), fix tenant-header binding (**#223**), and commission independent
+validation. The threat model, abuse-case matrix and findings landed with **#205**; no new
+duplicate issues are opened by this assessment.
 
 **Status: Partial.**
 
@@ -284,8 +287,9 @@ Ordered by operational risk. None of these are new issues; each links to work al
 1. **Before scaling beyond one replica** - move run/trace/experiment/approval state to a
    shared store and declare the Postgres driver as an optional extra; document the
    single-replica default. *(#206, #56)*
-2. **Before any external exposure** - write a threat model, promote CodeQL to a required
-   check, add `dependabot.yml`, and commission independent security validation. *(#205)*
+2. **Before any external exposure** - promote CodeQL to a required check, add SCA/image
+   gates, fix tenant-header binding, and commission independent security validation.
+   *(#205 landed the threat model and evidence; #223/#225 remain)*
 3. **Before a pilot** - publish a hardened profile that enables identity + RBAC + tenancy +
    ACL + guardrails together, and add adversarial isolation tests. *(#204, #205)*
 4. **Before capacity commitments** - define SLOs from measured baselines, run soak and
@@ -301,7 +305,7 @@ This assessment creates **no duplicate implementation issues**. Every recommenda
 work already tracked:
 
 - **[#204](https://github.com/sujeet-banerjee/enterprise-genai-platform-blueprint/issues/204)** - engineering-team adoption / pilot kit (golden paths, hardening profile).
-- **[#205](https://github.com/sujeet-banerjee/enterprise-genai-platform-blueprint/issues/205)** - security qualification: threat model and adversarial validation.
+- **[#205](https://github.com/sujeet-banerjee/enterprise-genai-platform-blueprint/issues/205)** - security qualification: threat model and adversarial validation (*landed*; independent assessment still not performed).
 - **[#206](https://github.com/sujeet-banerjee/enterprise-genai-platform-blueprint/issues/206)** - durable multi-replica deployment profile.
 - **[#71](https://github.com/sujeet-banerjee/enterprise-genai-platform-blueprint/issues/71)** - multi-region / disaster recovery execution.
 - **[#43](https://github.com/sujeet-banerjee/enterprise-genai-platform-blueprint/issues/43)** - roadmap umbrella (semantic cache, streaming, real vector backends, behavioral metrics, prompt/model lifecycle, chargeback).
