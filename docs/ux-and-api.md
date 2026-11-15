@@ -1,12 +1,12 @@
 # UX & API Architecture — Fronting UI Plan
 
-> **Status: DELIVERED (reconciled 2026-11-13).** The API surface, Streamlit console and
+> **Status: DELIVERED (reconciled 2026-11-15).** The API surface, Streamlit console and
 > UX polish workstream M (#130-#136, #145) described here have shipped; §7 is a delivery
 > record rather than a proposal. The next UX tranche (#151-#158) is partly delivered
 > (#151 workspace/deep links, #152 background evaluation jobs, #153 Dataset Studio,
 > #163 HITL Approvals console, #164 queue operations/SLA/safe export, #155 command
-> palette/WCAG 2.2 AA, #156 responsive layout/density/themes); the remaining
-> items (#157 persona journeys/demo mode, #158 collaboration/feedback) and the
+> palette/WCAG 2.2 AA, #156 responsive layout/density/themes, #157 role journeys/demo mode);
+> the remaining item (#158 collaboration/feedback) and the
 > forward-looking roadmap (multi-region/DR operations,
 > eval expansion, golden paths, product UI) live in
 > [enterprise-roadmap.md](enterprise-roadmap.md). Bulk queue operations are UI-only until
@@ -104,10 +104,11 @@ non-trivial consumer and living proof that the contract is sufficient.
 - **Implementations behind the contract** — registries/factories for models,
   embedders, retrievers (vector, FAISS, hybrid, knowledge-graph), rerankers,
   evaluators, chunkers, query expanders and guardrails, all selected by config.
-- **Console** — 11 screens (§6) in a role-aware grouped navigation, a dependency-free
-  14-step tour, a Get started checklist, a persistent URL-backed workspace with saved
-  views/runs and redacted export/import (#151), and a client that wraps every documented
-  endpoint (HTTP only).
+- **Console** — 12 screens (§6) in a role-aware grouped navigation, a dependency-free
+  16-step tour, a capability-filtered Get started checklist, role journeys with a safe
+  local demo mode (#157), a persistent URL-backed workspace with saved views/runs and
+  redacted export/import (#151), and a client that wraps every documented endpoint
+  (HTTP only).
 
 ## 5. API surface v1 — endpoint matrix
 
@@ -168,7 +169,7 @@ from §3.2 applies to every UI: HTTP only, no `core.*` imports.
 
 | Screen | User interactions | Endpoints |
 |---|---|---|
-| **Overview / Health** | status, readiness + config revision, active model/retriever/reranker/evaluator, Get started checklist | `/health`, `/ready`, `/v1/models`, `/v1/embedding-models`, `/v1/retrievers`, `/v1/rerankers`, `/v1/evaluators` |
+| **Overview / Health** | status, readiness + config revision, active model/retriever/reranker/evaluator, Get started checklist, role journey (Back/Next/Skip + docs links), demo-mode banner and reset | `/health`, `/ready`, `/v1/models`, `/v1/embedding-models`, `/v1/retrievers`, `/v1/rerankers`, `/v1/evaluators` |
 | **Query Studio** | task templates; enter query (or batch lines); `top_k`, rerank/include-trace; tabbed results (Answer, Documents, Trace, Guardrails, Resilience, Cache); copy/share Markdown + download; bounded local history with restore and **Compare with last run** deltas | `/v1/query`, `/v1/query:batch`, `/v1/config` |
 | **Compare (what-if)** | pick config overrides (metric, retriever, model); rebuild then run A/B queries | `/v1/pipeline:rebuild`, `/v1/query` |
 | **Evaluation** | dataset picker (built-in benchmark, pasted JSON, or Dataset Studio authoring with case/document editors, inline validation, save/duplicate and round-trip import/export), background dataset jobs (up to 200 cases: live progress, cancel between cases, retry failed / resume unfinished, partial results, bounded history, JSON/CSV export), case-by-metric matrix, average-score chart, delta vs previous run, evaluator dropdown, ground-truth guidance, metric explanations, run comparison matrix, optional ground truth, auto-retrieved docs; launch + poll experiments | `/v1/evaluators`, `/v1/query`, `/v1/evaluate`, `/v1/experiments`, `/v1/experiments/{exp_id}` |
@@ -201,12 +202,33 @@ capabilities to:
   that previews the full surface);
 - show a **Role / tenant** caption and capability-filtered **Quick actions**.
 
-**Overview** carries a five-step **Get started** checklist (connect -> query -> trace ->
-evaluate -> governance) whose progress is derived from completed actions in the session,
-not just from visiting a screen. `ui/navigation.py` holds the pure navigation contract
-(groups, capabilities, landing rules, checklist) so it is unit-tested without Streamlit.
-`ui/tour.py` guides a first-run user through 15 steps (connect, overview, checklist,
-persistent workspace, then one per screen).
+**Overview** carries the **Get started** checklist (connect -> query -> trace -> evaluate
+-> governance, plus guardrails/audit/admin for roles that hold those capabilities) whose
+progress is derived from completed actions in the session, not just from visiting a
+screen. `ui/navigation.py` holds the pure navigation contract (groups, capabilities,
+landing rules, checklist) so it is unit-tested without Streamlit.
+`ui/tour.py` guides a first-run user through 16 steps (connect, overview, checklist, role
+journeys/demo mode, persistent workspace, then one per screen).
+
+### Role journeys and demo mode (#157)
+
+`ui/journeys.py` defines five persona journeys (Architect, Analyst,
+Security/Compliance, Ops, Admin) with 4-6 ordered steps each. Every step names a real
+console screen, a goal, a try-it hint and a documentation link (rendered with
+`doc_url()` against the repo on `main`), so a persona can walk the console in under ten
+minutes. The sidebar shows the active step, **Start / restart**, **Skip** and a docs
+link; the main area shows **Back / Next / Finish**, **Skip**, **Open screen** and a
+progress bar driven by `journey_visited`. Progress and the copyable plan come from
+pure helpers (`journey_progress`, `journey_markdown`).
+
+**Demo mode** is a local simulation, not a sandbox: `ui/demo.py::DemoApi` subclasses
+the HTTP client and serves fixtures from `ui/journeys.py` without calling
+`requests`, so the console cannot read or write production tenant data. Starting a
+demo seeds query history, the last trace id, a saved dataset, guardrail/audit/admin
+flags, and a `demo` tenant/`showcase` workspace, then starts that persona journey.
+**Exit demo and reset** calls `demo_reset_state()` (workspace reset + cleared seed)
+and returns to Overview. `tests/test_ui_journeys_demo.py` asserts the seed/reset
+contract, fixture shapes and that the demo client never performs HTTP requests.
 
 ### Keyboard access and accessibility (#155)
 
@@ -372,6 +394,7 @@ Streamlit-free) and is covered by `tests/test_ui_dataset_studio.py`.
 | (added during delivery) | cross-object evidence: request-id copy/validation, trace/audit/metrics/governance cross-links, two-request diff (stage latency/failure/docs/guardrails/resilience/cost), client-side audit request filter, redacted JSON/Markdown evidence pack, workspace deep links | #154 |
 | (added during delivery) | command palette (`/`, `>`, `#`, `@` prefixes), keyboard-shortcuts overlay, skip link, focus rings, reduced motion, WCAG 2.2 AA checklist + decision record, screen-reader script | #155 |
 | (added during delivery) | responsive breakpoints (375/768/1280 px), compact density, table-to-card degradation, light/dark/high-contrast themes, semantic status/chart colours, sticky sidebar actions, documented layout/theme tokens | #156 |
+| (added during delivery) | role journeys (five personas, docs-linked steps, Back/Next/Skip, progress) and safe local demo mode (fixtures only, no HTTP, banner + reset), plus guardrails/audit/admin checklist steps | #157 |
 
 The forward roadmap (horizons H0-H4, workstreams A-M) is tracked in
 [enterprise-roadmap.md](enterprise-roadmap.md) and the GitHub Project board; API/UX
@@ -397,6 +420,6 @@ workstream F there.
   background evaluation jobs (#152) **done**; Dataset Studio (#153) **done**;
   cross-object evidence (#154) **done**; command
   palette/WCAG 2.2 AA (#155) **done**; responsive layout/density/themes (#156) **done**;
-  persona journeys/demo mode (#157) and collaboration/feedback (#158) remain open on H4.
+  role journeys/demo mode (#157) **done**; collaboration/feedback (#158) remains open on H4.
 - **P4 (optional, later)** — React/Next.js product frontend reusing the same OpenAPI
   contract; tracked as workstream F in the enterprise roadmap (not committed).

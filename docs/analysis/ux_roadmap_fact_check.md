@@ -1,15 +1,14 @@
 # UX Roadmap Fact-Check & Plan
 
-*Updated 2026-11-13. Streamlit console at `ui/`, HTTP-only, API-driven.*
+*Updated 2026-11-15. Streamlit console at `ui/`, HTTP-only, API-driven.*
 
-> **Status: UX1-UX13 delivered and closed.** Workstream M (UX polish) shipped in
+> **Status: UX1-UX14 delivered and closed.** Workstream M (UX polish) shipped in
 > #130-#136, with the Evaluation dataset-runner follow-up #145, persistent
 > workspace/deep links #151, background evaluation jobs #152, Dataset Studio
 > authoring #153, cross-object evidence #154, the command palette / WCAG 2.2 AA
-> pass #155 and the responsive layout / density / theme system #156. This document now
-> (a) records the delivered state, and
-> (b) tracks the remaining next UX/UI tranche, **UX14-UX15**, opened as #157-#158 and
-> mapped to Project #8 Workstream M.
+> pass #155, the responsive layout / density / theme system #156 and the role journeys /
+> safe demo mode work #157. This document records the delivered state and the remaining
+> UX/UI item, **UX15** (#158), mapped to Project #8 Workstream M.
 
 ## Assessment: "Don't make me think"
 
@@ -17,11 +16,12 @@
 
 - **HTTP-only client**: clean separation (`ui/client.py`), testable, and aligned
   with the public API contract.
-- **Information architecture**: 11 screens grouped into Start here, Experiment,
+- **Information architecture**: 12 screens grouped into Start here, Experiment,
   Governance & security, Operate and Reference; role-aware landing and capability
   filtering reduce the default surface.
-- **Guided onboarding**: a 14-step tour, a Get started checklist derived from real
-  completed actions, filtered quick actions and in-context help.
+- **Guided onboarding**: a 16-step tour, a capability-filtered Get started checklist,
+  five docs-linked persona journeys with progress/skip/restart, a safe local demo mode
+  with one-click reset, filtered quick actions and in-context help.
 - **Query Studio**: six task templates, bounded session history, restore/clear,
   Compare with last run, six result tabs (Answer, Documents, Trace, Guardrails,
   Resilience, Cache), and copy/share/download.
@@ -54,10 +54,10 @@
   still missing.
 - **Power-user speed**: no command palette or keyboard shortcuts to jump to screens,
   request ids, tenants or actions.
-- **Role-specific journeys**: one generic tour serves architects, analysts, security
-  reviewers and operators; there is no demo mode or safe reset.
+- **Role-specific journeys**: addressed by UX14 (#157); five persona journeys, doc deep
+  links, progress/skip/restart and a safe demo mode with reset now exist.
 - **Collaboration and feedback**: bad answers cannot be annotated, flagged, or
-  promoted into an evaluation case from the console.
+  promoted into an evaluation case from the console. This is UX15 (#158).
 - **Executive/ops views**: no saved dashboard layouts, budget forecast, SLO/error
   budget, or scheduled/exportable evidence packs.
 
@@ -79,13 +79,14 @@
 | UX11 | Cross-link and compare operational evidence | #154 | Shipped 2026-11-12 | `ui/evidence.py`, `tests/test_ui_evidence.py`, evidence links/compare/evidence pack in `ui/app.py`, request-id deep links in `ui/workspace.py` |
 | UX12 | Command palette and WCAG 2.2 AA hardening | #155 | Shipped 2026-11-13 | `ui/palette.py`, `ui/a11y.py`, `tests/test_ui_palette.py`, `docs/accessibility.md`, palette/shortcuts dialogs + skip link in `ui/app.py` |
 | UX13 | Responsive, compact and theme system | #156 | Shipped 2026-11-13 | `ui/theme.py`, `tests/test_ui_theme.py`, `docs/layout-and-theme.md`, Appearance panel + responsive CSS + table-to-card rendering in `ui/app.py` |
+| UX14 | Role journeys and safe demo mode | #157 | Shipped 2026-11-15 | `ui/journeys.py`, `ui/demo.py`, `tests/test_ui_journeys_demo.py`, sidebar journey/demo panels + banner/reset in `ui/app.py`, capability-filtered checklist in `ui/navigation.py` |
 
 The delivered scope is also recorded in `docs/ux-and-api.md` section 6 and the
 delivery record in section 7.
 
-## New UX/UI proposals (UX14-UX15 opened; UX8-UX13 delivered)
+## New UX/UI proposals (UX15 open; UX8-UX14 delivered)
 
-UX8 (#151), UX9 (#152), UX10 (#153), UX11 (#154), UX12 (#155) and UX13 (#156) are delivered. UX14-UX15 remain opened as #157-#158. Tracking:
+UX8 (#151), UX9 (#152), UX10 (#153), UX11 (#154), UX12 (#155), UX13 (#156) and UX14 (#157) are delivered. UX15 (#158) remains open. Tracking:
 label `ux`, link to umbrella #43, Project #8 **Workstream M**, milestone **H4**, and keep the
 HTTP-only rule plus AST/client tests for every change.
 
@@ -97,7 +98,7 @@ HTTP-only rule plus AST/client tests for every change.
 | UX11 (#154, **shipped**) | Cross-link and compare operational evidence | P1 | Trace, audit, metrics and governance views are disconnected; comparing two requests is manual. | Universal request-id search/copy; trace -> audit -> metrics -> governance links; two-trace side-by-side diff; saved filter context; evidence-pack export. | Reach audit/metrics from a trace in <=2 clicks; trace diff highlights stage latency/failure/document/guardrail deltas; links preserve tenant/role scope. | Delivered UI-side (`ui/evidence.py` + console cross-links/diff/evidence pack, request-id deep links via UX8); trace search/list endpoint remains an optional backend follow-up. |
 | UX12 (#155, **shipped**) | Command palette and accessibility hardening | P1 | Navigation is mouse-first; keyboard/screen-reader flows and WCAG 2.2 AA are not formally verified. | Ctrl/Cmd+K palette for screens, request ids, tenants and actions; shortcuts and help overlay; skip link; focus states; ARIA labels; reduced motion; contrast fixes; WCAG checklist. | All primary flows work keyboard-only; no critical/serious automated a11y findings; usable at 200% zoom; palette actions are keyboard-completable. | Delivered UI-side (`ui/palette.py`, `ui/a11y.py`, `docs/accessibility.md`); browser Ctrl/Cmd+K interception documented as a known exception with reachable alternatives. |
 | UX13 (#156, **shipped**) | Responsive, compact and theme system | P2 | Wide desktop layouts break on small screens; tables and colors are inconsistent across screens. | Responsive breakpoints; compact/density mode; sticky actions; table-to-card degradation; light/dark/high-contrast themes; semantic chart colors. | 375/768/1280 px layouts have no horizontal scroll on core flows; contrast >=4.5:1; themes pass checks; tables degrade without losing actions. | Delivered UI-side (`ui/theme.py`, `docs/layout-and-theme.md`, Appearance panel + responsive CSS + table-to-card rendering); session-state appearance keeps screen state. |
-| UX14 (#157) | Role-based guided journeys and demo mode | P2 | One generic tour serves every persona; there is no safe sample data or reset for demos and onboarding. | Tours for architect, analyst, security, ops and admin; guided sample scenario; demo mode with seeded state and reset; checklist extended to guardrails/audit/admin; doc deep links. | Each persona completes its journey in <10 minutes; reset returns a clean state; tour covers new screens; no production data is touched. | UX8/UX10; demo config/API fixtures. |
+| UX14 (#157, **shipped**) | Role-based guided journeys and demo mode | P2 | One generic tour serves every persona; there is no safe sample data or reset for demos and onboarding. | Tours for architect, analyst, security, ops and admin; guided sample scenario; demo mode with seeded state and reset; checklist extended to guardrails/audit/admin; doc deep links. | Each persona completes its journey in <10 minutes; reset returns a clean state; tour covers new screens; no production data is touched. | Delivered UI-side (`ui/journeys.py`, `ui/demo.py`); demo uses local fixtures only and never calls the API. |
 | UX15 (#158) | Collaboration and feedback capture | P2 | Bad answers cannot be annotated or promoted into evaluation data; sharing evidence is copy/paste. | Run annotations/flags; comments/notes; "promote to dataset" from a bad answer; evidence-pack export (Markdown/JSON); optional review queue; share link. | Flagging a run creates an evaluation case in one click; annotations survive reload with UX8; exports are redacted; no PII or secrets. | UX8/UX10; optional annotation store. |
 
 ### Recommended execution order
@@ -108,7 +109,8 @@ HTTP-only rule plus AST/client tests for every change.
 4. **UX11** - cross-object evidence reduces debugging time. **Done (#154).**
 5. **UX12** - accessibility and keyboard access are enterprise adoption gates. **Done (#155).**
 6. **UX13** - responsive layouts and theming are the presentation baseline. **Done (#156).**
-7. **UX14-UX15** - persona onboarding/demo mode and collaboration polish.
+7. **UX14** - persona onboarding and demo mode. **Done (#157).**
+8. **UX15** - collaboration and feedback capture (open).
 
 ## Implementation notes
 
@@ -125,6 +127,6 @@ HTTP-only rule plus AST/client tests for every change.
 
 UX1-UX7 turned the console from a functional API demo into a role-aware, guided
 workflow surface. UX8-UX11 (persistence, background jobs, dataset authoring,
-cross-object evidence), UX12 (keyboard-first palette + WCAG 2.2 AA pass) and UX13
-(responsive layout, density and themes) are delivered, leaving UX14-UX15 (persona
-journeys/demo mode, collaboration).
+cross-object evidence), UX12 (keyboard-first palette + WCAG 2.2 AA pass), UX13
+(responsive layout, density and themes) and UX14 (role journeys + safe demo mode) are
+delivered, leaving UX15 (collaboration and feedback capture).

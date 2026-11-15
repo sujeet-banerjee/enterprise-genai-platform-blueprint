@@ -130,6 +130,7 @@ class ChecklistStep:
     label: str
     detail: str
     screen: Optional[str]
+    capability: Optional[str] = None
 
 
 CHECKLIST_STEPS: Tuple[ChecklistStep, ...] = (
@@ -144,24 +145,49 @@ CHECKLIST_STEPS: Tuple[ChecklistStep, ...] = (
         label="Run your first query",
         detail="Ask a question and inspect documents, cost and latency.",
         screen="Query Studio",
+        capability="query",
     ),
     ChecklistStep(
         key="trace",
         label="Inspect the trace",
         detail="Open the redacted trace for the request you just ran.",
         screen="Traces",
+        capability="governance",
     ),
     ChecklistStep(
         key="evaluate",
         label="Score a response",
         detail="Run the semantic or LLM-judge evaluator against an answer.",
         screen="Evaluation",
+        capability="evaluate",
     ),
     ChecklistStep(
         key="governance",
         label="Review governance",
         detail="Check spend, failures and guardrail decisions.",
         screen="Governance & Cost",
+        capability="governance",
+    ),
+    ChecklistStep(
+        key="guardrails",
+        label="Verify guardrails",
+        detail="Confirm the resolved chains and review a decision (allow/redact/block).",
+        screen="Guardrails",
+        capability="introspect",
+    ),
+    ChecklistStep(
+        key="audit",
+        label="Read the audit trail",
+        detail="Inspect append-only, redacted events for a request or rebuild.",
+        screen="Audit",
+        capability="audit",
+    ),
+    ChecklistStep(
+        key="admin",
+        label="Review tenant administration",
+        detail="List tenants/users and check budget or access proposals.",
+        screen="Admin",
+        capability="rebuild",
     ),
 )
 
@@ -265,9 +291,24 @@ def quick_actions_for(capabilities: Iterable[str]) -> List[QuickAction]:
     ]
 
 
-def checklist_status(done: Mapping[str, bool]) -> List[Tuple[ChecklistStep, bool]]:
-    """Pair each onboarding step with its completion flag."""
-    return [(step, bool(done.get(step.key))) for step in CHECKLIST_STEPS]
+def checklist_status(
+    done: Mapping[str, bool], capabilities: Optional[Iterable[str]] = None
+) -> List[Tuple[ChecklistStep, bool]]:
+    """Pair each onboarding step with its completion flag.
+
+    ``capabilities`` filters role-relevant steps (guardrails, audit, admin).
+    ``None`` keeps every step for backward-compatible callers and tests.
+    """
+    if capabilities is None:
+        steps = CHECKLIST_STEPS
+    else:
+        granted = set(capabilities)
+        steps = tuple(
+            step
+            for step in CHECKLIST_STEPS
+            if step.capability is None or step.capability in granted
+        )
+    return [(step, bool(done.get(step.key))) for step in steps]
 
 
 def role_label(role: str) -> str:

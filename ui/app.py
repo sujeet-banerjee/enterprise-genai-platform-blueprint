@@ -82,6 +82,7 @@ from ui.dataset_studio import (
     to_evaluation_cases,
     validate_dataset,
 )
+from ui.demo import DemoApi
 from ui.eval_jobs import (
     ACTIVE_STATUSES,
     MAX_JOB_CASES,
@@ -129,6 +130,20 @@ from ui.governance import (
     metrics_to_csv,
     metrics_to_json,
     time_windows,
+)
+from ui.journeys import (
+    DEMO_ROLE,
+    DEMO_WARNING,
+    demo_reset_state,
+    demo_seed_state,
+    doc_url,
+    journey_by_key,
+    journey_for_role,
+    journey_key_for_label,
+    journey_labels,
+    journey_markdown,
+    journey_progress,
+    mark_screen_visited,
 )
 from ui.navigation import (
     can_access,
@@ -213,6 +228,8 @@ def _parse_args() -> argparse.Namespace:
 
 
 def client() -> ApiClient:
+    if st.session_state.get("demo_mode"):
+        return DemoApi(role=st.session_state.get("demo_role") or DEMO_ROLE)
     return ApiClient(
         base_url=api_base_url(),
         api_key=st.session_state.get("api_key", ""),
@@ -287,6 +304,21 @@ def _bootstrap() -> None:
         st.session_state.ui_density = DEFAULT_DENSITY
     if "ui_table_layout" not in st.session_state:
         st.session_state.ui_table_layout = DEFAULT_TABLE_LAYOUT
+    if "demo_mode" not in st.session_state:
+        st.session_state.demo_mode = False
+    if "demo_role" not in st.session_state:
+        st.session_state.demo_role = ""
+    if "demo_started_at" not in st.session_state:
+        st.session_state.demo_started_at = ""
+    if "journey_state" not in st.session_state:
+        st.session_state.journey_state = "idle"
+    if "journey_role" not in st.session_state:
+        st.session_state.journey_role = ""
+    if "journey_step" not in st.session_state:
+        st.session_state.journey_step = 0
+    for key in ("last_guardrail_at", "last_audit_at", "last_admin_at"):
+        if key not in st.session_state:
+            st.session_state[key] = ""
     if "known_tenants" not in st.session_state:
         st.session_state.known_tenants = []
 
@@ -655,6 +687,136 @@ def _render_appearance_sidebar() -> None:
         st.caption(f"Active: {resolve_theme(theme)} / {resolve_density(density)}")
 
 
+def _journey_completed() -> Dict[str, bool]:
+    visited = set(st.session_state.get("journey_visited") or [])
+    return {screen: screen in visited for screen in SCREENS}
+
+
+def _mark_journey_visit(screen: str) -> None:
+    visited = st.session_state.get("journey_visited") or []
+    updated = mark_screen_visited(visited, screen)
+    if updated != list(visited):
+        st.session_state.journey_visited = updated
+
+
+def _start_journey(key: str) -> None:
+    st.session_state.journey_role = journey_by_key(key).key
+    st.session_state.journey_state = "running"
+    st.session_state.journey_step = 0
+
+
+def _start_demo(role_key: str) -> None:
+    st.session_state.update(demo_seed_state(role_key))
+    st.session_state.journey_visited = []
+    st.session_state.active_screen = "Overview / Health"
+    st.session_state.nav_initialized = True
+    st.rerun()
+
+
+def _render_demo_sidebar(access: Dict[str, Any]) -> None:
+    with st.sidebar.expander("Demo mode", expanded=False):
+        st.caption(DEMO_WARNING)
+        if st.session_state.get("demo_mode"):
+            role = journey_by_key(st.session_state.get("demo_role") or DEMO_ROLE)
+            st.success(f"Demo active: {role.label}")
+            st.caption("All screens use local fixtures; no backend requests are made.")
+            if st.button("Exit demo and reset", key="demo_exit"):
+                demo_reset_state(st.session_state)
+                st.rerun()
+            return
+        default = journey_for_role(access.get("role") or "").key
+        options = journey_labels()
+        default_label = journey_by_key(default).label
+        selected = st.selectbox(
+            "Demo persona",
+            options,
+            index=options.index(default_label),
+            key="demo_role_pick",
+        )
+        if st.button("Start demo", key="demo_start", type="primary"):
+            _start_demo(journey_key_for_label(selected))
+
+
+def _render_role_journey(access: Dict[str, Any]) -> None:
+    with st.sidebar.expander("Role journey", expanded=False):
+        st.caption(
+            "A short, persona-specific path through the console. Each step links to the "
+            "matching documentation."
+        )
+        default = journey_for_role(access.get("role") or "").key
+        options = journey_labels()
+        default_label = journey_by_key(default).label
+        if st.session_state.get("journey_role"):
+            default_label = journey_by_key(st.session_state.journey_role).label
+        selected = st.selectbox(
+            "Journey",
+            options,
+            index=options.index(default_label),
+            key="journey_pick",
+        )
+        key = journey_key_for_label(selected)
+        if st.button("Start / restart journey", key="journey_start"):
+            _start_journey(key)
+            st.rerun()
+        if st.button("Skip journey", key="journey_skip"):
+            st.session_state.journey_state = "done"
+            st.rerun()
+        if st.session_state.get("journey_state") == "running":
+            journey = journey_by_key(st.session_state.get("journey_role") or key)
+            index = int(st.session_state.get("journey_step", 0))
+            index = max(0, min(index, len(journey.steps) - 1))
+            step = journey.steps[index]
+            st.caption(f"Step {index + 1} of {len(journey.steps)}: {step.title}")
+            if st.button("Open current step", key="journey_open", use_container_width=True):
+                _navigate(step.screen)
+            st.link_button(
+                "Open matching docs",
+                doc_url(step.doc),
+                use_container_width=True,
+                help=step.doc,
+            )
+
+
+def render_role_journey() -> None:
+    """Render the active role journey (Back / Next / Skip) in the main area."""
+    if st.session_state.get("journey_state") != "running":
+        return
+    journey = journey_by_key(st.session_state.get("journey_role") or DEMO_ROLE)
+    index = int(st.session_state.get("journey_step", 0))
+    index = max(0, min(index, len(journey.steps) - 1))
+    step = journey.steps[index]
+    st.info(
+        f"**{journey.label} journey - {step.title}**  \n"
+        f"_Go to sidebar screen:_ `{step.screen}`  \n\n"
+        f"{step.goal}  \n\n"
+        f"**Try it:** {step.try_it}  \n"
+        f"**Docs:** [{step.doc}]({doc_url(step.doc)})"
+    )
+    back, nxt, skip, docs = st.columns([1, 1, 1, 1])
+    with back:
+        if st.button("Back", key="journey_back", disabled=index == 0):
+            st.session_state.journey_step = index - 1
+    with nxt:
+        label = "Finish" if index == len(journey.steps) - 1 else "Next"
+        if st.button(label, key="journey_next", type="primary"):
+            if index == len(journey.steps) - 1:
+                st.session_state.journey_state = "done"
+            else:
+                st.session_state.journey_step = index + 1
+                _navigate(journey.steps[index + 1].screen)
+    with skip:
+        if st.button("Skip", key="journey_skip_main"):
+            st.session_state.journey_state = "done"
+    with docs:
+        if st.button("Open screen", key="journey_open_main"):
+            _navigate(step.screen)
+        st.link_button("Open docs", doc_url(step.doc), help=step.doc)
+    done, total = journey_progress(journey.key, _journey_completed())
+    st.progress(done / total if total else 0.0, text=f"{done} of {total} screens visited")
+    with st.expander("Copy journey plan", expanded=False):
+        st.code(journey_markdown(journey.key), language="markdown")
+
+
 def _render_card_rows(
     rows: List[Dict[str, Any]],
     columns: Optional[List[str]] = None,
@@ -764,8 +926,12 @@ def _render_get_started(backend_ok: bool) -> None:
         "trace": bool(st.session_state.get("last_trace_request_id")),
         "evaluate": bool(st.session_state.get("last_evaluation_at")),
         "governance": bool(st.session_state.get("last_governance_seen")),
+        "guardrails": bool(st.session_state.get("last_guardrail_at")),
+        "audit": bool(st.session_state.get("last_audit_at")),
+        "admin": bool(st.session_state.get("last_admin_at")),
     }
-    statuses = checklist_status(done)
+    capabilities = (st.session_state.get("access_context") or {}).get("capabilities") or []
+    statuses = checklist_status(done, capabilities)
     completed = sum(1 for _, is_done in statuses if is_done)
     st.progress(
         completed / len(statuses),
@@ -791,7 +957,10 @@ def _render_get_started(backend_ok: bool) -> None:
         if st.button(f"Continue: {nxt.label}", key=f"checklist::{nxt.key}", type="primary"):
             _navigate(nxt.screen or "Overview / Health")
     if completed == len(statuses):
-        st.success("You have exercised the whole console: query, trace, evaluation and governance.")
+        st.success(
+            "You have exercised the whole console for your role: query, trace, evaluation, "
+            "governance and the role-relevant guardrails/audit/admin steps."
+        )
     if st.button("Hide checklist", key="hide_checklist"):
         st.session_state.checklist_hidden = True
         st.rerun()
@@ -2009,6 +2178,7 @@ def screen_guardrails() -> None:
     if not require_ok(result):
         return
     data = result.data
+    st.session_state.last_guardrail_at = str(data.get("profile") or "loaded")
 
     c1, c2, c3 = st.columns(3)
     c1.metric("Enabled", "yes" if data.get("enabled") else "no")
@@ -2552,6 +2722,7 @@ def screen_audit() -> None:
     if not require_ok(result):
         return
     data = result.data
+    st.session_state.last_audit_at = "loaded"
 
     c1, c2 = st.columns(2)
     c1.metric("Audit enabled", "yes" if data.get("enabled") else "no")
@@ -2641,6 +2812,7 @@ def screen_admin() -> None:
 
     t_res = api.admin_list_tenants()
     if require_ok(t_res):
+        st.session_state.last_admin_at = "loaded"
         st.subheader("Tenants")
         tenants = t_res.data.get("tenants") or []
         st.session_state.known_tenants = sorted(
@@ -3022,6 +3194,8 @@ def main() -> None:
     _apply_incoming_workspace(access)
     _palette_from_query()
     _render_sidebar_navigation(access)
+    _render_role_journey(access)
+    _render_demo_sidebar(access)
     _render_workspace_sidebar(access)
     _render_appearance_sidebar()
     render_help_expander()
@@ -3031,6 +3205,10 @@ def main() -> None:
     if st.session_state.get("show_shortcuts"):
         _shortcuts_dialog()
     active = st.session_state.get("active_screen", "Overview / Health")
+    if st.session_state.get("demo_mode"):
+        st.warning(DEMO_WARNING)
+    _mark_journey_visit(active)
+    render_role_journey()
     SCREENS.get(active, screen_overview)()
     _sync_workspace_to_url(access)
 
