@@ -27,6 +27,7 @@ TEST_REF = re.compile(r"tests/[\w/]+\.py::\w+")
 LINK = re.compile(r"\]\(([^)]+)\)")
 HEADING = re.compile(r"^#{1,6}\s+(.*)$", re.MULTILINE)
 NUMBERED_FINDING = re.compile(r"^\| (F-\d{2}) \|", re.MULTILINE)
+PYTEST_PIN = re.compile(r"pytest(?:==|>=)\s*(\d+)\.(\d+)\.(\d+)")
 
 FINDING_STATUSES = {
     "tracked",
@@ -219,16 +220,24 @@ def test_scanning_status_matches_repository_configuration():
     assert "interval: weekly" in config
 
 
-def test_pytest_is_patched_for_ghsa_6w46_j5rx_g56g():
-    requirement = re.search(
-        r"^pytest==(\d+)\.(\d+)\.(\d+)$", _text(REPO_BASE / "requirements.txt"), re.MULTILINE
-    )
-    assert requirement, "requirements.txt no longer pins pytest"
-    version = tuple(int(part) for part in requirement.groups())
-    assert version >= (9, 0, 3), f"pytest pinned at {version}, GHSA fix is 9.0.3"
+def _pytest_version(text: str, source: str) -> tuple:
+    versions = PYTEST_PIN.findall(text)
+    assert versions, f"{source} no longer pins pytest"
+    return max(tuple(int(part) for part in version) for version in versions)
 
-    pyproject = _text(REPO_BASE / "pyproject.toml")
-    assert "pytest==9.0.3" in pyproject, "pyproject dev extra still pins the vulnerable pytest"
+
+def test_pytest_is_patched_for_ghsa_6w46_j5rx_g56g():
+    requirement = _pytest_version(_text(REPO_BASE / "requirements.txt"), "requirements.txt")
+    assert requirement >= (9, 0, 3), f"pytest pinned at {requirement}, GHSA fix is 9.0.3"
+
+    pyproject = _pytest_version(_text(REPO_BASE / "pyproject.toml"), "pyproject.toml")
+    assert pyproject >= (9, 0, 3), f"pyproject pytest pin {pyproject} is below the GHSA fix"
+
+
+def test_pytest_version_guard_accepts_upgrades_but_rejects_vulnerable_pins():
+    assert _pytest_version('pytest==9.2.0', "fixture") >= (9, 0, 3)
+    assert _pytest_version('"pytest>=9.0.3"', "fixture") >= (9, 0, 3)
+    assert _pytest_version("pytest==9.0.2", "fixture") < (9, 0, 3)
 
 
 def test_security_package_is_linked_from_repository_docs():
