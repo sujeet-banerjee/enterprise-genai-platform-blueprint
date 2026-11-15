@@ -500,7 +500,8 @@ later deployment item.
   **landed**, as are the capability status matrix (#191) and production-readiness
   assessment (#192). The active bridge is the H5 showcase closeout (#189 demo on bot-win; #193
   LinkedIn package drafted under `docs/showcase/`, awaiting maintainer approval and
-  publish) and qualification (#204-#206), plus the remaining UX tranche (#157-#158) on H4.
+  publish) and qualification (#204-#206), plus the remaining UX item (#158) on H4; #157
+  (role journeys + safe demo mode) shipped 2026-11-15.
 - The Project v2 board (**#8**) carries a **Workstream** field; options A-M plus
   Cross-cutting are configured and every open issue is assigned.
 - Contribution workflow (branching, PR checklist, release tags) is in

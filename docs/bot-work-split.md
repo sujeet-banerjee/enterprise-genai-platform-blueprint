@@ -1,12 +1,12 @@
 # Bot work split (H4/H5 — current open items)
 
-Reconciled 2026-11-15 from `origin/main` @ `dbe52d4` (after #193 draft merged). No open PRs. #193 draft merged; awaiting maintainer approval/publish.
+Reconciled 2026-11-15 from `origin/main` @ `dbe52d4` (after #193 draft merged) and #157 merged. No open PRs. #193 draft merged; awaiting maintainer approval/publish.
 
-Open items: umbrella **#43**; Workstream M UX **#157-#158** (bot-win, UX1-UX13 delivered);
+Open items: umbrella **#43**; Workstream M UX **#158** (bot-win, UX1-UX14 delivered);
 showcase/proof **#187-#193**, showcase harness **#195-#199**, and new H5 qualification
 items **#204-#206** (H5, ownership to re-check, see below). Workstream G
-follow-ups (#64/#68-#71), #105/#109, #154 (UX11), #155 (UX12), #156 (UX13), #162 and #175
-are **closed** — do not treat them as open.
+follow-ups (#64/#68-#71), #105/#109, #154 (UX11), #155 (UX12), #156 (UX13), #157 (UX14),
+#162 and #175 are **closed** — do not treat them as open.
 Re-check open issues and PRs before each item.
 
 ## Bot identities
@@ -43,16 +43,15 @@ contract (server-side pagination/filter/sort/tenant scope).
 
 | Order | Item | Notes |
 |---|---|---|
-| 1 | **#157 UX14 - Role journeys + demo mode** (H4, P2) | Onboarding experience. |
-| 2 | **#158 UX15 - Collaboration and feedback** (H4, P2) | UI feature. |
-| 3 | **#189 showcase demo walkthrough** (H5) | 3-5 minute integrated demo + screenshots/recording; bot-uni supplies the known-good demo config/data. |
-| 4 | **Roadmap/docs reconciliation** | Low-risk docs sync after merges. |
+| 1 | **#158 UX15 - Collaboration and feedback** (H4, P2) | UI feature. |
+| 2 | **#189 showcase demo walkthrough** (H5) | 3-5 minute integrated demo + screenshots/recording; bot-uni supplies the known-good demo config/data. |
+| 3 | **Roadmap/docs reconciliation** | Low-risk docs sync after merges. |
 
 Completed by this workstream since the last split: #130-#136, #145, #151 (workspace/deep
 links), #152 (background evaluation jobs), #153 (Dataset Studio authoring), #154
 (cross-object evidence), #155 (command palette + WCAG 2.2 AA), #156 (responsive
-layout/density/themes), #163 (HITL review console) and #164 (queue operations/SLA/safe
-export).
+layout/density/themes), #157 (role journeys + safe demo mode), #163 (HITL review
+console) and #164 (queue operations/SLA/safe export).
 
 ## Showcase/proof workstream (H5)
 

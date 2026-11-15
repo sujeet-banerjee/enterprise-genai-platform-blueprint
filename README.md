@@ -231,8 +231,20 @@ The sidebar groups screens by job (Start here / Experiment / Governance & securi
 Operate / Reference), resolves your role through `GET /v1/access`, lands you on the
 screen that role usually needs, and hides screens your capabilities cannot open (the
 **Show all screens** box previews the full surface). The **Get started** checklist on
-Overview walks connect -> query -> trace -> evaluate -> governance and tracks real
+Overview walks connect -> query -> trace -> evaluate -> governance + guardrails/audit/admin
+for roles that hold those capabilities, and tracks real
 actions, while **Quick actions** jump straight to the next task.
+
+**Role journeys** (#157) turn onboarding into a short, persona-specific path: pick
+Architect, Analyst, Security/Compliance, Ops or Admin in the sidebar and the console shows
+one step at a time with a goal, a try-it hint and a link to the matching documentation
+(`< 10` minutes per journey). **Start / restart**, **Back / Next / Finish** and **Skip** are
+always available, and visited screens drive the journey progress bar. **Demo mode** (#157)
+seeds the whole console from local fixtures - query history, a saved dataset, a trace,
+guardrails, approvals and admin data - and returns a `DemoApi` instead of the HTTP client,
+so no backend request is issued and production tenant data is never read or written. A
+persistent banner marks demo mode; **Exit demo and reset** clears the seed and restores a
+clean workspace.
 
 **Command palette (Ctrl+K)** is the keyboard-first launcher (#155): search screens,
 quick actions, recent request ids and tenants with `/`, `>`, `#` and `@` prefixes
@@ -265,8 +277,9 @@ and saved runs at 20. The Streamlit dependency is pinned to `>=1.65` for query-p
 back/forward support.
 
 First-time users: click **Take the tour** in the sidebar for a guided, step-by-step
-walkthrough of every screen (Back / Next / Skip), or open the always-available
-**Help & tour guide** expander for the same reference at any time. Keyboard-first
+walkthrough of every screen (Back / Next / Skip), start a **Role journey** for a
+persona-sized path, or use **Demo mode** to explore without a backend. The
+**Help & tour guide** expander keeps the same reference available at any time. Keyboard-first
 users can start with **Command palette (Ctrl+K)** and search for `shortcuts`.
 
 ## End-to-end scenario: real retrieval + all metrics via the console

@@ -358,4 +358,4 @@ def test_approvals_screen_is_registered_and_http_only():
 def test_tour_mentions_approvals():
     source = TOUR_PATH.read_text(encoding="utf-8")
     assert 'screen="Approvals"' in source
-    assert "10. Approvals (HITL)" in source
+    assert "11. Approvals (HITL)" in source
