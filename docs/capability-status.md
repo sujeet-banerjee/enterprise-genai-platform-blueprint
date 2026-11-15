@@ -102,7 +102,7 @@ Two rules keep this honest:
 | Production-readiness gap assessment | Implemented | [production-readiness.md](production-readiness.md) | Published; separates implemented from production-validated and prioritizes gaps by operational risk. |
 | Durable multi-replica deployment profile | Planned | #206 | Requires shared persistence, coordination and failover validation. |
 | Independent security validation (threat model, adversarial testing) | Planned | #205 | Unit tests are not a penetration test. |
-| Engineering-team adoption / pilot kit | Planned | #204 | Onboarding guide and golden paths exist; a packaged pilot kit does not. |
+| Engineering-team adoption / pilot kit | Implemented | `docs/adoption/README.md`, `tests/test_adoption_kit.py` | Landing page, pilot brief, checklist and scorecard; no pre-filled success numbers, and support/SLA/certification are explicitly not offered. |
 | Semantic / prefix caching | Planned | #43 | Exact-match cache only; process-local. |
 | Async pipeline + token streaming (SSE/WebSocket) | Planned | #43 | The API is request/response only. |
 | Production vector backends (pgvector/Qdrant/Milvus/Weaviate) | Planned | #43 | Retrieval is FAISS/in-process today. |

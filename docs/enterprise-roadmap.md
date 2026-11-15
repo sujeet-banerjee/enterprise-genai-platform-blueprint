@@ -430,7 +430,7 @@ A capability is only "done" when it is:
 | **H2 (3–6 mo)** | The product surface | C3–C6, D2–D5, F1–F4 (composer, graphs, experiments, governance console), **G3 (HA/autoscale - landed #68), G4 (progressive delivery - landed #69)** | This becomes a *platform teams want to use*: visual, measurable, ROI-provable, safely rollout-able. |
 | **H3 (6–12 mo)** | Enterprise scale & compliance | B4, B6, D6, E5, E6, F6, F7, **G5 (GitOps at scale - landed #70), G6 (multi-region/DR + cloud IaC - landed #71)** | Runs at scale, in-region, GitOps-managed, compliance-evidenced, multi-team. |
 | **H4 (hardening & UX)** | Post-G6 hardening + console UX | H (#115-#117), I (#118-#120), J (#121-#123), K (#124-#126), L (#127-#129), M (#130-#136, #145, #151-#156) — landed; **#157-#158 open** | Connectors, DR operations, policy-as-code, eval CI gates and golden paths landed; console UX tranche closeout remains. |
-| **H5 (proof & qualification)** | Make the shipped work legible and qualified | #187-#192 landed (identity, diagram, lifecycle, capability status, readiness assessment); #193 LinkedIn draft merged, awaiting maintainer approval/publish; #189 demo (bot-win); #195-#199 harness landed; **#204-#206 qualification open** | Evidence, comparison and reproducibility assets; independent security and multi-replica qualification still open. |
+| **H5 (proof & qualification)** | Make the shipped work legible and qualified | #187-#192 landed (identity, diagram, lifecycle, capability status, readiness assessment); #193 LinkedIn draft merged, awaiting maintainer approval/publish; #189 demo (bot-win); #195-#199 harness landed; **#204 adoption/pilot kit landed**; **#205-#206 qualification open** | Evidence, comparison and reproducibility assets; independent security and multi-replica qualification still open. |
 
 **Dependency notes:** A (identity) unblocks B/C attribution and F5; E2 unblocks F1 (schema-driven
 composer); C1 unblocks the trace-waterfall graph (F2); E4 should precede C5/C6 production use **and
@@ -498,10 +498,11 @@ later deployment item.
   `docs/onboarding.md`) are **landed**; Workstream L is complete. On H5 the harness
   (#195-#199) and the repository identity/diagram/lifecycle docs (#187/#188/#190) are
   **landed**, as are the capability status matrix (#191) and production-readiness
-  assessment (#192). The active bridge is the H5 showcase closeout (#189 demo on bot-win; #193
-  LinkedIn package drafted under `docs/showcase/`, awaiting maintainer approval and
-  publish) and qualification (#204-#206), plus the remaining UX item (#158) on H4; #157
-  (role journeys + safe demo mode) shipped 2026-11-15.
+  assessment (#192). The active bridge is the H5 showcase closeout (#189 demo on bot-win;
+  #193 LinkedIn package drafted under `docs/showcase/`, awaiting maintainer approval and
+  publish), independent security qualification (#205) and the durable multi-replica profile
+  (#206); the adoption and pilot kit (#204) is drafted under `docs/adoption/`. The remaining
+  UX item (#158) stays on H4; #157 (role journeys + safe demo mode) shipped 2026-11-15.
 - The Project v2 board (**#8**) carries a **Workstream** field; options A-M plus
   Cross-cutting are configured and every open issue is assigned.
 - Contribution workflow (branching, PR checklist, release tags) is in

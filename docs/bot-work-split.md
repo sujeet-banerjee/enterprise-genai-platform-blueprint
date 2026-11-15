@@ -1,6 +1,6 @@
 # Bot work split (H4/H5 — current open items)
 
-Reconciled 2026-11-15 from `origin/main` @ `dbe52d4` (after #193 draft merged) and #157 merged. No open PRs. #193 draft merged; awaiting maintainer approval/publish.
+Reconciled 2026-11-15 from `origin/main` @ `1017dd3` (after #157 and #193 merged). One open PR: #204 adoption and pilot kit (in review). #193 draft merged; awaiting maintainer approval/publish.
 
 Open items: umbrella **#43**; Workstream M UX **#158** (bot-win, UX1-UX14 delivered);
 showcase/proof **#187-#193**, showcase harness **#195-#199**, and new H5 qualification
@@ -69,7 +69,7 @@ console) and #164 (queue operations/SLA/safe export).
 | #197 reference load/latency harness + numbers | bot-uni | Done (merged) | #195 |
 | #198 published benchmark results + methodology | bot-uni | Done (merged) | #196 |
 | #199 comparison matrix vs alternatives | bot-uni | Done (merged) | — |
-| #204 engineering-team adoption + pilot kit | unassigned (re-check) | Todo | — |
+| #204 engineering-team adoption + pilot kit | bot-uni | In review (draft under `docs/adoption/`) | — |
 | #205 security qualification: threat model + adversarial evidence | unassigned (re-check) | Todo | — |
 | #206 durable multi-replica deployment profile qualification | unassigned (re-check) | Todo | — |
 

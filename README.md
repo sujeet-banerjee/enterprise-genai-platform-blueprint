@@ -563,6 +563,10 @@ For what is actually implemented here - versus partial, planned or external - se
 test evidence and links the tracked gaps. For the honest gap between *implemented* and
 *production-ready*, see the [production-readiness gap assessment](docs/production-readiness.md).
 
+Evaluating it with a team? The [adoption and pilot kit](docs/adoption/README.md) is a bounded
+path: reproduce the demo, scope one workload, and record quality, latency, cost and security
+evidence without pre-filled success numbers.
+
 Public presentation copy (profile entry and announcement draft, approved and published by the
 maintainer) lives in [`docs/showcase/linkedin.md`](docs/showcase/linkedin.md); it reuses this
 repository's canonical naming and capability language rather than inventing new claims.
@@ -613,7 +617,8 @@ data/       sample corpus (data/docs.json)
 docs/       onboarding.md, architecture.md, architecture-diagram.md, capability-status.md,
             production-readiness.md, deployment.md, engineering-lifecycle.md, positioning.md,
             comparison.md, ux-and-api.md, accessibility.md, layout-and-theme.md,
-            enterprise-roadmap.md, showcase/ (LinkedIn profile entry + announcement draft)
+            enterprise-roadmap.md, adoption/ (adoption and pilot kit), showcase/ (LinkedIn
+            profile entry + announcement draft)
 ```
 
 ### How to run the backend

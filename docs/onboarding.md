@@ -3,6 +3,10 @@
 > Get from a clean checkout to a running, validated RAG service in about ten
 > minutes, then learn where to change things. If you already know the project,
 > jump to [First changes](#4-first-changes-you-will-likely-make).
+>
+> Evaluating this for a team rather than learning it solo? Start with the
+> [adoption and pilot kit](adoption/README.md): reproduce the demo, scope one
+> workload, and record your own quality/latency/cost/security evidence.
 
 The platform is **config-driven**: you select and tune components in YAML, the
 composition root resolves them through registries, and every config file has a
