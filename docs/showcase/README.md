@@ -11,6 +11,7 @@ corrected.
 
 | File | Purpose | Status |
 | --- | --- | --- |
+| [demo-walkthrough.md](demo-walkthrough.md) | End-to-end 3-5 minute console demo script (RAG/eval/governance/trace-audit) with external captures (#189) | Maintainer-maintained; external capture links may be pending |
 | [linkedin.md](linkedin.md) | LinkedIn profile project entry, announcement post and approval checklist (#193) | Awaiting user approval |
 
 ## Approval workflow
