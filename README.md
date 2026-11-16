@@ -1,4 +1,4 @@
-﻿# Enterprise GenAI Platform Blueprint
+# Enterprise GenAI Platform Blueprint
 
 **A modular, vendor-neutral, self-hostable reference implementation for enterprise GenAI and RAG workloads.** Configuration selects the models, embeddings, retrievers, rerankers, evaluators and guardrails; every request carries evaluation, cost, trace and audit metadata; and the same HTTP API backs the console, CI quality gates and operational review. Providers can be swapped and quality gates, budgets and guardrails tuned without editing orchestration or API code.
 
