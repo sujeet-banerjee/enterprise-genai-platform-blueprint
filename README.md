@@ -573,6 +573,11 @@ Public presentation copy (profile entry and announcement draft, approved and pub
 maintainer) lives in [`docs/showcase/linkedin.md`](docs/showcase/linkedin.md); it reuses this
 repository's canonical naming and capability language rather than inventing new claims.
 
+The repeatable end-to-end console demo script for #189 (3–5 minute RAG/eval,
+governance, RBAC/guardrails, and trace/audit flow using existing **demo mode** with seeded
+fixtures only, no real PII, and external captures linked) is documented in
+[`docs/showcase/demo-walkthrough.md`](docs/showcase/demo-walkthrough.md).
+
 ### Golden path templates
 
 Don't start from an empty `config/` directory. [`deployment/templates/`](deployment/templates/README.md)
@@ -620,7 +625,7 @@ docs/       onboarding.md, architecture.md, architecture-diagram.md, capability-
             production-readiness.md, deployment.md, engineering-lifecycle.md, positioning.md,
             comparison.md, ux-and-api.md, accessibility.md, layout-and-theme.md,
             enterprise-roadmap.md, adoption/ (adoption and pilot kit), security/ (threat model,
-            abuse-case/test plan, findings), showcase/ (LinkedIn profile entry + announcement draft)
+            abuse-case/test plan, findings),             showcase/ (LinkedIn profile entry + announcement draft, demo walkthrough)
 ```
 
 ### How to run the backend

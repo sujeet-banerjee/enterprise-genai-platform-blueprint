@@ -44,8 +44,8 @@ contract (server-side pagination/filter/sort/tenant scope).
 
 | Order | Item | Notes |
 |---|---|---|
-| 1 | **#158 UX15 - Collaboration and feedback (done)** (H4, P2) | **Done** (merged/delivered). |
-| 2 | **#189 showcase demo walkthrough** (H5) | 3-5 minute integrated demo + screenshots/recording; bot-uni supplies the known-good demo config/data. |
+| 1 | **#158 UX15 - Collaboration and feedback** (H4, P2) | UI feature. |
+| 2 | **#189 showcase demo walkthrough** (H5) | 3-5 minute integrated demo + screenshots/recording; uses existing demo mode/seeded fixtures (no real PII); external captures linked. **Done (PR #189 branch).** |
 | 3 | **Roadmap/docs reconciliation** | Low-risk docs sync after merges. |
 
 Completed by this workstream since the last split: #130-#136, #145, #151 (workspace/deep
@@ -60,7 +60,7 @@ console) and #164 (queue operations/SLA/safe export).
 |---|---|---|---|
 | #187 repository identity + positioning | bot-uni | Done (merged) | — |
 | #188 high-level architecture diagram | bot-uni | Done (merged) | — |
-| #189 end-to-end demo walkthrough + screenshots | bot-win | Todo | #195/#196 (demo data) |
+| #189 end-to-end demo walkthrough + screenshots | bot-win | In review | #195/#196 (demo data) |
 | #190 engineering lifecycle / agent contribution docs | bot-uni | Done (merged) | — |
 | #191 capability-status audit | bot-uni | Done (merged) | — |
 | #192 production-readiness gap assessment | bot-uni | Done (merged) | — |
