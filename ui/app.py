@@ -124,6 +124,27 @@ from ui.evidence import (
     trace_summary,
     validate_request_id,
 )
+from ui.feedback import (
+    ANY_PROMOTED,
+    ANY_REASON,
+    FLAG_REASONS,
+    MAX_NOTE_CHARS,
+    REASON_LABELS,
+    annotation_rows,
+    export_annotations_csv,
+    export_annotations_json,
+    export_filename as feedback_filename,
+    filter_annotations,
+    find_annotation,
+    new_annotation,
+    promote_to_dataset,
+    promoted_dataset_name,
+    reason_label,
+    reason_summary,
+    remove_annotation,
+    set_promoted,
+    upsert_annotation,
+)
 from ui.governance import (
     alerts_preview,
     filter_metrics,
@@ -1238,6 +1259,134 @@ def screen_query_studio() -> None:
     _render_saved_views("query")
 
 
+def _annotation_for(request_id: str) -> Optional[Dict[str, Any]]:
+    return find_annotation(st.session_state.get("annotations") or [], request_id)
+
+
+def _compose_annotation(
+    request_id: str,
+    *,
+    query: str,
+    reason: str,
+    note: str,
+    failure_type: str = "",
+) -> Dict[str, Any]:
+    existing = _annotation_for(request_id) or {}
+    return new_annotation(
+        request_id,
+        query=query or existing.get("query", ""),
+        reason=reason,
+        note=note,
+        failure_type=failure_type or existing.get("failure_type", ""),
+        tenant=existing.get("tenant") or _evidence_scope().get("tenant", ""),
+        promoted=bool(existing.get("promoted")),
+        created_at=existing.get("created_at"),
+    )
+
+
+def _store_annotation(annotation: Dict[str, Any]) -> None:
+    st.session_state.annotations = upsert_annotation(
+        st.session_state.get("annotations") or [], annotation
+    )
+
+
+def _promote_annotation(annotation: Dict[str, Any]) -> bool:
+    """Create/append the dataset case and focus Evaluation on it (#158)."""
+    saved = st.session_state.get("saved_datasets") or []
+    try:
+        saved, dataset = promote_to_dataset(saved, annotation)
+    except ValueError as exc:
+        st.error(str(exc))
+        return False
+    st.session_state.saved_datasets = saved
+    st.session_state.annotations = set_promoted(
+        st.session_state.get("annotations") or [], annotation.get("request_id")
+    )
+    studio = find_dataset(saved, dataset["name"]) or dataset
+    st.session_state.studio_dataset = normalize_dataset(studio)
+    st.session_state.studio_dataset_name = studio["name"]
+    st.session_state.studio_saved_choice = studio["name"]
+    st.session_state.evaluation_dataset_source = "Dataset Studio"
+    return True
+
+
+def _render_feedback_controls(
+    request_id: str,
+    *,
+    query: str = "",
+    failure_type: str = "",
+    key_prefix: str = "fb",
+) -> None:
+    """Flag a run and promote it into a dataset without leaving the result."""
+    rid = clean_request_id(request_id)
+    if not rid:
+        return
+    existing = _annotation_for(rid)
+    heading = "Feedback"
+    if existing:
+        heading = f"Feedback: {reason_label(existing['reason'])}"
+        if existing["promoted"]:
+            heading += " (promoted)"
+    with st.expander(heading):
+        st.caption(
+            "Annotations live in your console workspace. Share links keep the request id "
+            "and reason but never the reviewer note."
+        )
+        options = list(FLAG_REASONS)
+        default_reason = existing["reason"] if existing else "incorrect"
+        reason = st.selectbox(
+            "Reason",
+            options,
+            index=options.index(default_reason),
+            format_func=lambda value: REASON_LABELS.get(value, value),
+            key=f"{key_prefix}::reason::{rid}",
+        )
+        note = st.text_area(
+            "Reviewer note (optional)",
+            value=existing["note"] if existing else "",
+            max_chars=MAX_NOTE_CHARS,
+            height=80,
+            key=f"{key_prefix}::note::{rid}",
+        )
+        save_col, promote_col, remove_col = st.columns(3)
+        if save_col.button("Save flag", key=f"{key_prefix}::save::{rid}"):
+            _store_annotation(
+                _compose_annotation(
+                    rid,
+                    query=query,
+                    reason=reason,
+                    note=note,
+                    failure_type=failure_type,
+                )
+            )
+            st.success("Flag saved to your feedback log.")
+        if promote_col.button(
+            "Promote to dataset",
+            key=f"{key_prefix}::promote::{rid}",
+            help="Create or append the Feedback review dataset with this run.",
+        ):
+            annotation = _compose_annotation(
+                rid,
+                query=query,
+                reason=reason,
+                note=note,
+                failure_type=failure_type,
+            )
+            _store_annotation(annotation)
+            if _promote_annotation(annotation):
+                st.session_state.feedback_notice = (
+                    f"Promoted {rid} to dataset '{promoted_dataset_name()}'."
+                )
+                _navigate("Evaluation")
+        if existing and remove_col.button(
+            "Remove flag", key=f"{key_prefix}::remove::{rid}"
+        ):
+            st.session_state.annotations = remove_annotation(
+                st.session_state.get("annotations") or [], rid
+            )
+            st.success("Flag removed.")
+
+
 def _render_query_result(item: Dict[str, Any], query: str = "") -> None:
     if item.get("error") and not item.get("failure_type"):
         st.error(str(item.get("error")))
@@ -1270,6 +1419,12 @@ def _render_query_result(item: Dict[str, Any], query: str = "") -> None:
                 _open_evidence(AUDIT_SCREEN, request_id)
             if e3.button("Open governance", key=f"qs_gov::{request_id}"):
                 _open_evidence(GOVERNANCE_SCREEN, request_id)
+            _render_feedback_controls(
+                request_id,
+                query=query or item.get("query") or "",
+                failure_type=item.get("failure_type") or "",
+                key_prefix="qs_result",
+            )
         if item.get("failure_tags"):
             st.caption("failure_tags: " + ", ".join(item.get("failure_tags") or []))
         c1, c2, c3 = st.columns(3)
@@ -2989,6 +3144,7 @@ def _render_evidence_pack(
     comparison_rows: Optional[List[Dict[str, Any]]],
     *,
     key_prefix: str,
+    annotation: Optional[Dict[str, Any]] = None,
 ) -> None:
     rid = clean_request_id(trace.get("request_id")) or clean_request_id(
         st.session_state.get("trace_request_id")
@@ -3014,6 +3170,7 @@ def _render_evidence_pack(
         comparison=changed_rows(comparison_rows or []),
         scope=_evidence_scope(),
         generated_at=datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        annotation=annotation,
     )
     st.subheader("Evidence pack")
     st.caption(

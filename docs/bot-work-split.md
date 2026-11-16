@@ -100,6 +100,10 @@ console) and #164 (queue operations/SLA/safe export).
   merges (avoid concurrent edits).
 - **Identity:** each bot uses its own GitHub App/bot git identity and app auth for push/
   PR/issue ops; never log keys/tokens; keep `.pem` outside the repo.
+- **Manual decisions (`MANUAL`):** when a choice belongs to the maintainer, post a
+  `## MANUAL INPUT NEEDED` comment with the options, recommendation and effect, and add
+  the `MANUAL` label. Continue only on documented safe defaults; never automate the
+  human action itself. Remove the label once the maintainer replies.
 - **Project #8:** the board is user-owned; updates are made through the human-authenticated
   `gh` CLI (GraphQL), not the bot App token. Keep Status, Workstream and milestone in sync
   when issues are created, started or closed.
