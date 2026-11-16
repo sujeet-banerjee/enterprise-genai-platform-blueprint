@@ -1281,9 +1281,9 @@ def _base_url_parts(base_url: str) -> Tuple[str, str, str]:
 
 def build_share_url(base_url: str, workspace: Mapping[str, Any]) -> str:
     """Build a share link, dropping bulky state until it fits the URL budget."""
-    normalized = normalize_workspace(workspace)
-    stripped = _strip_bulk(normalized)
-    candidates = ((normalized, True), (stripped, True), (stripped, False))
+    share = _share_safe(workspace)
+    stripped = _strip_bulk(workspace)
+    candidates = ((share, True), (stripped, True), (stripped, False))
     scheme, netloc, path = _base_url_parts(base_url)
     for candidate, include_blob in candidates:
         params = workspace_to_query_params(candidate, include_blob=include_blob)
@@ -1294,8 +1294,22 @@ def build_share_url(base_url: str, workspace: Mapping[str, Any]) -> str:
     raise WorkspaceError("Workspace is too large to share in a URL")
 
 
+def _share_safe(workspace: Mapping[str, Any]) -> Dict[str, Any]:
+    """Workspace variant safe for share URLs: keep ids/flags/reasons, drop notes."""
+    safe = normalize_workspace(workspace)
+    safe["feedback"]["annotations"] = [
+        {
+            **annotation,
+            "note": "",
+        }
+        for annotation in safe["feedback"]["annotations"]
+    ]
+    safe["feedback"]["search"] = ""
+    return safe
+
+
 def _strip_bulk(workspace: Mapping[str, Any]) -> Dict[str, Any]:
-    stripped = normalize_workspace(workspace)
+    stripped = _share_safe(workspace)
     stripped["saved_views"] = {kind: [] for kind in SAVED_VIEW_KINDS}
     stripped["saved_runs"] = []
     stripped["recent_runs"] = []

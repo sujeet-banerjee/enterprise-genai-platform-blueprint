@@ -2,7 +2,7 @@
 
 Reconciled 2026-11-15 from `origin/main` @ `ca95215` (after #157, #193 and #204 merged). No open PRs. #193 draft merged; awaiting maintainer approval/publish. #205 security qualification is in review; follow-ups #223 (tenant-header binding), #224 (rate limits) and #225 (CI supply-chain gates) are open.
 
-Open items: umbrella **#43**; Workstream M UX **#158** (bot-win, UX1-UX14 delivered);
+Open items: umbrella **#43**; Workstream M UX **completed** (#158 collaboration/feedback delivered by bot-win);
 showcase/proof **#187-#193**, showcase harness **#195-#199**, and new H5 qualification
 items **#204-#206** (H5; #204 and #205 with bot-uni, #206 unassigned), security follow-ups
 **#223-#225**, and the LinkedIn approval (#193, user). Workstream G
@@ -44,7 +44,7 @@ contract (server-side pagination/filter/sort/tenant scope).
 
 | Order | Item | Notes |
 |---|---|---|
-| 1 | **#158 UX15 - Collaboration and feedback** (H4, P2) | UI feature. |
+| 1 | **#158 UX15 - Collaboration and feedback (done)** (H4, P2) | **Done** (merged/delivered). |
 | 2 | **#189 showcase demo walkthrough** (H5) | 3-5 minute integrated demo + screenshots/recording; bot-uni supplies the known-good demo config/data. |
 | 3 | **Roadmap/docs reconciliation** | Low-risk docs sync after merges. |
 
