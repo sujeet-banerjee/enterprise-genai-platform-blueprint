@@ -437,12 +437,14 @@ tenants:
         assert access["tenant"]["id"] == "acme"
         assert access["tenant"]["workspace"] == "acme-prod"
 
-        # An explicit header still wins over the token claim.
+        # Since #223 the tenant claim binds the caller: a contradicting header is
+        # rejected instead of silently crossing the tenant boundary.
         override = client.get(
             "/v1/access",
             headers={"Authorization": f"Bearer {token}", "X-Tenant-ID": "default"},
-        ).json()
-        assert override["tenant"]["id"] == "default"
+        )
+        assert override.status_code == 403
+        assert "forbidden_tenant_scope" in override.json()["failure_tags"]
 
 
 def test_token_secrets_are_redacted_from_text_and_config_view(tmp_path, monkeypatch):

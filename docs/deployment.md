@@ -26,6 +26,7 @@ G6); the guidance stays cloud-agnostic.
 | Model weights | Downloaded into `HF_HOME` (default `~/.cache/huggingface`; the image uses `/app/.cache/huggingface`) | `core/implementations/_local_models.py` |
 | Writable paths | `HF_HOME`, the audit JSONL path (if configured), and the system temp dir (runtime pipeline rebuilds use `mkdtemp`) | `core/services/audit_log.py`, `app/whatif_api.py` |
 | Shutdown | SIGTERM → uvicorn drains in-flight requests → lifespan closes the evaluation executor, deletes rebuild workspaces and closes the audit log | `app/main.py` lifespan |
+| Tenant scope | Multi-tenant: enable `identity` so the JWT `tenant` claim / key mapping binds callers; allow cross-tenant `X-Tenant-ID` only via `tenants.header_override`. Identity-disabled tenancy is gateway-trust only (ingress must control the header) | `core/services/tenancy.py` (#223), `config/tenants.yaml` |
 
 In-process state (`/v1/metrics`, `/v1/traces/{id}`, `/v1/audit`, spend window) is **bounded and
 per-process**. With more than one replica, a trace/metric lookup only sees the pod that served the

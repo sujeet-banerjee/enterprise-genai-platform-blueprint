@@ -298,11 +298,19 @@ class TenantEntry(_OpenModel):
     overrides: Dict[str, Any] = Field(default_factory=dict)
 
 
+class TenantHeaderOverride(_StrictModel):
+    """Principals allowed to select a tenant via X-Tenant-ID (issue #223)."""
+
+    roles: List[str] = Field(default_factory=list)
+    api_keys: List[str] = Field(default_factory=list)
+
+
 class TenantsConfig(_StrictModel):
     enabled: Optional[bool] = None
     default_tenant: Optional[str] = None
     tenants: Dict[str, TenantEntry] = Field(default_factory=dict)
     api_keys: Dict[str, str] = Field(default_factory=dict)
+    header_override: Optional[TenantHeaderOverride] = None
 
 
 # -- resilience.yaml -----------------------------------------------------

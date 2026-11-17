@@ -48,7 +48,7 @@ resistance to an adaptive attacker, and the tests are not an accreditation artif
 | --- | --- | --- | --- |
 | API key + OIDC/JWT authentication | Off (`api.require_api_key: false`, `identity.enabled: false`) | `test_identity.py`, `test_security_qualification.py` | Open by default; must be enabled before shared exposure |
 | RBAC capabilities per role | Off (`access_control.enabled: false`) | `test_identity.py`, `test_security_qualification.py` | Unknown key gets `admin` when enabled with shipped roles unless `default_role` is lowered |
-| Tenant isolation (cache/history/audit/experiments) | Off (`tenants.enabled: false`) | `test_tenancy.py`, `test_security_qualification.py` | `X-Tenant-ID` is trusted from any caller - finding F-01 / #223 |
+| Tenant isolation (cache/history/audit/experiments) | Off (`tenants.enabled: false`) | `test_tenancy.py`, `test_tenant_header_binding.py`, `test_security_qualification.py` | Binding requires `identity.enabled`; identity-disabled tenancy remains gateway-trust (see F-01) |
 | Permission-aware retrieval (ACL filtering) | Off (`acl.enabled: false`) | `test_acl_retrieval.py` | Only documents carrying ACL metadata are constrained by it |
 | Prompt-injection guardrail | Off; `profile: standard` is a one-line opt-in | `test_injection_defense.py`, `test_guardrail_profiles.py` | Heuristic detection; paraphrase/encoding can evade (F-03) |
 | PII detection/redaction | Off (`observability.pii.enabled: false`) | `test_pii_dlp.py`, `test_national_id_redaction.py` | Regex classes plus optional NER; not a DLP product |
@@ -64,7 +64,7 @@ most findings below require the adopter to expose a demo default or add a front 
 
 | ID | Finding | Severity | Exploitability | Status | Owner | Evidence / link |
 | --- | --- | --- | --- | --- | --- | --- |
-| F-01 | Tenant selection trusts `X-Tenant-ID` from any caller; it wins over the JWT tenant claim and API-key mapping, so an authenticated caller can select another configured tenant | High | Low-privilege authenticated caller in a multi-tenant deployment | **Tracked** (not fixed here) | bot-uni | #223; `core/services/tenancy.py`; workaround below |
+| F-01 | Tenant selection trusted `X-Tenant-ID` from any caller, so an authenticated caller could select another configured tenant | High | Low-privilege authenticated caller in a multi-tenant deployment | **Fixed** (#223): claim/key binds; contradiction → 403 unless allowlisted | bot-uni | #223; `core/services/tenancy.py`; `tests/test_tenant_header_binding.py`; residual below |
 | F-02 | Secure-by-default gap: auth, RBAC, tenancy, ACL and guardrails are all off in shipped configs (intentional for local demo) | High if exposed | Internet-facing demo deployment left as shipped | **Accepted** (documented, not hidden) | maintainer | [deployment playbook](../deployment.md), [adoption checklist](../adoption/checklist.md) |
 | F-03 | Injection detection is weighted heuristics; a motivated attacker can paraphrase, encode or split a payload to stay under threshold | Medium | Caller who can send queries or poison retrieved documents | **Accepted** (defense in depth; classifier extension point) | bot-uni | `core/implementations/injection_guardrail.py`, `test_injection_defense.py` |
 | F-04 | No application-layer rate limiting or per-caller quota; only per-request bounds and tenant budget caps | Medium | Any caller with `query` capability | **Tracked** | bot-uni | #224; T-DOS-1 |
@@ -77,18 +77,20 @@ most findings below require the adopter to expose a demo default or add a front 
 | F-11 | `/metrics` is unauthenticated by design (scraper path) and may reveal tenant/denial/failure labels | Low | Network observer with reach to the port | **Accepted** (restrict at network layer) | adopter | `app/ops_api.py`, `docs/deployment.md` |
 | F-12 | Redaction coverage depends on configuration; custom free-text fields added by an adopter are not automatically classified | Low | Misconfiguration | **Accepted** | adopter | [observability config](../architecture.md#9-observability-strategy) |
 
-### F-01 workaround (until #223 lands)
+### F-01 remediation and residual risk (fixed in #223)
 
-If more than one tenant is served by a directly reachable API:
+With `identity.enabled: true`, the JWT `tenant` claim (or `tenants.api_keys`
+mapping for a service account) binds the request. `X-Tenant-ID` may only differ
+when the caller's RBAC role or key is allowlisted in
+`tenants.header_override`; otherwise the API returns `403
+forbidden_tenant_scope` and records a `tenant/tenant_override` audit event.
+Unknown tenants remain `400 unknown_tenant`.
 
-1. **Strip `X-Tenant-ID` at the ingress gateway** and map tenants to API keys
-   (`tenants.api_keys`) or JWT tenant claims; or
-2. run one tenant per deployment.
-
-Do not rely on tenancy alone as an authorization boundary while F-01 is open. ACL
-filtering (`acl.enabled`) still constrains document visibility per identity and is
-independent of the tenant header, but it does not protect tenant-scoped operational
-history.
+Residual risk: `identity.enabled: false` keeps the legacy trusted-gateway
+ordering (header wins). In that mode, only expose the API behind an ingress that
+strips or authoritatively sets `X-Tenant-ID`, or run one tenant per deployment.
+ACL filtering (`acl.enabled`) constrains document visibility independently but
+does not protect tenant-scoped operational history.
 
 ## Dependency, container and secret scanning
 

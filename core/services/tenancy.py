@@ -22,8 +22,14 @@ Config (``config/tenants.yaml``)::
     api_keys:                    # optional key -> tenant mapping
       "acme-key": acme
 
-Tenant resolution: explicit ``X-Tenant-ID`` header first, then the API key
-mapping, then ``default_tenant``. When disabled the resolver always returns the
+Tenant resolution (issue #223): when identity is enabled the caller is bound to
+the tenant in the JWT ``tenant`` claim (or the ``api_keys`` mapping for service
+accounts), and ``X-Tenant-ID`` may only cross tenant boundaries for explicitly
+allowed roles/keys (``header_override``). A contradicting header is rejected
+with :class:`TenantScopeError` (HTTP 403), never silently accepted. When
+identity is disabled the legacy trusted-gateway order is kept: explicit
+``X-Tenant-ID`` header first, then the API key mapping, then
+``default_tenant``. When tenancy is disabled the resolver always returns the
 implicit default tenant, so existing deployments behave exactly as before.
 """
 
@@ -41,6 +47,18 @@ class UnknownTenantError(ValueError):
     def __init__(self, tenant_id: str):
         self.tenant_id = str(tenant_id)
         super().__init__(f"Unknown tenant '{self.tenant_id}'.")
+
+
+class TenantScopeError(PermissionError):
+    """Raised when a caller asks for a tenant it is not entitled to select."""
+
+    def __init__(self, requested: str, bound: str):
+        self.requested = str(requested)
+        self.bound = str(bound)
+        super().__init__(
+            f"Tenant '{self.requested}' does not match the authenticated tenant "
+            f"'{self.bound}' and this caller may not override tenant scope."
+        )
 
 
 @dataclass(frozen=True)
@@ -98,6 +116,8 @@ class TenantResolver:
         default_tenant: str = DEFAULT_TENANT_ID,
         tenants: Optional[Dict[str, Any]] = None,
         api_keys: Optional[Dict[str, str]] = None,
+        header_override_roles: Optional[Iterable[str]] = None,
+        header_override_api_keys: Optional[Iterable[str]] = None,
     ):
         self.enabled = bool(enabled)
         self.default_tenant = str(default_tenant or DEFAULT_TENANT_ID)
@@ -108,6 +128,12 @@ class TenantResolver:
         self.api_keys: Dict[str, str] = {
             str(key): str(tenant_id)
             for key, tenant_id in (api_keys or {}).items()
+        }
+        self.header_override_roles = {
+            str(role) for role in (header_override_roles or []) if role
+        }
+        self.header_override_api_keys = {
+            str(key) for key in (header_override_api_keys or []) if key
         }
 
     # -- construction -----------------------------------------------------
@@ -137,11 +163,15 @@ class TenantResolver:
     @classmethod
     def from_config(cls, config: Optional[Dict[str, Any]]) -> "TenantResolver":
         config = config or {}
+        override = config.get("header_override")
+        override = override if isinstance(override, dict) else {}
         return cls(
             enabled=bool(config.get("enabled", False)),
             default_tenant=str(config.get("default_tenant") or DEFAULT_TENANT_ID),
             tenants=config.get("tenants"),
             api_keys=config.get("api_keys"),
+            header_override_roles=override.get("roles"),
+            header_override_api_keys=override.get("api_keys"),
         )
 
     # -- resolution -------------------------------------------------------
@@ -152,33 +182,68 @@ class TenantResolver:
             return configured
         return Tenant(id=self.default_tenant)
 
+    def may_override(self, role: Optional[str] = None, api_key: Optional[str] = None) -> bool:
+        """Whether this caller is allowed to select a different tenant header."""
+        if role and str(role) in self.header_override_roles:
+            return True
+        return bool(api_key) and str(api_key) in self.header_override_api_keys
+
+    def _lookup(self, tenant_id: str) -> Tenant:
+        tenant = self.tenants.get(str(tenant_id))
+        if tenant is None:
+            raise UnknownTenantError(tenant_id)
+        return tenant
+
+    def _bound_tenant(
+        self, principal_tenant: Optional[str], api_key: Optional[str]
+    ) -> Tenant:
+        """Tenant the authenticated caller is bound to (claim > key mapping > default)."""
+        if principal_tenant:
+            return self._lookup(principal_tenant)
+        if api_key and api_key in self.api_keys:
+            return self._lookup(self.api_keys[api_key])
+        return self._implicit_default()
+
     def resolve(
         self,
         tenant_header: Optional[str] = None,
         api_key: Optional[str] = None,
+        *,
+        principal_tenant: Optional[str] = None,
+        principal_role: Optional[str] = None,
+        identity_enabled: bool = False,
     ) -> Tenant:
         """Resolve a request to a tenant.
 
         Disabled resolver => implicit default tenant (feature is opt-in).
-        Header wins over the API-key mapping; an unknown explicit tenant is an
-        error rather than a silent fallback (never leak tenant-spoofed data).
+
+        With ``identity_enabled`` the authenticated claim/key mapping binds the
+        tenant; a differing header is only honoured for allowlisted roles or
+        service-account keys, otherwise :class:`TenantScopeError` is raised.
+        Without identity the legacy trusted-gateway order is preserved (header
+        -> key mapping -> default) and unknown explicit tenants are errors rather
+        than silent fallbacks (never leak tenant-spoofed data).
         """
         if not self.enabled:
             return self._implicit_default()
 
         header = str(tenant_header).strip() if tenant_header else ""
+
+        if identity_enabled:
+            bound = self._bound_tenant(principal_tenant, api_key)
+            if not header:
+                return bound
+            if header == bound.id:
+                return bound
+            if not self.may_override(principal_role, api_key):
+                raise TenantScopeError(header, bound.id)
+            return self._lookup(header)
+
         if header:
-            tenant = self.tenants.get(header)
-            if tenant is None:
-                raise UnknownTenantError(header)
-            return tenant
+            return self._lookup(header)
 
         if api_key and api_key in self.api_keys:
-            mapped = self.api_keys[api_key]
-            tenant = self.tenants.get(mapped)
-            if tenant is None:
-                raise UnknownTenantError(mapped)
-            return tenant
+            return self._lookup(self.api_keys[api_key])
 
         return self._implicit_default()
 
@@ -215,6 +280,19 @@ class TenantResolver:
 
     def describe_all(self) -> List[Dict[str, Any]]:
         return [self.tenants[tenant_id].as_dict() for tenant_id in self.tenant_ids()]
+
+    def describe_header_override(
+        self, role: Optional[str] = None, api_key: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Safe projection of the #223 header policy (keys are never echoed)."""
+        return {
+            "enabled": bool(self.header_override_roles)
+            or bool(self.header_override_api_keys),
+            "roles": sorted(self.header_override_roles),
+            "key_override_allowed": bool(api_key)
+            and str(api_key) in self.header_override_api_keys,
+            "caller_allowed": self.may_override(role, api_key),
+        }
 
     def tenants_for_api_key(self, api_key: Optional[str]) -> Iterable[str]:
         """Tenant ids reachable with ``api_key`` (all when unmapped/disabled)."""
