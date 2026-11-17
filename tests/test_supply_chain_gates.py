@@ -253,6 +253,13 @@ def test_scanner_config_contains_no_secret_references() -> None:
         assert needle not in scanner_jobs
 
 
+def test_dockerfile_addresses_image_scan_findings_without_waivers() -> None:
+    dockerfile = (REPO / "deployment" / "Dockerfile").read_text(encoding="utf-8")
+    assert "apt-get upgrade -y --no-install-recommends" in dockerfile
+    for pin in ("setuptools==78.1.1", "wheel==0.46.2", "jaraco.context==6.1.0"):
+        assert pin in dockerfile
+
+
 def test_waiver_file_has_no_active_waivers_by_default() -> None:
     config = yaml.safe_load(WAIVERS.read_text(encoding="utf-8"))
     assert config == {"version": 1, "waivers": []}

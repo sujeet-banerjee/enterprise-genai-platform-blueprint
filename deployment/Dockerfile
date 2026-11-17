@@ -36,6 +36,11 @@ RUN pip install --upgrade pip && \
     pip install --extra-index-url "$TORCH_INDEX_URL" ${INSTALL_EXTRAS:-.} || \
     pip install --extra-index-url "$TORCH_INDEX_URL" -r requirements.txt
 
+RUN pip install --no-cache-dir \
+    setuptools==78.1.1 \
+    wheel==0.46.2 \
+    jaraco.context==6.1.0
+
 # ---------------------------------------------------------------------------
 # Runtime: slim image, non-root, healthchecked.
 # ---------------------------------------------------------------------------
@@ -49,6 +54,7 @@ ENV PYTHONUNBUFFERED=1 \
     GENAI_CONFIG_DIR=/app/config
 
 RUN apt-get update && \
+    apt-get upgrade -y --no-install-recommends && \
     apt-get install -y --no-install-recommends curl && \
     rm -rf /var/lib/apt/lists/* && \
     groupadd --gid 10001 appuser && \
