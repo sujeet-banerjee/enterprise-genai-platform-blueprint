@@ -203,3 +203,88 @@ jobs:
           python -m app.cli init /tmp/genai-init --template local-demo
           python -m app.config_validate /tmp/genai-init/config/*.yaml
 
+  supply-chain-sca:
+    name: SCA (pip-audit)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+
+      - name: Install scanner
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install pip-audit==2.10.1 PyYAML==6.0.3
+
+      - name: Load waivers
+        run: python -m app.supply_chain ignores --format pip-audit --output "$RUNNER_TEMP/pip-audit-ignores.txt"
+
+      - name: Audit requirements
+        run: |
+          set -euo pipefail
+          args=()
+          while IFS= read -r advisory; do
+            [ -n "$advisory" ] && args+=(--ignore-vuln "$advisory")
+          done < "$RUNNER_TEMP/pip-audit-ignores.txt"
+          pip-audit --format json \
+            --requirement requirements.txt \
+            --requirement requirements-dev.txt \
+            --requirement requirements-observability.txt \
+            --requirement requirements-ui.txt \
+            "${args[@]}" > "$RUNNER_TEMP/pip-audit.json"
+
+      - name: Upload pip-audit report
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: pip-audit-report
+          path: ${{ runner.temp }}/pip-audit.json
+          if-no-files-found: warn
+
+  image-scan:
+    name: Image scan (Trivy)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+
+      - name: Load waiver ignores
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install PyYAML==6.0.3
+          python -m app.supply_chain ignores --format trivy --output .trivyignore
+
+      - name: Build image
+        run: docker build -f deployment/Dockerfile -t genai-platform:scan .
+
+      - name: Scan image with Trivy
+        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8
+        with:
+          image-ref: genai-platform:scan
+          format: json
+          output: ${{ runner.temp }}/trivy.json
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: "1"
+          timeout: 10m
+          trivyignores: .trivyignore
+
+      - name: Upload Trivy report
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: trivy-report
+          path: ${{ runner.temp }}/trivy.json
+          if-no-files-found: warn
+

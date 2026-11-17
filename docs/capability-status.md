@@ -102,6 +102,7 @@ Two rules keep this honest:
 | Production-readiness gap assessment | Implemented | [production-readiness.md](production-readiness.md) | Published; separates implemented from production-validated and prioritizes gaps by operational risk. |
 | Durable multi-replica deployment profile | Planned | #206 | Requires shared persistence, coordination and failover validation. |
 | Security qualification (threat model, abuse-case matrix, findings) | Implemented | `docs/security/README.md`, `docs/security/test-plan.md`, `tests/test_security_qualification.py`, `tests/test_security_docs.py` | First-party evidence only; no independent penetration test or certification (F-09). |
+| Required CI supply-chain gates (CodeQL, pip-audit, Trivy) | Tested | `.github/workflows/ci.yml`, `.github/dependabot.yml`, `security/waivers.yml`, `app/supply_chain.py`, `tests/test_supply_chain_gates.py` | F-05 fixed; no SBOM/signing/provenance and no independent assessment. |
 | Engineering-team adoption / pilot kit | Implemented | `docs/adoption/README.md`, `tests/test_adoption_kit.py` | Landing page, pilot brief, checklist and scorecard; no pre-filled success numbers, and support/SLA/certification are explicitly not offered. |
 | Semantic / prefix caching | Planned | #43 | Exact-match cache only; process-local. |
 | Async pipeline + token streaming (SSE/WebSocket) | Planned | #43 | The API is request/response only. |

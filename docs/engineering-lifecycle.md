@@ -4,7 +4,7 @@
 > conventions, the checks that actually block a merge, evidence expectations, and
 > the working agreement for human contributors and coding agents.
 >
-> This document describes the repository as configured on **2026-11-14**. Verify
+> This document describes the repository as configured on **2026-11-17**. Verify
 > branch protection and workflow names before relying on a number; see
 > [Verifying the gates](#verifying-the-gates).
 
@@ -110,7 +110,7 @@ pushes and branch deletion are disabled, and **no approving review is required**
 (`enforce_admins=false`). Self-merge is therefore possible after the required
 checks pass.
 
-These four status checks are **required** and block merge:
+These seven status checks are **required** and block merge:
 
 | Required check | Workflow job | What it proves |
 | --- | --- | --- |
@@ -118,6 +118,9 @@ These four status checks are **required** and block merge:
 | `Type check (mypy)` | `typecheck` | `app` and `core` type-check. |
 | `Tests (Python 3.11)` | `test` matrix | Full suite + coverage gate on 3.11. |
 | `Tests (Python 3.13)` | `test` matrix | Full suite + coverage gate on 3.13. |
+| `CodeQL` | CodeQL default setup | Python/Actions code-scanning analysis completed. |
+| `SCA (pip-audit)` | `supply-chain-sca` | No known dependency advisories outside recorded waivers. |
+| `Image scan (Trivy)` | `image-scan` | No HIGH/CRITICAL fixable OS/library CVEs in the smoke image. |
 
 These jobs run on the PR but are **not** configured as required status checks:
 
@@ -125,11 +128,10 @@ These jobs run on the PR but are **not** configured as required status checks:
 | --- | --- |
 | `Deploy smoke (chart + image)` | Helm/Kustomize render, image build, `/health` + `/ready` smoke. |
 | `Eval regression gates` | Config-driven eval/benchmark/golden-path/scaffold checks. |
-| `CodeQL` / `Analyze (python)` / `Analyze (actions)` | Security analysis (default setup; not a branch-protection context). |
 
 The security qualification package ([`security/test-plan.md`](security/test-plan.md)) maps
-abuse cases to tests; the required-vs-advisory split above is itself a tracked gap when it
-leaves supply-chain scanning advisory (#225). Treat advisory failures as blocking anyway;
+abuse cases to tests; scanner results and waivers are documented in
+[`security/README.md`](security/README.md). Treat advisory failures as blocking anyway;
 they catch deployment and security regressions that unit tests do not. Do not describe the PR as "reviewed" or
 "approved" unless a human actually reviewed it - GitHub does not enforce an
 approval.
@@ -138,7 +140,7 @@ approval.
 
 1. Rebase on the latest `origin/main` if the branch is behind (the required checks
    are strict).
-2. Wait for the four required checks to pass. Do not merge red.
+2. Wait for the seven required checks to pass. Do not merge red.
 3. Use **rebase merge** to keep a linear trunk, and delete the branch:
 
    ```bash
@@ -194,9 +196,9 @@ A representative end-to-end cycle from this repository:
 6. **Merge:** rebase merge -> `2f66d8a`, branch deleted; the issue auto-closed and
    the Project item moved to Done.
 
-The corresponding PR check list shows the four required contexts plus the advisory
-Deploy smoke, Eval gates, Analyze and CodeQL results; only the four required
-contexts above gate the merge.
+The corresponding PR check list shows the seven required contexts plus the advisory
+Deploy smoke and Eval gates results; only the seven required contexts above gate the
+merge.
 
 ## 9. Verifying the gates
 

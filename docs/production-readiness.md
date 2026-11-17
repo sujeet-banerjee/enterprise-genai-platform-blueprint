@@ -31,7 +31,7 @@ behaviour on a single reference node, not capacity, certification or regulatory 
 | --- | --- | --- | --- | --- |
 | 1 | Durable/shared persistence | Partial | **High** | Make the shared store the default before running more than one replica (#206). |
 | 2 | Multi-replica consistency & coordination | Unvalidated | **High** | Validate correctness across replicas once shared state lands (#206). |
-| 5 | Security testing & independent validation | Partial | **High** | Threat model + independent validation; promote CodeQL to required (#205). |
+| 5 | Security testing & independent validation | Partial | **High** | Independent validation; CodeQL/SCA/image gates landed in #225. |
 | 4 | Authn/authz & tenant isolation | Implemented | Medium | Adversarial multi-tenant validation; ship a hardening profile on by default. |
 | 6 | Load/performance & SLOs | Partial | Medium | Define SLOs from real baselines; soak and autoscaling tests on target hardware. |
 | 7 | Resilience, backup/restore & DR | Partial | Medium | Execute and automate failover/restore drills; wire cross-region replication (#71). |
@@ -166,33 +166,35 @@ hostile input and concurrency is **not independently validated**.
 
 ## 5. Security testing, threat modelling and independent validation
 
-**Current behaviour.** CodeQL (default setup) and Dependabot run on the repository; `ruff`
-and `mypy` are required checks. Runtime defenses include prompt-injection/jailbreak defense
-and PII/DLP guardrails (`core/implementations/injection_guardrail.py`,
+**Current behaviour.** CodeQL (default setup), Dependabot alerts, Dependabot security
+updates, secret scanning/push protection, `SCA (pip-audit)` and `Image scan (Trivy)` run on
+the repository; CodeQL plus the two scanner jobs join `ruff`, `mypy` and the two pytest
+matrix jobs as required checks (#225). Runtime defenses include prompt-injection/jailbreak
+defense and PII/DLP guardrails (`core/implementations/injection_guardrail.py`,
 `pii_guardrail.py`), input redaction before prompting (`app/pipeline.py`), immutable
 hash-chained audit (`core/services/audit_store.py`) and secret redaction in logs/traces.
 
-**Evidence.** `.github/workflows/ci.yml`, `tests/test_injection_defense.py`,
-`tests/test_pii_dlp.py`, `tests/test_input_redaction.py`, `tests/test_immutable_audit.py`.
+**Evidence.** `.github/workflows/ci.yml`, `.github/dependabot.yml`,
+`security/waivers.yml`, `app/supply_chain.py`, `tests/test_supply_chain_gates.py`,
+`tests/test_injection_defense.py`, `tests/test_pii_dlp.py`, `tests/test_input_redaction.py`,
+`tests/test_immutable_audit.py`.
 
 **Gaps.**
-- **No threat model document** and **no independent penetration test**.
-- CodeQL runs as an **advisory** check, not a required status check.
-- Dependabot reports **3 open moderate alerts** (all in the `pytest` dev dependency, fixed
-  by the 9.0.3 pin); a `dependabot.yml` for scheduled version updates landed with #205, but
-  Dependabot security updates remain disabled and there is no dependency-audit gate.
-- No SBOM, image signing or provenance; no secrets scanning gate beyond CodeQL.
+- **No independent penetration test**, code audit or certification (#205 F-09).
+- No SBOM, image signing or provenance attestation; Trivy ignores unfixed CVEs.
+- IaC scanning (Helm/Kustomize) and MEDIUM/LOW image advisories are reported but do not fail.
 - The guardrail and identity defaults are off (area 4), so the shipped posture is permissive
   until configured.
 
-**Impact.** High: a threat model and abuse-case matrix now exist (#205), but the posture has
-not been challenged by an independent assessment. Unit tests are not a penetration test.
+**Impact.** High: the threat model, abuse-case matrix and supply-chain gates are first-party
+evidence, but the posture has not been challenged by an independent assessment. Unit tests
+and scanners are not a penetration test.
 
-**Recommended next step.** Promote CodeQL to a required check, add the dependency-audit and
-image-scan gates (**#225**), enable identity so the identity-bound tenant selection from
-**#223** applies (identity-disabled tenancy remains gateway-trust), and commission independent
-validation. The threat model, abuse-case matrix and findings landed with **#205**; #223 is
-merged, and no new duplicate issues are opened by this assessment.
+**Recommended next step.** Enable identity so the identity-bound tenant selection from
+**#223** applies (identity-disabled tenancy remains gateway-trust), commission independent
+validation, and add SBOM/signing/provenance when the delivery chain needs them. The threat
+model and findings landed with **#205**; required CodeQL/SCA/image gates landed with **#225**;
+no new duplicate issues are opened by this assessment.
 
 **Status: Partial.**
 
@@ -288,10 +290,10 @@ Ordered by operational risk. None of these are new issues; each links to work al
 1. **Before scaling beyond one replica** - move run/trace/experiment/approval state to a
    shared store and declare the Postgres driver as an optional extra; document the
    single-replica default. *(#206, #56)*
-2. **Before any external exposure** - promote CodeQL to a required check, add SCA/image
-   gates, run with identity enabled so tenant-header binding applies, and commission
-   independent security validation. *(#205 landed the threat model and evidence, #223
-   landed identity-bound tenant selection; #225 remains)*
+2. **Before any external exposure** - run with identity enabled so tenant-header binding
+   applies, and commission independent security validation. *(#205 landed the threat model
+   and evidence; #223 landed identity-bound tenant selection; #225 landed required
+   CodeQL/SCA/image gates)*
 3. **Before a pilot** - publish a hardened profile that enables identity + RBAC + tenancy +
    ACL + guardrails together, and add adversarial isolation tests. *(#204, #205)*
 4. **Before capacity commitments** - define SLOs from measured baselines, run soak and
