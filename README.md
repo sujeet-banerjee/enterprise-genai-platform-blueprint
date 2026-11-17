@@ -448,7 +448,7 @@ api:
 
 A missing referenced secret fails fast. In production, mount secrets with Vault (Agent
 Injector) or a Kubernetes `secretKeyRef` so the value is present in the process environment
-— the same `${ENV_VAR}` syntax works unchanged. Set `config_version` at the top of a file to
+â€” the same `${ENV_VAR}` syntax works unchanged. Set `config_version` at the top of a file to
 pin the schema; a newer version warns (with migration note) rather than failing.
 
 ### Gate cost and latency in CI
@@ -504,7 +504,7 @@ honest reference-CPU numbers, not vendor benchmarks.
 `benchmarks/data/` (enterprise IT, product docs and support). The report generator runs the
 configured matrix through the real pipeline and writes retrieval quality (precision, recall,
 MRR, nDCG), cost, latency, a Pareto frontier and a recommended config overlay. Every number
-comes from the JSON report; **do not hand-edit published numbers** — regenerate them.
+comes from the JSON report; **do not hand-edit published numbers** â€” regenerate them.
 
 ```bash
 # Fast CI profile: dummy providers, 8 cases, one combination
@@ -604,7 +604,7 @@ lists the paths; `genai validate <config-dir>` re-checks a set. New here? Follow
 [onboarding guide](docs/onboarding.md).
 
 The provider-neutral `data/docs.json` path resolves relative to the config directory's parent,
-so keep (or copy) `data/` alongside your config directory. Templates carry no secrets — add
+so keep (or copy) `data/` alongside your config directory. Templates carry no secrets â€” add
 your own `api_key`/secret references per [Validate config & manage secrets](#validate-config--manage-secrets).
 
 ## Development notes

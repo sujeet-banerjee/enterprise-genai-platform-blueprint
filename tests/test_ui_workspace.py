@@ -63,6 +63,7 @@ SCREENS = [
     "Guardrails",
     "Approvals",
     "Audit",
+    "Feedback",
     "Access / RBAC",
     "Admin",
     "Traces",

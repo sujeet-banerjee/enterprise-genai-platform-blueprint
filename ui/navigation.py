@@ -49,8 +49,8 @@ NAV_GROUPS: Tuple[NavGroup, ...] = (
     NavGroup(
         key="governance",
         label="Governance & security",
-        description="Cost, guardrails, HITL approvals, audit evidence and access policy.",
-        screens=("Governance & Cost", "Guardrails", "Approvals", "Audit", "Access / RBAC"),
+        description="Cost, guardrails, HITL approvals, audit evidence, feedback and access policy.",
+        screens=("Governance & Cost", "Guardrails", "Approvals", "Audit", "Feedback", "Access / RBAC"),
     ),
     NavGroup(
         key="operate",
@@ -75,6 +75,7 @@ SCREEN_CAPABILITIES: Dict[str, Optional[str]] = {
     "Guardrails": "introspect",
     "Approvals": "approve",
     "Audit": "audit",
+    "Feedback": "query",
     "Access / RBAC": "introspect",
     "Admin": "rebuild",
     "Traces": "governance",

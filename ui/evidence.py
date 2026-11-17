@@ -417,6 +417,7 @@ def build_evidence_pack(
     comparison: Optional[Iterable[Mapping[str, Any]]] = None,
     scope: Optional[Mapping[str, Any]] = None,
     generated_at: str = "",
+    annotation: Optional[Mapping[str, Any]] = None,
 ) -> Dict[str, Any]:
     """Assemble a redacted, JSON-ready evidence pack for one request."""
     rid = clean_request_id(request_id) or str(trace.get("request_id") or "")
@@ -425,6 +426,18 @@ def build_evidence_pack(
         "workspace": str((scope or {}).get("workspace") or trace.get("workspace") or ""),
     }
     timeline = build_timeline(trace)[:MAX_PACK_TIMELINE]
+    review = None
+    if isinstance(annotation, Mapping) and annotation.get("request_id"):
+        review = {
+            "request_id": str(annotation.get("request_id") or ""),
+            "flagged": bool(annotation.get("flag", True)),
+            "reason": str(annotation.get("reason") or ""),
+            "note": str(annotation.get("note") or ""),
+            "promoted": bool(annotation.get("promoted", False)),
+            "failure_type": str(annotation.get("failure_type") or ""),
+            "query": str(annotation.get("query") or ""),
+            "created_at": str(annotation.get("created_at") or ""),
+        }
     pack: Dict[str, Any] = {
         "schema": "genai-evidence-pack/v1",
         "generated_at": generated_at,
@@ -436,6 +449,7 @@ def build_evidence_pack(
         "metrics": _subset(metrics, METRICS_SECTIONS),
         "governance": _subset(governance, GOVERNANCE_KEYS),
         "comparison": [dict(row) for row in (comparison or [])],
+        "review": review,
         "redacted": True,
     }
     return _scrub(pack)
@@ -531,6 +545,26 @@ def evidence_pack_markdown(pack: Mapping[str, Any]) -> str:
                 f"| {_cell(row.get('metric'))} | {_cell(row.get('left'))} | "
                 f"{_cell(row.get('right'))} | {_cell(row.get('delta'))} |"
             )
+
+    review = pack.get("review") or {}
+    if isinstance(review, Mapping) and review.get("request_id"):
+        lines.extend(
+            ["", "## Review / feedback", "", "| Field | Value |", "|---|---|"]
+        )
+        for key in (
+            "request_id",
+            "flagged",
+            "reason",
+            "note",
+            "promoted",
+            "failure_type",
+            "query",
+            "created_at",
+        ):
+            value = review.get(key)
+            if value in (None, "", []):
+                continue
+            lines.append(f"| {key} | {_cell(value)} |")
 
     metrics = pack.get("metrics") or {}
     totals = metrics.get("totals") if isinstance(metrics, Mapping) else None

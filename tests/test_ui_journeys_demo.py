@@ -220,7 +220,7 @@ def test_checklist_filters_steps_by_capabilities():
 
 def test_tour_covers_every_screen_and_the_new_journey_step():
     payloads = _tour_payloads()
-    assert len(payloads) == 16
+    assert len(payloads) == 17
     for index, payload in enumerate(payloads, start=1):
         assert payload["title"].startswith(f"{index}.")
     assert any("Role journeys" in payload["title"] for payload in payloads)
