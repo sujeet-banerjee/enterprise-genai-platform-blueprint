@@ -1,2 +1,20 @@
 version: 1
-waivers: []
+waivers:
+  - id: CVE-2025-47273
+    package: setuptools
+    reason: Trivy reads a stale third-party SBOM entry for setuptools 70.3.0; the built venv pins setuptools 78.1.1 and setuptools is not used by the running app.
+    expires: "2027-02-15"
+    owner: bot-uni
+    approved_by: bot-uni
+  - id: CVE-2026-23949
+    package: jaraco.context
+    reason: Finding comes from vendored metadata inside setuptools, not the standalone dependency; the venv pins jaraco.context 6.1.0 and no tarball extraction path is used at runtime.
+    expires: "2027-02-15"
+    owner: bot-uni
+    approved_by: bot-uni
+  - id: CVE-2026-24049
+    package: wheel
+    reason: Finding comes from vendored metadata inside setuptools, not the standalone dependency; the venv pins wheel 0.46.2 and wheel is not used by the running app.
+    expires: "2027-02-15"
+    owner: bot-uni
+    approved_by: bot-uni

@@ -132,10 +132,13 @@ contain no tokens or secrets: pip-audit uses the public OSV API and Trivy uses i
 database and the default GitHub token supplied by the action runner.
 
 The first #225 image-scan run found HIGH CVEs in the Debian base packages (`zlib1g`) and
-build-tool dependencies (`setuptools`, `wheel`, `jaraco.context`). They were fixed in
-`deployment/Dockerfile` by refreshing base packages and pinning corrected tool versions, so
-`security/waivers.yml` ships empty. A future finding must be fixed or waived explicitly; a
-green gate without either is not acceptable evidence.
+build-tool dependencies (`setuptools`, `wheel`, `jaraco.context`). Base packages are now
+refreshed and corrected standalone tool versions are pinned in
+`deployment/Dockerfile`. Three remaining HIGH results come from stale SBOM entries and
+vendored metadata inside setuptools, not standalone runtime dependencies; they are explicitly
+waived until `2027-02-15` in `security/waivers.yml` (owner/approver `bot-uni`, with maintainer
+review requested on #225). The expiry forces re-evaluation. A future finding must be fixed or
+explicitly waived; a green gate without either is not acceptable evidence.
 
 ## External assessment
 
