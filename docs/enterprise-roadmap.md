@@ -334,6 +334,10 @@ comments on traces, notifications/alerts.
 **F7. Design & accessibility** — enterprise design system, WCAG 2.2 AA, keyboard-first
 composer, light/dark, i18n; embeddable widgets (dashboards in the customer's own portal).
 
+**Shipped-console review:** the current Streamlit console's look & feel and an incremental
+enterprise-polish plan (P0 shell/design-system → P1 key workflows → P2 parity → P3 polish) are
+captured in [`ui-enterprise-look-and-feel-plan.md`](ui-enterprise-look-and-feel-plan.md).
+
 ### Workstream G — Deployment & delivery
 
 *Pain: an enterprise cannot answer "how do we run this next to production RAG/agentic workloads?" — the container is naive, and deployment modes/processes/tools are undocumented.*

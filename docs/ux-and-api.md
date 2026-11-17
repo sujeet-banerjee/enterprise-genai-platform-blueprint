@@ -180,8 +180,7 @@ from §3.2 applies to every UI: HTTP only, no `core.*` imports.
 | **Access / RBAC** | roles, capabilities, request caps, allowed models | `/v1/access` |
 | **Admin** | tenant scope indicator, confirmation prompts for sensitive updates, tenant policy view/update + identity directory users, audit export; requires `admin`/`rebuild` capability | `/v1/admin/tenants`, `/v1/admin/tenants/{tenant_id}`, `/v1/admin/users`, `/v1/access`, `/v1/audit` |
 | **Feedback** | review queue for flagged runs/annotations, reasons and notes attached to request id, one-action promote to dataset, redacted feedback export (JSON/CSV) and evidence-pack handoff; notes stay out of share links | /v1/traces/{request_id}, /v1/audit (evidence) |
-| **Traces** | look up
-equest_id; stage latency timeline/waterfall with span list, failure taxonomy, guardrail decisions, resilience, OTel ids, redaction-safe and raw trace views; cross-links to audit/metrics/governance/feedback for the same request; two-request diff; redacted JSON/Markdown evidence pack | /v1/traces/{request_id}, /v1/audit, /v1/metrics, /v1/governance/status |
+| **Traces** | look up `request_id`; stage latency timeline/waterfall with span list, failure taxonomy, guardrail decisions, resilience, OTel ids, redaction-safe and raw trace views; cross-links to audit/metrics/governance/feedback for the same request; two-request diff; redacted JSON/Markdown evidence pack | `/v1/traces/{request_id}`, `/v1/audit`, `/v1/metrics`, `/v1/governance/status` |
 | **Settings (read-only)** | effective config viewer (redacted), model/provider/guardrail lists | `/v1/config`, `/v1/models`, `/v1/embedding-models`, `/v1/retrievers`, `/v1/rerankers`, `/v1/evaluators`, `/v1/guardrails` |
 
 No config-editing UI in v1 (write path = files in `config/`); `pipeline:rebuild` in the

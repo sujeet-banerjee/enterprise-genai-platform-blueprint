@@ -1,13 +1,15 @@
 # Bot work split (H4/H5 — current open items)
 
-Reconciled 2026-11-15 from `origin/main` @ `ca95215` (after #157, #193 and #204 merged). No open PRs. #193 draft merged; awaiting maintainer approval/publish. #205 security qualification is in review; follow-ups #223 (tenant-header binding), #224 (rate limits) and #225 (CI supply-chain gates) are open.
+Reconciled 2026-11-17 from `origin/main` @ `3caf846` (after #158, #189, #205, #226 and #230-#234 merged). No open PRs. #193 draft merged; awaiting maintainer approval/publish. #205 security qualification is merged/closed; follow-ups #223 (tenant-header binding), #224 (rate limits) and #225 (CI supply-chain gates) are open.
 
-Open items: umbrella **#43**; Workstream M UX **completed** (#158 collaboration/feedback delivered by bot-win);
-showcase/proof **#187-#193**, showcase harness **#195-#199**, and new H5 qualification
-items **#204-#206** (H5; #204 and #205 with bot-uni, #206 unassigned), security follow-ups
-**#223-#225**, and the LinkedIn approval (#193, user). Workstream G
+Open items: umbrella **#43**; docs repair **#235** (this PR, bot-win); showcase follow-up
+**#232** (external capture links, MANUAL, bot-win); showcase/proof **#187-#193** (only #193
+still open — draft merged, awaiting maintainer approval/publish); H5 qualification **#206**
+(unassigned); security follow-ups **#223** (tenant-header binding), **#224** (rate limits) and
+**#225** (CI supply-chain gates). Workstream M UX **completed** (#158 collaboration/feedback
+and #189 demo walkthrough delivered by bot-win). Workstream G
 follow-ups (#64/#68-#71), #105/#109, #154 (UX11), #155 (UX12), #156 (UX13), #157 (UX14),
-#162 and #175 are **closed** — do not treat them as open.
+#162, #175, #187-#192, #195-#199, #204, #205 and #230-#234 are **closed** — do not treat them as open.
 Re-check open issues and PRs before each item.
 
 ## Bot identities
@@ -44,15 +46,16 @@ contract (server-side pagination/filter/sort/tenant scope).
 
 | Order | Item | Notes |
 |---|---|---|
-| 1 | **#158 UX15 - Collaboration and feedback** (H4, P2) | UI feature. |
-| 2 | **#189 showcase demo walkthrough** (H5) | 3-5 minute integrated demo + screenshots/recording; uses existing demo mode/seeded fixtures (no real PII); external captures linked. **Done (PR #189 branch).** |
+| 1 | **#235 docs repair (merge artifacts)** (H4) | This PR: README mojibake, `docs/ux-and-api.md` broken Traces row, stale work-split status, and look-and-feel plan discoverability. |
+| 2 | **#232 showcase external capture links** (H5, MANUAL) | Replace `_Pending - add external link_` placeholders in `docs/showcase/demo-walkthrough.md` once the maintainer publishes captures; then close. |
 | 3 | **Roadmap/docs reconciliation** | Low-risk docs sync after merges. |
 
 Completed by this workstream since the last split: #130-#136, #145, #151 (workspace/deep
 links), #152 (background evaluation jobs), #153 (Dataset Studio authoring), #154
 (cross-object evidence), #155 (command palette + WCAG 2.2 AA), #156 (responsive
-layout/density/themes), #157 (role journeys + safe demo mode), #163 (HITL review
-console) and #164 (queue operations/SLA/safe export).
+layout/density/themes), #157 (role journeys + safe demo mode), #158 (collaboration/feedback,
+PR #230), #163 (HITL review console), #164 (queue operations/SLA/safe export), #189
+(showcase demo walkthrough, PR #231) and the enterprise look-and-feel plan (PR #234).
 
 ## Showcase/proof workstream (H5)
 
@@ -60,22 +63,23 @@ console) and #164 (queue operations/SLA/safe export).
 |---|---|---|---|
 | #187 repository identity + positioning | bot-uni | Done (merged) | — |
 | #188 high-level architecture diagram | bot-uni | Done (merged) | — |
-| #189 end-to-end demo walkthrough + screenshots | bot-win | In review | #195/#196 (demo data) |
+| #189 end-to-end demo walkthrough + screenshots | bot-win | Done (merged, PR #231) | #195/#196 (demo data) |
 | #190 engineering lifecycle / agent contribution docs | bot-uni | Done (merged) | — |
 | #191 capability-status audit | bot-uni | Done (merged) | — |
 | #192 production-readiness gap assessment | bot-uni | Done (merged) | — |
-| #193 LinkedIn project entry + announcement | bot-uni (user approves/publishes) | In review (draft merged; awaiting maintainer approval/publish) | #187/#188/#191 (partial: #189 demo pending) |
+| #193 LinkedIn project entry + announcement | bot-uni (user approves/publishes) | In review (draft merged; awaiting maintainer approval/publish) | #187/#188/#191 (all merged) |
 | #195 showcase benchmark corpora + suite config | bot-uni | Done (merged) | — |
 | #196 reproducible benchmark report generator + CI check | bot-uni | Done (merged) | #195 |
 | #197 reference load/latency harness + numbers | bot-uni | Done (merged) | #195 |
 | #198 published benchmark results + methodology | bot-uni | Done (merged) | #196 |
 | #199 comparison matrix vs alternatives | bot-uni | Done (merged) | — |
 | #204 engineering-team adoption + pilot kit | bot-uni | Done (merged) | — |
-| #205 security qualification: threat model + adversarial evidence | bot-uni | In review (`docs/security/`) | — |
+| #205 security qualification: threat model + adversarial evidence | bot-uni | Done (merged, PR #226) | — |
 | #206 durable multi-replica deployment profile qualification | unassigned (re-check) | Todo | — |
 | #223 bind tenant header to authenticated identity | bot-uni | Todo (security follow-up) | — |
 | #224 configurable API rate limits and quotas | bot-uni | Todo (security follow-up) | — |
 | #225 required CodeQL + dependency/image scanning gates | bot-uni | Todo (security follow-up) | — |
+| #232 showcase external capture links | bot-win | Todo (MANUAL; awaiting maintainer captures) | #189 (merged) |
 
 ## Suggested operating rules (to avoid collisions)
 
