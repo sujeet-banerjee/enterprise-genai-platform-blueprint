@@ -53,11 +53,16 @@ def _write_waivers(path: Path, entries: list[dict]) -> None:
     path.write_text(yaml.safe_dump({"version": 1, "waivers": entries}), encoding="utf-8")
 
 
-def test_shipped_waiver_file_is_valid_and_empty() -> None:
+def test_shipped_waiver_file_is_valid_and_bounded() -> None:
     waivers = load_waivers(WAIVERS, today=date(2026, 1, 1))
-    assert waivers == []
-    assert ignores(waivers, "pip-audit") == []
-    assert ignores(waivers, "trivy") == []
+    assert [waiver.id for waiver in waivers] == [
+        "CVE-2025-47273",
+        "CVE-2026-23949",
+        "CVE-2026-24049",
+    ]
+    assert all(waiver.expires == date(2027, 2, 15) for waiver in waivers)
+    assert ignores(waivers, "pip-audit") == [waiver.id for waiver in waivers]
+    assert ignores(waivers, "trivy") == [waiver.id for waiver in waivers]
 
 
 def test_valid_waivers_are_parsed_and_sorted(tmp_path: Path) -> None:
@@ -237,6 +242,7 @@ def test_security_docs_match_scanner_state_and_waiver_policy() -> None:
         "security/waivers.yml",
         "expired waivers fail the gate",
         "no tokens or secrets",
+        "waived until `2027-02-15`",
         "non-provider patterns and validity checks remain disabled",
         "**Not performed**",
     ):
@@ -260,6 +266,13 @@ def test_dockerfile_addresses_image_scan_findings_without_waivers() -> None:
         assert pin in dockerfile
 
 
-def test_waiver_file_has_no_active_waivers_by_default() -> None:
+def test_waiver_file_contains_only_documented_expiring_entries() -> None:
     config = yaml.safe_load(WAIVERS.read_text(encoding="utf-8"))
-    assert config == {"version": 1, "waivers": []}
+    assert config["version"] == 1
+    assert len(config["waivers"]) == 3
+    assert all(entry["expires"] == "2027-02-15" for entry in config["waivers"])
+    assert {entry["id"] for entry in config["waivers"]} == {
+        "CVE-2025-47273",
+        "CVE-2026-23949",
+        "CVE-2026-24049",
+    }
