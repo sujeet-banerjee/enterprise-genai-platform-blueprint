@@ -131,6 +131,12 @@ findings are visible in the uploaded JSON report but do not fail the gate. Scann
 contain no tokens or secrets: pip-audit uses the public OSV API and Trivy uses its public
 database and the default GitHub token supplied by the action runner.
 
+The first #225 image-scan run found HIGH CVEs in the Debian base packages (`zlib1g`) and
+build-tool dependencies (`setuptools`, `wheel`, `jaraco.context`). They were fixed in
+`deployment/Dockerfile` by refreshing base packages and pinning corrected tool versions, so
+`security/waivers.yml` ships empty. A future finding must be fixed or waived explicitly; a
+green gate without either is not acceptable evidence.
+
 ## External assessment
 
 **Not performed.** No third-party penetration test, red-team exercise, code audit or
