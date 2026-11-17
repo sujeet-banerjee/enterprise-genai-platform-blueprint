@@ -54,7 +54,11 @@ from core.services.identity import (
     ScimDirectory,
 )
 from core.services.telemetry import PrometheusCollector
-from core.services.tenancy import TenantResolver, UnknownTenantError
+from core.services.tenancy import (
+    TenantResolver,
+    TenantScopeError,
+    UnknownTenantError,
+)
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -538,17 +542,19 @@ def create_app(
         request.state.top_k_max = access_controller.top_k_max(role)
         request.state.allowed_models = access_controller.allowed_models(role)
 
-        # Tenant resolution (issue #48): header wins over the API-key mapping
-        # and over a tenant claim in a JWT. An unknown explicit tenant is
-        # rejected rather than silently falling back, so a caller can never
-        # read another tenant's cached/history data.
+        # Tenant resolution (issues #48/#223). When identity is enabled the
+        # JWT tenant claim / service-account mapping binds the caller; a
+        # contradicting X-Tenant-ID is rejected unless the role or key is
+        # explicitly allowlisted by tenants.header_override. Identity-disabled
+        # deployments keep the legacy trusted-gateway ordering.
         tenant_header = request.headers.get("X-Tenant-ID")
-        if not tenant_header and principal is not None:
-            tenant_header = principal.tenant
         try:
             tenant = tenant_resolver.resolve(
                 tenant_header=tenant_header,
                 api_key=provided_key,
+                principal_tenant=principal.tenant if principal is not None else None,
+                principal_role=role if principal is not None else None,
+                identity_enabled=identity_resolver.enabled,
             )
         except UnknownTenantError as exc:
             return JSONResponse(
@@ -557,6 +563,31 @@ def create_app(
                     str(exc),
                     FailureType.UNKNOWN_TENANT.value,
                     ["unknown_tenant"],
+                    request_id,
+                ),
+                headers={"X-Request-ID": request_id},
+            )
+        except TenantScopeError as exc:
+            audit_logger = getattr(application.state, "audit", None)
+            if audit_logger is not None:
+                audit_logger.record(
+                    event_type="tenant",
+                    action="tenant_override",
+                    outcome="denied",
+                    details={
+                        "requested_tenant": exc.requested,
+                        "authenticated_tenant": exc.bound,
+                        "reason": "header_scope_mismatch",
+                    },
+                    request_id=request_id,
+                    tenant=exc.bound,
+                )
+            return JSONResponse(
+                status_code=403,
+                content=_error_envelope(
+                    str(exc),
+                    FailureType.FORBIDDEN.value,
+                    ["forbidden_tenant_scope"],
                     request_id,
                 ),
                 headers={"X-Request-ID": request_id},
@@ -840,6 +871,10 @@ def create_app(
             default_tenant=tenant_resolver.default_tenant,
             current=current,
             tenants=[TenantInfo(**item) for item in tenant_resolver.describe_all()],
+            header_override=tenant_resolver.describe_header_override(
+                role=getattr(request.state, "role", None),
+                api_key=request.headers.get("X-API-Key"),
+            ),
             request_id=getattr(request.state, "request_id", None),
         )
 

@@ -349,6 +349,7 @@ class TenantsResponse(BaseModel):
     default_tenant: str = "default"
     current: TenantInfo
     tenants: List[TenantInfo] = []
+    header_override: Dict[str, Any] = {}
     request_id: Optional[str] = None
 
 

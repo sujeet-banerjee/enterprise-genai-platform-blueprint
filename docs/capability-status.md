@@ -64,7 +64,7 @@ Two rules keep this honest:
 | Immutable audit (hash chain, evidence, export, purge, regional routing) | Tested | `core/services/audit_store.py`, `tests/test_immutable_audit.py` | WORM-style chain with verify/export/purge endpoints. |
 | Identity (OIDC/JWKS, SCIM, service accounts) | Tested | `core/services/identity.py`, `tests/test_identity.py` | Native SAML is **not** implemented; `identity.saml.enabled` fails fast to the OIDC bridge. |
 | RBAC / access control | Tested | `core/services/access_control.py`, `tests/test_rbac_access_control.py` | Capability map per role; default-off preserves legacy behaviour. |
-| Tenancy + request attribution | Tested | `core/services/tenancy.py`, `core/services/attribution.py`, `tests/test_tenancy.py`, `tests/test_attribution.py` | Budget caps, top_k/overlay policy, tenant-scoped ops; per-user dimensions opt-in. |
+| Tenancy + request attribution | Tested | `core/services/tenancy.py`, `core/services/attribution.py`, `tests/test_tenancy.py`, `tests/test_attribution.py`, `tests/test_tenant_header_binding.py` | Budget caps, top_k/overlay policy, tenant-scoped ops, identity-bound `X-Tenant-ID` override allowlist (#223); per-user dimensions opt-in. |
 | Permission-aware retrieval (document ACL) | Tested | `core/services/acl.py`, `tests/test_acl_retrieval.py` | Over-fetch then filter before reranking/prompting; leak tests across backends. |
 | Input redaction (query + docs before prompt) | Tested | `app/pipeline.py`, `tests/test_input_redaction.py` | Closes the raw-egress gap (#72). |
 | Query-length guard | Tested | `core/services/guardrails.py`, `tests/test_query_length_guard.py` | `retrieval.guardrails.max_query_chars`; HTTP 400. |

@@ -6,9 +6,17 @@
 # Enable it to serve multiple teams/apps from one deployment with isolated cache
 # namespaces, spend history and audit attribution, plus per-tenant policy.
 #
-# Resolution order for a request: ``X-Tenant-ID`` header -> ``api_keys`` mapping
-# -> ``default_tenant``. An unknown explicit tenant is rejected with a 400
-# ``unknown_tenant`` envelope (never a silent fallback).
+# With identity enabled (``identity.enabled: true``, issue #49) the caller is
+# bound to the tenant in the JWT ``tenant`` claim (or the ``api_keys`` mapping
+# for service accounts). ``X-Tenant-ID`` must then match that tenant; a
+# contradicting header is rejected with 403 ``forbidden_tenant_scope`` unless
+# the caller's role or key is allowlisted in ``header_override`` (issue #223).
+#
+# With identity disabled the legacy trusted-gateway ordering applies:
+# ``X-Tenant-ID`` -> ``api_keys`` -> ``default_tenant``. Only use that mode when
+# the API is not directly reachable by untrusted clients (e.g. an ingress
+# strips/rewrites the header). An unknown explicit tenant is always rejected
+# with a 400 ``unknown_tenant`` envelope (never a silent fallback).
 enabled: false
 
 default_tenant: default
@@ -43,3 +51,10 @@ tenants:
 # Optional API-key -> tenant mapping. Keys are never stored in the repo; this is
 # a placeholder that operators fill in locally.
 api_keys: {}
+
+# Principals allowed to select a different tenant with X-Tenant-ID when identity
+# is enabled. Empty by default (no cross-tenant selection). Service-account keys
+# are compared by value and never echoed by /v1/tenants.
+header_override:
+  roles: []          # e.g. [admin] for a trusted operations role
+  api_keys: []       # e.g. the key used by a trusted gateway/service account

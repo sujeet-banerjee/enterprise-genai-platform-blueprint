@@ -403,7 +403,7 @@ All behaviour is driven by YAML in config/:
 - config/access_control.yaml - RBAC roles/personas, capabilities and request caps (disabled by default)
 - config/resilience.yaml - provider retries, circuit breaker and LLM failover (disabled by default)
 - config/guardrails.yaml - pluggable input/output guardrail chains, incl. `injection` and `pii` providers, plus adoptable `standard`/`strict` profiles (disabled by default)
-- config/tenants.yaml - tenant/workspace model: identity, per-tenant budget caps/retrieval depth/model allow-lists, config overlays (disabled by default => implicit `default` tenant)
+- config/tenants.yaml - tenant/workspace model: identity, per-tenant budget caps/retrieval depth/model allow-lists, config overlays, and the identity-bound `X-Tenant-ID` override allowlist (disabled by default => implicit `default` tenant)
 - config/identity.yaml - OIDC/OAuth2 JWT bearer auth, IdP-group -> RBAC role mapping, SCIM provisioning; SAML via OIDC bridge (disabled by default => API-key stub)
 - config/attribution.yaml - request attribution dimensions (tenant/workspace/app/user/cost_center) on traces, metrics and cost records; per-user/cost-center reporting is opt-in (disabled by default => privacy-preserving default)
 - config/acl.yaml - permission-aware retrieval: per-document tenant/group/user/role ACLs filtered before reranking and prompting, with open-ACL default and over-fetch (disabled by default)

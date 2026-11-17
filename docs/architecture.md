@@ -502,7 +502,8 @@ This is what makes the "add a component, change config, done" workflow possible.
 | `tenants.enabled` | composition root → `TenantResolver` | Enables tenant/workspace isolation (roadmap #48; default off ⇒ implicit `default`) |
 | `tenants.default_tenant` | `TenantResolver` | Tenant assumed when no `X-Tenant-ID` header / key mapping applies |
 | `tenants.tenants.<id>` | `TenantResolver` | Workspace/app identity + `cost_center` + per-tenant `budget_cap_usd`, `top_k_max`, `allowed_models`, `overrides` |
-| `tenants.api_keys` | `TenantResolver` | API-key → tenant mapping (header still wins) |
+| `tenants.api_keys` | `TenantResolver` | API-key → tenant mapping (binds service accounts when identity is enabled) |
+| `tenants.header_override.roles` / `.api_keys` | `TenantResolver` | Principals allowed to select a different tenant via `X-Tenant-ID`; empty ⇒ no cross-tenant selection (#223) |
 | `identity.enabled` | `IdentityResolver` | Enables OIDC bearer auth + SCIM (roadmap #49; default off ⇒ API-key stub) |
 | `identity.issuer` / `audience` / `jwks_uri` / `secret` | `JwtVerifier` | Token signature/issuer/audience/expiry validation (JWKS, or HS256 secret for local use) |
 | `identity.group_claim` / `group_role_map` | `IdentityResolver` | IdP groups → RBAC roles (first match wins; fallback `default_role`) |
@@ -523,9 +524,15 @@ carry inline `governance` / `observability` sections inside `retrieval.yaml`
 keep working via a fallback (roadmap #34).
 
 **Tenant / workspace model (roadmap #48).** `config/tenants.yaml` is resolved by
-`core/services/tenancy.py::TenantResolver` in the API middleware: the
-`X-Tenant-ID` header wins, then the `api_keys` mapping, then `default_tenant`.
-When disabled every request resolves to one implicit `default` tenant and the
+`core/services/tenancy.py::TenantResolver` in the API middleware. With identity
+enabled the JWT `tenant` claim (or the `api_keys` mapping for service accounts)
+binds the caller; `X-Tenant-ID` must match it, and a contradicting header is
+rejected with `403 forbidden_tenant_scope` unless the caller's role or key is
+allowlisted in `tenants.header_override` (denials are audited, issue #223).
+Identity-disabled deployments keep the legacy trusted-gateway order: header,
+then `api_keys`, then `default_tenant`; only expose that mode behind an ingress
+that controls the header. When tenancy is disabled every request resolves to one
+implicit `default` tenant and the
 pipeline call signature is unchanged. When enabled the tenant id namespaces the
 response cache, attributes traces (incl. OTel span attributes), audit events,
 run-history/spend windows and experiments, and enforces per-tenant
