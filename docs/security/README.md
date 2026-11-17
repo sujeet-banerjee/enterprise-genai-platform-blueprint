@@ -68,7 +68,7 @@ most findings below require the adopter to expose a demo default or add a front 
 | F-02 | Secure-by-default gap: auth, RBAC, tenancy, ACL and guardrails are all off in shipped configs (intentional for local demo) | High if exposed | Internet-facing demo deployment left as shipped | **Accepted** (documented, not hidden) | maintainer | [deployment playbook](../deployment.md), [adoption checklist](../adoption/checklist.md) |
 | F-03 | Injection detection is weighted heuristics; a motivated attacker can paraphrase, encode or split a payload to stay under threshold | Medium | Caller who can send queries or poison retrieved documents | **Accepted** (defense in depth; classifier extension point) | bot-uni | `core/implementations/injection_guardrail.py`, `test_injection_defense.py` |
 | F-04 | No application-layer rate limiting or per-caller quota; only per-request bounds and tenant budget caps | Medium | Any caller with `query` capability | **Tracked** | bot-uni | #224; T-DOS-1 |
-| F-05 | CodeQL is advisory (not a required check); no dependency-audit or container-image scan gate in CI | Medium | Supply-chain regression merging with an open alert | **Tracked** | bot-uni | #225; scanning table below |
+| F-05 | CodeQL was advisory (not a required check); no dependency-audit or container-image scan gate in CI | Medium | Supply-chain regression merging with an open alert | **Fixed** (#225): CodeQL, pip-audit and Trivy are required; waivers are explicit and expiring | bot-uni | #225; scanning table and waiver policy below |
 | F-06 | `pytest==9.0.2` is affected by GHSA-6w46-j5rx-g56g (dev/test dependency, vulnerable tmpdir handling) | Medium | Local/CI test execution with untrusted tmp content | **Mitigated** in this PR (9.0.3) | bot-uni | Dependabot alert 1-3; `requirements.txt`, `pyproject.toml` |
 | F-07 | Run history, approvals and audit are in memory by default; restart loses evidence and a host compromise can rewrite it | Medium (integrity/availability) | Operator failure or host compromise | **Tracked** | bot-uni | #206; `docs/production-readiness.md` §1 |
 | F-08 | API keys and SCIM tokens are static shared secrets compared as plain strings; no rotation, hashing or KMS integration | Medium | Credential leakage via environment or file read | **Accepted** (TLS + secret manager + rotation required) | adopter | `config/identity.yaml`, `docs/deployment.md` |
@@ -94,24 +94,42 @@ does not protect tenant-scoped operational history.
 
 ## Dependency, container and secret scanning
 
-State of the repository as configured on 2026-11-15 (not an endorsement of coverage):
+State of the repository as configured on 2026-11-17 after #225 (not an endorsement of
+coverage; the 2026-11-15 assessment is preserved in the git history):
 
 | Scanner | Runs | Required gate? | Current state |
 | --- | --- | --- | --- |
-| CodeQL default setup (python, actions; weekly + on push/PR) | GitHub Actions (dynamic default setup) | **No** - advisory check | Configured; 0 open code-scanning alerts at assessment time |
-| Dependabot alerts | GitHub repository setting | **No** | Enabled; 3 open alerts, all GHSA-6w46-j5rx-g56g (pytest), fixed by this PR |
-| Dependabot security updates | GitHub repository setting | n/a | **Disabled**; no automatic fix PRs |
-| Dependabot version updates | Repository `.github/dependabot.yml` | n/a | Added in this PR (pip + github-actions, weekly) |
-| Secret scanning + push protection | GitHub repository setting | Push protection blocks new provider tokens | **Enabled**; non-provider patterns and validity checks disabled |
-| Dependency audit (pip-audit / SCA) | — | — | **Not run** (#225) |
-| Container image scan (Trivy/Grype/Snyk) | — | — | **Not run**; deploy-smoke builds an image without scanning (#225) |
-| SBOM generation / image signing / provenance attestation | — | — | **Not run** |
-| IaC scanning (Helm/Kustomize) | — | — | **Not run** |
+| CodeQL default setup (python, actions; weekly + on push/PR) | GitHub Actions (dynamic default setup) | **Yes** - `CodeQL` context | Configured; `Analyze (python)` / `Analyze (actions)` are sub-checks, not separate required contexts |
+| Dependabot alerts | GitHub repository setting | n/a | Enabled by the repository setting; advisory alerts do not carry a CI check name |
+| Dependabot security updates | GitHub repository setting | n/a | **Enabled** (#225); fix PRs are automated for supported ecosystems |
+| Dependabot version updates | `.github/dependabot.yml` | n/a | Weekly Monday, grouped pip + github-actions, `open-pull-requests-limit: 5` |
+| Secret scanning + push protection | GitHub repository setting | Push protection blocks new provider tokens | Provider-pattern scanning + push protection enabled; non-provider patterns and validity checks remain disabled (requested via API in #225, readback stayed disabled - repository-plan limitation) |
+| Dependency audit (pip-audit / SCA) | `SCA (pip-audit)` CI job | **Yes** | Audits all four `requirements*.txt`; JSON report uploaded; advisories must be waived in `security/waivers.yml` |
+| Container image scan (Trivy) | `Image scan (Trivy)` CI job | **Yes** | Builds `deployment/Dockerfile`, fails on fixable HIGH/CRITICAL OS/library CVEs; JSON report uploaded |
+| SBOM generation / image signing / provenance attestation | — | n/a | **Not performed** |
+| IaC scanning (Helm/Kustomize) | — | n/a | **Not performed** |
 
 CI jobs that do run: ruff, mypy, pytest on 3.11/3.13, deploy smoke (Helm/Kustomize
-render + image health), eval regression gates, and CodeQL/secret scanning at the
-platform level. See [`docs/engineering-lifecycle.md`](../engineering-lifecycle.md) for
-required vs advisory checks.
+render + image health), eval regression gates, SCA, image scan, and CodeQL/secret scanning
+at the platform level. Only the seven checks listed in
+[`docs/engineering-lifecycle.md`](../engineering-lifecycle.md) block a merge; Deploy smoke
+and Eval gates remain explicitly advisory with the maintainer as owner.
+
+### Scanner waiver policy
+
+`security/waivers.yml` is versioned with `version: 1` and an empty `waivers` list by default.
+Each entry must provide `id` (GHSA/CVE/PYSEC), `package`, `reason` (at least 20 characters),
+`expires` (future ISO date), `owner` and `approved_by`. Unknown fields, duplicate IDs,
+malformed IDs and expired waivers fail the gate before either scanner runs.
+
+`python -m app.supply_chain ignores --format pip-audit` emits IDs for `pip-audit
+--ignore-vuln`; `--format trivy` emits the same IDs into `.trivyignore`. A waiver suppresses
+only the CI gate for the named scanner - it does not close the GitHub advisory/alert, erase
+the report artifact, or change the finding status in this document. Trivy ignores unfixed
+CVEs (`ignore-unfixed: true`) and scans HIGH/CRITICAL by design; MEDIUM/LOW and unfixed
+findings are visible in the uploaded JSON report but do not fail the gate. Scanner configs
+contain no tokens or secrets: pip-audit uses the public OSV API and Trivy uses its public
+database and the default GitHub token supplied by the action runner.
 
 ## External assessment
 

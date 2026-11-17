@@ -205,12 +205,13 @@ def test_package_does_not_overclaim():
 def test_scanning_status_matches_repository_configuration():
     text = _text(README)
     assert "| CodeQL default setup" in text
-    assert "**No** - advisory check" in text
-    assert "Dependabot alerts" in text and "Enabled" in text
+    assert "**Yes** - `CodeQL` context" in text
+    assert "Dependabot security updates" in text and "**Enabled** (#225)" in text
     assert "Dependency audit (pip-audit / SCA)" in text
-    assert "Container image scan (Trivy/Grype/Snyk)" in text
-    assert "Not run" in text
+    assert "Container image scan (Trivy)" in text
+    assert "**Not performed**" in text
     assert "Secret scanning + push protection" in text
+    assert "non-provider patterns and validity checks remain disabled" in text
 
     dependabot = REPO_BASE / ".github" / "dependabot.yml"
     assert dependabot.exists(), ".github/dependabot.yml is missing"
