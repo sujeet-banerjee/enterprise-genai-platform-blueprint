@@ -189,9 +189,10 @@ hash-chained audit (`core/services/audit_store.py`) and secret redaction in logs
 not been challenged by an independent assessment. Unit tests are not a penetration test.
 
 **Recommended next step.** Promote CodeQL to a required check, add the dependency-audit and
-image-scan gates (**#225**), fix tenant-header binding (**#223**), and commission independent
-validation. The threat model, abuse-case matrix and findings landed with **#205**; no new
-duplicate issues are opened by this assessment.
+image-scan gates (**#225**), enable identity so the identity-bound tenant selection from
+**#223** applies (identity-disabled tenancy remains gateway-trust), and commission independent
+validation. The threat model, abuse-case matrix and findings landed with **#205**; #223 is
+merged, and no new duplicate issues are opened by this assessment.
 
 **Status: Partial.**
 
@@ -288,8 +289,9 @@ Ordered by operational risk. None of these are new issues; each links to work al
    shared store and declare the Postgres driver as an optional extra; document the
    single-replica default. *(#206, #56)*
 2. **Before any external exposure** - promote CodeQL to a required check, add SCA/image
-   gates, fix tenant-header binding, and commission independent security validation.
-   *(#205 landed the threat model and evidence; #223/#225 remain)*
+   gates, run with identity enabled so tenant-header binding applies, and commission
+   independent security validation. *(#205 landed the threat model and evidence, #223
+   landed identity-bound tenant selection; #225 remains)*
 3. **Before a pilot** - publish a hardened profile that enables identity + RBAC + tenancy +
    ACL + guardrails together, and add adversarial isolation tests. *(#204, #205)*
 4. **Before capacity commitments** - define SLOs from measured baselines, run soak and

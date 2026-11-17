@@ -1,15 +1,10 @@
 # Bot work split (H4/H5 — current open items)
 
-Reconciled 2026-11-17 from `origin/main` @ `3caf846` (after #158, #189, #205, #226 and #230-#234 merged). No open PRs. #193 draft merged; awaiting maintainer approval/publish. #205 security qualification is merged/closed; follow-ups #223 (tenant-header binding), #224 (rate limits) and #225 (CI supply-chain gates) are open.
+Reconciled 2026-11-17 from `origin/main` @ `3d98ff8` (after #158, #189, #205, #223, #233-#235 and #237 merged). No open PRs. #193 draft merged; awaiting maintainer approval/publish. Security follow-ups #224 (rate limits) and #225 (CI supply-chain gates) remain open; #223 (tenant-header binding) is merged/closed.
 
-Open items: umbrella **#43**; docs repair **#235** (this PR, bot-win); showcase follow-up
-**#232** (external capture links, MANUAL, bot-win); showcase/proof **#187-#193** (only #193
-still open — draft merged, awaiting maintainer approval/publish); H5 qualification **#206**
-(unassigned); security follow-ups **#223** (tenant-header binding), **#224** (rate limits) and
-**#225** (CI supply-chain gates). Workstream M UX **completed** (#158 collaboration/feedback
-and #189 demo walkthrough delivered by bot-win). Workstream G
+Open items: umbrella **#43**; showcase follow-up **#232** (external capture links, MANUAL, bot-win); showcase/proof **#187-#193** (only #193 still open — draft merged, awaiting maintainer approval/publish); H5 qualification **#206** (unassigned); security follow-ups **#224** (rate limits) and **#225** (CI supply-chain gates). Workstream M UX **completed** (#158 collaboration/feedback and #189 demo walkthrough delivered by bot-win). Workstream G
 follow-ups (#64/#68-#71), #105/#109, #154 (UX11), #155 (UX12), #156 (UX13), #157 (UX14),
-#162, #175, #187-#192, #195-#199, #204, #205 and #230-#234 are **closed** — do not treat them as open.
+#162, #175, #187-#192, #195-#199, #204, #205, #223, #230-#235 and #237 are **closed** — do not treat them as open.
 Re-check open issues and PRs before each item.
 
 ## Bot identities
@@ -40,22 +35,23 @@ sweep + Pareto report; earlier #121 hybrid policy registry, #122 CEL evaluator +
 bundles, #123 HITL workflow, #124 eval dataset schema/loaders, #125 CI regression
 gates, #126 eval dashboard metrics, #127 golden paths, #128 `genai init`, #129
 onboarding guide, #162 generic redaction fallback, #175 HITL approvals queue
-contract (server-side pagination/filter/sort/tenant scope).
+contract (server-side pagination/filter/sort/tenant scope), #223 identity-bound
+tenant selection (PR #237).
 
 ## Work items for enterprise-gen-ai-bot-win — UX/console and docs polish
 
 | Order | Item | Notes |
 |---|---|---|
-| 1 | **#235 docs repair (merge artifacts)** (H4) | This PR: README mojibake, `docs/ux-and-api.md` broken Traces row, stale work-split status, and look-and-feel plan discoverability. |
+| 1 | **Docs reconciliation after merges** | Low-risk sync of this split/roadmap after bot-uni and bot-win merges; #235 (merge artifacts) is done. |
 | 2 | **#232 showcase external capture links** (H5, MANUAL) | Replace `_Pending - add external link_` placeholders in `docs/showcase/demo-walkthrough.md` once the maintainer publishes captures; then close. |
-| 3 | **Roadmap/docs reconciliation** | Low-risk docs sync after merges. |
 
 Completed by this workstream since the last split: #130-#136, #145, #151 (workspace/deep
 links), #152 (background evaluation jobs), #153 (Dataset Studio authoring), #154
 (cross-object evidence), #155 (command palette + WCAG 2.2 AA), #156 (responsive
 layout/density/themes), #157 (role journeys + safe demo mode), #158 (collaboration/feedback,
 PR #230), #163 (HITL review console), #164 (queue operations/SLA/safe export), #189
-(showcase demo walkthrough, PR #231) and the enterprise look-and-feel plan (PR #234).
+(showcase demo walkthrough, PR #231), the enterprise look-and-feel plan (PR #234) and #235
+(merge-artifact repairs).
 
 ## Showcase/proof workstream (H5)
 
@@ -76,7 +72,7 @@ PR #230), #163 (HITL review console), #164 (queue operations/SLA/safe export), #
 | #204 engineering-team adoption + pilot kit | bot-uni | Done (merged) | — |
 | #205 security qualification: threat model + adversarial evidence | bot-uni | Done (merged, PR #226) | — |
 | #206 durable multi-replica deployment profile qualification | unassigned (re-check) | Todo | — |
-| #223 bind tenant header to authenticated identity | bot-uni | Todo (security follow-up) | — |
+| #223 bind tenant header to authenticated identity | bot-uni | Done (merged, PR #237) | — |
 | #224 configurable API rate limits and quotas | bot-uni | Todo (security follow-up) | — |
 | #225 required CodeQL + dependency/image scanning gates | bot-uni | Todo (security follow-up) | — |
 | #232 showcase external capture links | bot-win | Todo (MANUAL; awaiting maintainer captures) | #189 (merged) |
