@@ -173,7 +173,19 @@ TOUR_STEPS: List[TourStep] = [
         try_it="Enable `config/audit.yaml`, run a query, then filter by `event_type = governance`.",
     ),
     TourStep(
-        title="13. Access / RBAC",
+        title="13. Feedback",
+        screen="Feedback",
+        body=(
+            "Review and curate run quality without touching the backend. Flag a run from Query "
+            "Studio or Traces with a reason and optional note, browse/search the review queue, "
+            "and **Promote to dataset** in one action to append a case to the Evaluation "
+            "Dataset Studio. Annotations persist in your console workspace (UX8), share links "
+            "keep ids/flags/reasons but never note text, and exports/evidence packs are redacted."
+        ),
+        try_it="Flag a Query Studio run, open Feedback to add a note, then promote it to a dataset.",
+    ),
+    TourStep(
+        title="14. Access / RBAC",
         screen="Access / RBAC",
         body=(
             "Shows the calling persona's **role** and effective **capabilities** (plus `top_k_max` "
@@ -183,7 +195,7 @@ TOUR_STEPS: List[TourStep] = [
         try_it="Compare capabilities with and without the API key configured.",
     ),
     TourStep(
-        title="14. Admin",
+        title="15. Admin",
         screen="Admin",
         body=(
             "Tenant list and users (identity directory) plus a proposal form to update tenant budgets. "
@@ -192,7 +204,7 @@ TOUR_STEPS: List[TourStep] = [
         try_it="List tenants/users if your role has admin capability.",
     ),
     TourStep(
-        title="15. Traces",
+        title="16. Traces",
         screen="Traces",
         body=(
             "Paste a `request_id` (from a Query Studio result) and click **Look up trace** "
@@ -205,7 +217,7 @@ TOUR_STEPS: List[TourStep] = [
         try_it="Look up the request_id shown after your Query Studio run, then compare two runs.",
     ),
     TourStep(
-        title="16. Settings (read-only)",
+        title="17. Settings (read-only)",
         screen="Settings (read-only)",
         body=(
             "View the redacted **effective configuration** and expand the provider lists "

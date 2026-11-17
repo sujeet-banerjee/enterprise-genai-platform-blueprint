@@ -32,6 +32,7 @@ from ui.approvals import (
     SORT_OPTIONS,
 )
 from ui.dataset_studio import normalize_saved_datasets
+from ui.feedback import ANY_PROMOTED, ANY_REASON, normalize_annotations
 from ui.navigation import can_access, landing_screen
 
 WORKSPACE_VERSION = 1
@@ -342,6 +343,22 @@ def _normalize_traces(value: Any) -> Dict[str, Any]:
     }
 
 
+def _normalize_feedback(value: Any) -> Dict[str, Any]:
+    data = value if isinstance(value, Mapping) else {}
+    reason = _clean_text(data.get("reason"), 40).lower().replace("-", "_")
+    if reason not in ("incorrect", "unsupported", "outdated", "unsafe", "off_topic", "other"):
+        reason = ANY_REASON
+    promoted = _clean_text(data.get("promoted"), 20).lower()
+    if promoted not in ("yes", "no"):
+        promoted = ANY_PROMOTED
+    return {
+        "annotations": normalize_annotations(data.get("annotations")),
+        "reason": reason,
+        "promoted": promoted,
+        "search": _clean_text(data.get("search"), 200),
+    }
+
+
 def _normalize_activity(value: Any) -> Dict[str, Any]:
     data = value if isinstance(value, Mapping) else {}
     return {
@@ -460,6 +477,7 @@ def empty_workspace() -> Dict[str, Any]:
         "audit": _normalize_audit({}),
         "approvals": _normalize_approvals({}),
         "traces": _normalize_traces({}),
+        "feedback": _normalize_feedback({}),
         "activity": _normalize_activity({}),
         "recent_runs": [],
         "saved_runs": [],
@@ -485,6 +503,7 @@ def normalize_workspace(value: Any) -> Dict[str, Any]:
         "audit": _normalize_audit(value.get("audit")),
         "approvals": _normalize_approvals(value.get("approvals")),
         "traces": _normalize_traces(value.get("traces")),
+        "feedback": _normalize_feedback(value.get("feedback")),
         "activity": _normalize_activity(value.get("activity")),
         "recent_runs": _dedupe_runs(value.get("recent_runs"), MAX_RECENT_RUNS),
         "saved_runs": _dedupe_runs(value.get("saved_runs"), MAX_SAVED_RUNS),
@@ -598,6 +617,14 @@ def workspace_from_session(
     workspace["saved_runs"] = _dedupe_runs(
         state.get("workspace_saved_runs") or [], MAX_SAVED_RUNS
     )
+    workspace["feedback"] = _normalize_feedback(
+        {
+            "annotations": state.get("annotations"),
+            "reason": state.get("fb_reason"),
+            "promoted": state.get("fb_promoted"),
+            "search": state.get("fb_search"),
+        }
+    )
     workspace["saved_views"] = _normalize_saved_views(state.get("workspace_saved_views"))
     return workspace
 
@@ -669,6 +696,7 @@ def apply_workspace(
     governance = safe["governance"]
     audit = safe["audit"]
     approvals = safe["approvals"]
+    feedback = safe["feedback"]
     activity = safe["activity"]
 
     state["active_screen"] = screen
@@ -713,6 +741,10 @@ def apply_workspace(
     state["approval_warning_hours"] = approvals["warning_hours"]
     state["approval_critical_hours"] = approvals["critical_hours"]
     state["approval_bulk_ids"] = []
+    state["annotations"] = copy.deepcopy(feedback["annotations"])
+    state["fb_reason"] = feedback["reason"]
+    state["fb_promoted"] = feedback["promoted"]
+    state["fb_search"] = feedback["search"]
     state["last_request_id"] = activity["last_request_id"]
     state["last_query"] = activity["last_query"]
     state["last_trace_request_id"] = activity["last_trace_request_id"]
@@ -745,6 +777,7 @@ def _state_defaults() -> Dict[str, Any]:
     governance = workspace["governance"]
     audit = workspace["audit"]
     approvals = workspace["approvals"]
+    feedback = workspace["feedback"]
     return {
         "active_screen": DEFAULT_SCREEN,
         "nav_initialized": False,
@@ -790,6 +823,10 @@ def _state_defaults() -> Dict[str, Any]:
         "approval_warning_hours": approvals["warning_hours"],
         "approval_critical_hours": approvals["critical_hours"],
         "approval_bulk_ids": [],
+        "annotations": copy.deepcopy(feedback["annotations"]),
+        "fb_reason": feedback["reason"],
+        "fb_promoted": feedback["promoted"],
+        "fb_search": feedback["search"],
         "trace_request_id": "",
         "trace_compare_request_id": "",
         "trace_autoload": False,
@@ -993,6 +1030,7 @@ def workspace_from_query_params(
     governance = workspace["governance"]
     audit = workspace["audit"]
     approvals = workspace["approvals"]
+    feedback = workspace["feedback"]
     scope = workspace["scope"]
 
     def has(key: str) -> bool:
@@ -1097,6 +1135,14 @@ def workspace_from_query_params(
         scope["tenant"] = _normalize_scope({"tenant": value("tenant")})["tenant"]
     if has("workspace"):
         scope["workspace"] = _normalize_scope({"workspace": value("workspace")})["workspace"]
+    if has("fb_reason"):
+        feedback["reason"] = _normalize_feedback({"reason": value("fb_reason")})["reason"]
+    if has("fb_promoted"):
+        feedback["promoted"] = _normalize_feedback(
+            {"promoted": value("fb_promoted")}
+        )["promoted"]
+    if has("fb_search"):
+        feedback["search"] = _clean_text(value("fb_search"), 200)
     if has("traces_request_id"):
         workspace["traces"]["request_id"] = _clean_id(value("traces_request_id"))
     if has("traces_compare"):
@@ -1118,6 +1164,7 @@ def workspace_to_query_params(
     governance = normalized["governance"]
     audit = normalized["audit"]
     approvals = normalized["approvals"]
+    feedback = normalized["feedback"]
     scope = normalized["scope"]
     params: Dict[str, str] = {}
     if include_blob:
@@ -1201,6 +1248,12 @@ def workspace_to_query_params(
         params["approval_warning_hours"] = str(approvals["warning_hours"])
     if approvals["critical_hours"] != DEFAULT_SLA_CRITICAL_HOURS:
         params["approval_critical_hours"] = str(approvals["critical_hours"])
+    if feedback["reason"] != ANY_REASON:
+        params["fb_reason"] = feedback["reason"]
+    if feedback["promoted"] != ANY_PROMOTED:
+        params["fb_promoted"] = feedback["promoted"]
+    if feedback["search"]:
+        params["fb_search"] = feedback["search"]
     return params
 
 
@@ -1228,9 +1281,9 @@ def _base_url_parts(base_url: str) -> Tuple[str, str, str]:
 
 def build_share_url(base_url: str, workspace: Mapping[str, Any]) -> str:
     """Build a share link, dropping bulky state until it fits the URL budget."""
-    normalized = normalize_workspace(workspace)
-    stripped = _strip_bulk(normalized)
-    candidates = ((normalized, True), (stripped, True), (stripped, False))
+    share = _share_safe(workspace)
+    stripped = _strip_bulk(workspace)
+    candidates = ((share, True), (stripped, True), (stripped, False))
     scheme, netloc, path = _base_url_parts(base_url)
     for candidate, include_blob in candidates:
         params = workspace_to_query_params(candidate, include_blob=include_blob)
@@ -1241,8 +1294,22 @@ def build_share_url(base_url: str, workspace: Mapping[str, Any]) -> str:
     raise WorkspaceError("Workspace is too large to share in a URL")
 
 
+def _share_safe(workspace: Mapping[str, Any]) -> Dict[str, Any]:
+    """Workspace variant safe for share URLs: keep ids/flags/reasons, drop notes."""
+    safe = normalize_workspace(workspace)
+    safe["feedback"]["annotations"] = [
+        {
+            **annotation,
+            "note": "",
+        }
+        for annotation in safe["feedback"]["annotations"]
+    ]
+    safe["feedback"]["search"] = ""
+    return safe
+
+
 def _strip_bulk(workspace: Mapping[str, Any]) -> Dict[str, Any]:
-    stripped = normalize_workspace(workspace)
+    stripped = _share_safe(workspace)
     stripped["saved_views"] = {kind: [] for kind in SAVED_VIEW_KINDS}
     stripped["saved_runs"] = []
     stripped["recent_runs"] = []
@@ -1252,6 +1319,14 @@ def _strip_bulk(workspace: Mapping[str, Any]) -> Dict[str, Any]:
     stripped["evaluation"]["datasets"] = []
     stripped["query_studio"]["query"] = stripped["query_studio"]["query"][:500]
     stripped["compare"]["query"] = stripped["compare"]["query"][:500]
+    stripped["feedback"]["annotations"] = [
+        {
+            **annotation,
+            "note": "",
+            "query": annotation["query"][:200],
+        }
+        for annotation in stripped["feedback"]["annotations"]
+    ]
     return stripped
 
 

@@ -105,7 +105,7 @@ non-trivial consumer and living proof that the contract is sufficient.
   embedders, retrievers (vector, FAISS, hybrid, knowledge-graph), rerankers,
   evaluators, chunkers, query expanders and guardrails, all selected by config.
 - **Console** — 12 screens (§6) in a role-aware grouped navigation, a dependency-free
-  16-step tour, a capability-filtered Get started checklist, role journeys with a safe
+  17-step tour, a capability-filtered Get started checklist, role journeys with a safe
   local demo mode (#157), a persistent URL-backed workspace with saved views/runs and
   redacted export/import (#151), and a client that wraps every documented endpoint
   (HTTP only).
@@ -179,7 +179,9 @@ from §3.2 applies to every UI: HTTP only, no `core.*` imports.
 | **Audit** | filter by `limit`/`event_type`; inspect redacted events | `/v1/audit` |
 | **Access / RBAC** | roles, capabilities, request caps, allowed models | `/v1/access` |
 | **Admin** | tenant scope indicator, confirmation prompts for sensitive updates, tenant policy view/update + identity directory users, audit export; requires `admin`/`rebuild` capability | `/v1/admin/tenants`, `/v1/admin/tenants/{tenant_id}`, `/v1/admin/users`, `/v1/access`, `/v1/audit` |
-| **Traces** | look up `request_id`; stage latency timeline/waterfall with span list, failure taxonomy, guardrail decisions, resilience, OTel ids, redaction-safe and raw trace views; cross-links to audit/metrics/governance for the same request; two-request diff; redacted JSON/Markdown evidence pack | `/v1/traces/{request_id}`, `/v1/audit`, `/v1/metrics`, `/v1/governance/status` |
+| **Feedback** | review queue for flagged runs/annotations, reasons and notes attached to request id, one-action promote to dataset, redacted feedback export (JSON/CSV) and evidence-pack handoff; notes stay out of share links | /v1/traces/{request_id}, /v1/audit (evidence) |
+| **Traces** | look up
+equest_id; stage latency timeline/waterfall with span list, failure taxonomy, guardrail decisions, resilience, OTel ids, redaction-safe and raw trace views; cross-links to audit/metrics/governance/feedback for the same request; two-request diff; redacted JSON/Markdown evidence pack | /v1/traces/{request_id}, /v1/audit, /v1/metrics, /v1/governance/status |
 | **Settings (read-only)** | effective config viewer (redacted), model/provider/guardrail lists | `/v1/config`, `/v1/models`, `/v1/embedding-models`, `/v1/retrievers`, `/v1/rerankers`, `/v1/evaluators`, `/v1/guardrails` |
 
 No config-editing UI in v1 (write path = files in `config/`); `pipeline:rebuild` in the
@@ -207,7 +209,7 @@ capabilities to:
 progress is derived from completed actions in the session, not just from visiting a
 screen. `ui/navigation.py` holds the pure navigation contract (groups, capabilities,
 landing rules, checklist) so it is unit-tested without Streamlit.
-`ui/tour.py` guides a first-run user through 16 steps (connect, overview, checklist, role
+`ui/tour.py` guides a first-run user through 17 steps (connect, overview, checklist, role
 journeys/demo mode, persistent workspace, then one per screen).
 
 ### Role journeys and demo mode (#157)
@@ -420,6 +422,6 @@ workstream F there.
   background evaluation jobs (#152) **done**; Dataset Studio (#153) **done**;
   cross-object evidence (#154) **done**; command
   palette/WCAG 2.2 AA (#155) **done**; responsive layout/density/themes (#156) **done**;
-  role journeys/demo mode (#157) **done**; collaboration/feedback (#158) remains open on H4.
+  role journeys/demo mode (#157) **done**; collaboration/feedback (#158) **done**.
 - **P4 (optional, later)** — React/Next.js product frontend reusing the same OpenAPI
   contract; tracked as workstream F in the enterprise roadmap (not committed).

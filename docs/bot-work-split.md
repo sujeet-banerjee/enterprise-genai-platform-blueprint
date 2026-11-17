@@ -2,7 +2,7 @@
 
 Reconciled 2026-11-15 from `origin/main` @ `ca95215` (after #157, #193 and #204 merged). No open PRs. #193 draft merged; awaiting maintainer approval/publish. #205 security qualification is in review; follow-ups #223 (tenant-header binding), #224 (rate limits) and #225 (CI supply-chain gates) are open.
 
-Open items: umbrella **#43**; Workstream M UX **#158** (bot-win, UX1-UX14 delivered);
+Open items: umbrella **#43**; Workstream M UX **completed** (#158 collaboration/feedback delivered by bot-win);
 showcase/proof **#187-#193**, showcase harness **#195-#199**, and new H5 qualification
 items **#204-#206** (H5; #204 and #205 with bot-uni, #206 unassigned), security follow-ups
 **#223-#225**, and the LinkedIn approval (#193, user). Workstream G
@@ -100,6 +100,10 @@ console) and #164 (queue operations/SLA/safe export).
   merges (avoid concurrent edits).
 - **Identity:** each bot uses its own GitHub App/bot git identity and app auth for push/
   PR/issue ops; never log keys/tokens; keep `.pem` outside the repo.
+- **Manual decisions (`MANUAL`):** when a choice belongs to the maintainer, post a
+  `## MANUAL INPUT NEEDED` comment with the options, recommendation and effect, and add
+  the `MANUAL` label. Continue only on documented safe defaults; never automate the
+  human action itself. Remove the label once the maintainer replies.
 - **Project #8:** the board is user-owned; updates are made through the human-authenticated
   `gh` CLI (GraphQL), not the bot App token. Keep Status, Workstream and milestone in sync
   when issues are created, started or closed.
