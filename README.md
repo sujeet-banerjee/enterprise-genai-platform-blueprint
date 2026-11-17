@@ -264,6 +264,8 @@ reduce padding and degrade tables to cards that keep every column and action, wh
 desktop keeps the sidebar actions sticky. Every text/status token meets WCAG 2.2 AA
 (4.5:1) and chart colours meet 3:1. Tokens and the degradation contract are documented in
 [docs/layout-and-theme.md](docs/layout-and-theme.md); `ui/theme.py` holds the pure helpers.
+The console's visual design, information hierarchy and an incremental enterprise-polish plan
+are reviewed in [docs/ui-enterprise-look-and-feel-plan.md](docs/ui-enterprise-look-and-feel-plan.md).
 
 The console keeps a **persistent workspace** across reloads and share links (#151).
 Screen, query, filters, selected trace, comparisons, datasets and saved views are encoded
@@ -448,7 +450,7 @@ api:
 
 A missing referenced secret fails fast. In production, mount secrets with Vault (Agent
 Injector) or a Kubernetes `secretKeyRef` so the value is present in the process environment
-â€” the same `${ENV_VAR}` syntax works unchanged. Set `config_version` at the top of a file to
+— the same `${ENV_VAR}` syntax works unchanged. Set `config_version` at the top of a file to
 pin the schema; a newer version warns (with migration note) rather than failing.
 
 ### Gate cost and latency in CI
@@ -504,7 +506,7 @@ honest reference-CPU numbers, not vendor benchmarks.
 `benchmarks/data/` (enterprise IT, product docs and support). The report generator runs the
 configured matrix through the real pipeline and writes retrieval quality (precision, recall,
 MRR, nDCG), cost, latency, a Pareto frontier and a recommended config overlay. Every number
-comes from the JSON report; **do not hand-edit published numbers** â€” regenerate them.
+comes from the JSON report; **do not hand-edit published numbers** — regenerate them.
 
 ```bash
 # Fast CI profile: dummy providers, 8 cases, one combination
@@ -604,7 +606,7 @@ lists the paths; `genai validate <config-dir>` re-checks a set. New here? Follow
 [onboarding guide](docs/onboarding.md).
 
 The provider-neutral `data/docs.json` path resolves relative to the config directory's parent,
-so keep (or copy) `data/` alongside your config directory. Templates carry no secrets â€” add
+so keep (or copy) `data/` alongside your config directory. Templates carry no secrets — add
 your own `api_key`/secret references per [Validate config & manage secrets](#validate-config--manage-secrets).
 
 ## Development notes
@@ -624,8 +626,9 @@ data/       sample corpus (data/docs.json)
 docs/       onboarding.md, architecture.md, architecture-diagram.md, capability-status.md,
             production-readiness.md, deployment.md, engineering-lifecycle.md, positioning.md,
             comparison.md, ux-and-api.md, accessibility.md, layout-and-theme.md,
-            enterprise-roadmap.md, adoption/ (adoption and pilot kit), security/ (threat model,
-            abuse-case/test plan, findings),             showcase/ (LinkedIn profile entry + announcement draft, demo walkthrough)
+            ui-enterprise-look-and-feel-plan.md, enterprise-roadmap.md, adoption/ (adoption and
+            pilot kit), security/ (threat model, abuse-case/test plan, findings),
+            showcase/ (LinkedIn profile entry + announcement draft, demo walkthrough)
 ```
 
 ### How to run the backend
