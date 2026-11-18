@@ -56,7 +56,7 @@ Write down what a failed pilot looks like as well. A pilot that cannot fail is a
 | --- | --- | --- |
 | Local / developer machine | First evaluation, demo | Fastest; not multi-user. |
 | Docker Compose (single node) | Small internal pilot | Hardened image + healthchecks; see [deployment.md](../deployment.md). |
-| Kubernetes (Helm/Kustomize) | Team pilot with probes and autoscaling | Durable shared state is adopter-validated (#206); start with one replica. |
+| Kubernetes (Helm/Kustomize) | Team pilot with probes and autoscaling | Bounded two-replica profile qualified (#206); validate your topology and start with one replica. |
 | Air-gapped / on-prem | Restricted network | Pre-populate model and package caches. |
 | Managed cloud + BYO model | Existing cloud estate | Provider terms and data residency remain the adopter's responsibility. |
 

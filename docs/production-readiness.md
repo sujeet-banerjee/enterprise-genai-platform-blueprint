@@ -75,8 +75,8 @@ operator action before scaling out.
 
 **Recommended next step.** Adopt a shared backend as the default for multi-replica deployments,
 declare the Postgres driver as an optional extra, back the approval queue with `BaseStore`, and
-document the single-replica default explicitly. Tracked by **#206** (durable multi-replica
-deployment profile); the bounded profile and evidence are in place.
+document the single-replica default explicitly. **#206** qualified a bounded profile with
+evidence in `docs/benchmarks/multi-replica.md`; broader work remains on the HA roadmap.
 
 **Status: Partial.**
 
@@ -105,7 +105,7 @@ approvals still require an external coordination story.
 
 **Recommended next step.** Extend the harness to Postgres and multi-node, add a documented
 coordination story for rebuilds/caches/approvals, and add PDB/NetworkPolicy to the chart.
-Tracked by **#206** and the broader HA roadmap.
+The bounded qualification is **#206**; the remainder stays on the broader HA roadmap.
 
 **Status: Unvalidated.**
 

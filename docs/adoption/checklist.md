@@ -62,7 +62,7 @@ Evidence: [deployment.md](../deployment.md) (runtime contract and secrets),
 Raising the pilot to production is the adopter's decision and validation work.
 
 - [ ] Durable shared persistence is selected and tested (`config/persistence.yaml`).
-- [ ] Multi-replica behavior is validated if more than one replica will run (tracked by #206).
+- [ ] Multi-replica behavior is validated if more than one replica will run (bounded reference profile: #206).
 - [ ] Backup and restore drill is executed and timed.
 - [ ] Failure modes are rehearsed: provider timeout, model unavailable, circuit breaker open.
 - [ ] Load and soak tests match the expected traffic envelope.
