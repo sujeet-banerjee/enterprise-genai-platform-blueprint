@@ -54,22 +54,37 @@ def _serialize_value(value: Dict[str, Any]) -> Dict[str, Any]:
 def build_store(config_path: Optional[str] = None, **overrides: Any) -> BaseStore:
     """Build store from config (memory default).
 
+    Persistence config is schema-validated and secret-resolved like every other
+    config file (issue #206), so a DSN/path can safely use ``env:VAR`` or
+    ``${VAR}`` references.
+
     Supports cross-region strategy via optional `region` and `replication` config
     (Workstream I #118): namespace keys by region and expose region in health.
     """
     from pathlib import Path
 
-    import yaml
+    from core.config.secrets import resolve_secrets
+    from core.config.validator import ConfigValidationError, validate_config_data
 
+    resolved_path = Path(config_path).resolve() if config_path is not None else None
     config: Dict[str, Any] = {}
-    if config_path is not None:
-        path = Path(config_path)
-        if path.exists():
-            with path.open("r", encoding="utf-8") as handle:
-                data = yaml.safe_load(handle) or {}
-            if isinstance(data, dict):
-                config = data
-    config.update(overrides)
+    if resolved_path is not None and resolved_path.exists():
+        from core.config.validator import load_and_validate
+
+        config = load_and_validate(resolved_path, kind="persistence")
+    if overrides:
+        config.update(overrides)
+
+    issues = [
+        issue
+        for issue in validate_config_data(config, "persistence", source=str(resolved_path))
+        if issue.kind != "version-warning"
+    ]
+    if issues:
+        raise ConfigValidationError(
+            resolved_path or Path("<persistence-overrides>"), issues
+        )
+    config = resolve_secrets(config)
 
     backend = str(config.get("backend", "memory")).strip().lower()
     if backend in ("", "none"):

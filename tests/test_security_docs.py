@@ -34,6 +34,7 @@ FINDING_STATUSES = {
     "accepted",
     "mitigated",
     "fixed",
+    "tested",
     "not performed",
 }
 BANNED_CLAIMS = [

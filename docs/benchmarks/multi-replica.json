@@ -1,0 +1,109 @@
+{
+  "checks": [
+    {
+      "detail": "backend=sqlite path=/tmp/genai-multi-replica-_ujrzuib/store.db",
+      "name": "persistence_secret_reference_resolved",
+      "passed": true
+    },
+    {
+      "detail": "A=True B=True",
+      "name": "both_replicas_ready",
+      "passed": true
+    },
+    {
+      "detail": "status=200 docs=['ACME internal runbook: rotate the acme service key every 30 days.']",
+      "name": "retrieval_acl_tenant_isolation",
+      "passed": true
+    },
+    {
+      "detail": "status=200 docs=['Beta research note: quarterly retrieval quality experiment.']",
+      "name": "cross_tenant_retrieval_denied",
+      "passed": true
+    },
+    {
+      "detail": "status=200 request_id=qual-acme-query",
+      "name": "trace_visible_on_other_replica",
+      "passed": true
+    },
+    {
+      "detail": "status=404",
+      "name": "cross_tenant_trace_denied",
+      "passed": true
+    },
+    {
+      "detail": "status=200 window={'window_size': 1000, 'requests': 1, 'total_cost_usd': 0.000199, 'mean_cost_usd': 0.000199, 'tenant': 'acme'}",
+      "name": "spend_visible_on_other_replica",
+      "passed": true
+    },
+    {
+      "detail": "launch=202 status=completed",
+      "name": "experiment_status_visible_on_other_replica",
+      "passed": true
+    },
+    {
+      "detail": "status=404",
+      "name": "cross_tenant_experiment_denied",
+      "passed": true
+    },
+    {
+      "detail": "status=200 events=1",
+      "name": "audit_event_visible_on_other_replica",
+      "passed": true
+    },
+    {
+      "detail": "hits=False,True,False",
+      "name": "cache_tenant_key_isolation",
+      "passed": true
+    },
+    {
+      "detail": "restarted=True status=200",
+      "name": "restart_recovery",
+      "passed": true
+    }
+  ],
+  "profile": {
+    "backend": "sqlite",
+    "identity_mode": "trusted X-Tenant-ID header",
+    "replicas": 2,
+    "request_pattern": "sequential low-concurrency qualification",
+    "store_path": "env:GENAI_QUALIFICATION_STORE",
+    "topology": "two uvicorn processes, shared SQLite file on one host"
+  },
+  "provenance": {
+    "backend": "sqlite",
+    "config_dir": "/home/sujeet/enterprise-genai-platform-blueprint/deployment/multi-replica/config",
+    "config_sha256": "eb66ba6cbd33a951261d0a5c9cb1e13c5b7906ce83dcabb4aa6563412b890f8c",
+    "git_sha": "fdc7c733ff062efbd4d14809d05cb783688ecf5a",
+    "platform": "Linux-6.18.58.1-microsoft-standard-WSL2-x86_64-with-glibc2.43",
+    "python": "3.13.15",
+    "qualification_id": "single-host-two-replica-shared-store-v1",
+    "replica_count": 2,
+    "timestamp_utc": "2026-11-18T05:58:31.474904+00:00"
+  },
+  "qualification_id": "single-host-two-replica-shared-store-v1",
+  "shared_state": [
+    "run_history",
+    "trace_lookup",
+    "spend_and_tenant_scoping",
+    "audit_events",
+    "experiment_status",
+    "eval_trends"
+  ],
+  "status": "pass",
+  "summary": {
+    "failed": 0,
+    "missing_required": [],
+    "passed": 12,
+    "passed_all": true,
+    "total": 12
+  },
+  "unsupported_state": {
+    "approvals": "In-memory queue; not durable across restarts.",
+    "immutable_audit_jsonl": "Multi-writer file sink requires separate single-writer qualification.",
+    "pipeline_rebuild": "Swaps pipeline state in one process only; no cross-replica broadcast.",
+    "prometheus_counters": "Per-process exposition; aggregate by scraping all replicas.",
+    "rate_limits": "Process-local token buckets; external gateway/WAF required globally.",
+    "response_cache": "Process-local; tenant-scoped keys only, no cross-replica sharing.",
+    "scim_directory": "In-memory directory; external IdP required for multi-replica writes."
+  }
+}

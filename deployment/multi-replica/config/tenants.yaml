@@ -1,0 +1,16 @@
+enabled: true
+default_tenant: default
+tenants:
+  default:
+    workspace: default
+    app: platform
+  acme:
+    workspace: acme-prod
+    app: support-copilot
+  beta:
+    workspace: beta-prod
+    app: research-assistant
+api_keys: {}
+header_override:
+  roles: []
+  api_keys: []

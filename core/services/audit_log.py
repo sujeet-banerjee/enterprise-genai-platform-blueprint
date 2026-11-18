@@ -156,6 +156,11 @@ class AuditLogger:
     def count(self) -> int:
         if self._sink is not None:
             return self._sink.count()
+        if self._store is not None:
+            try:
+                return len(self._store.list(prefix="audit:", limit=10000))
+            except Exception:
+                pass
         with self._lock:
             return len(self._events)
 

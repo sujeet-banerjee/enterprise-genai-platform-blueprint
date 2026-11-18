@@ -165,7 +165,7 @@ Every substantive claim in this package resolves to a public path or document.
 | Docker, Helm, Kustomize, GitOps, Codespaces | `deployment/Dockerfile`, `deployment/helm/`, `deployment/kustomize/`, `deployment/gitops/`, `.devcontainer/devcontainer.json` | Tested |
 | Console | `ui/app.py`, `ui/client.py` | Implemented (structural/client tests, no browser E2E) |
 | Public engineering record and CI gates | `CONTRIBUTING.md`, `docs/engineering-lifecycle.md`, `.github/workflows/ci.yml` | Implemented |
-| Shared persistence and multi-replica validation are open | `docs/production-readiness.md`, `config/persistence.yaml`, issue #206 | Partial / Planned |
+| Shared persistence and bounded two-process qualification | `docs/production-readiness.md`, `config/persistence.yaml`, `deployment/multi-replica/README.md`, `docs/benchmarks/multi-replica.md`, issue #206 | Partial (HA/DR not claimed) |
 
 ## 5. User approval checklist
 

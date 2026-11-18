@@ -1,0 +1,7 @@
+require_api_key: false
+allow_rebuild: false
+max_batch_size: 10
+batch_max_workers: 2
+history_max_runs: 1000
+trace_store_max: 500
+approvals_page_size_max: 100

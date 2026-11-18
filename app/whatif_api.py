@@ -213,7 +213,14 @@ def register_whatif_routes(
 
         def _emit(outcome: str, action: str, details: dict) -> None:
             if audit is not None and getattr(audit, "enabled", False):
-                audit.record("config", action, outcome, details=details, request_id=request_id)
+                audit.record(
+                    "config",
+                    action,
+                    outcome,
+                    details=details,
+                    request_id=request_id,
+                    tenant=getattr(request.state, "tenant_id", None),
+                )
 
         service = getattr(request.app.state, "rebuild", None)
         if service is None:

@@ -55,7 +55,7 @@ resistance to an adaptive attacker, and the tests are not an accreditation artif
 | Trace/audit/config redaction | Redaction on for traces; config secrets stripped | `test_redaction_config.py`, `test_api_introspection.py`, `test_security_qualification.py` | Custom configs can add unredacted free-text fields |
 | Immutable audit trail | Off (`config/audit.yaml` enabled: false) | `test_immutable_audit.py`, `test_audit_log.py` | In-memory by default; purge requires `governance` capability |
 | Admin/rebuild operations | Rebuild disabled; RBAC capability required | `test_pipeline_rebuild_api.py`, `test_security_qualification.py` | Governance override needs explicit per-request opt-in |
-| Bounded input | `guardrails.max_query_chars: 8000`, batch caps | `test_query_length_guard.py`, `test_batch_query_api.py` | No rate limiting/quota - F-04 / #224 |
+| Bounded input | `guardrails.max_query_chars: 8000`, batch caps, `api.rate_limit` token bucket + in-flight cap | `test_query_length_guard.py`, `test_batch_query_api.py`, `test_rate_limits.py` | Rate limits are process-local and off by default - #224 |
 
 ## Findings
 
@@ -67,7 +67,7 @@ most findings below require the adopter to expose a demo default or add a front 
 | F-01 | Tenant selection trusted `X-Tenant-ID` from any caller, so an authenticated caller could select another configured tenant | High | Low-privilege authenticated caller in a multi-tenant deployment | **Fixed** (#223): claim/key binds; contradiction → 403 unless allowlisted | bot-uni | #223; `core/services/tenancy.py`; `tests/test_tenant_header_binding.py`; residual below |
 | F-02 | Secure-by-default gap: auth, RBAC, tenancy, ACL and guardrails are all off in shipped configs (intentional for local demo) | High if exposed | Internet-facing demo deployment left as shipped | **Accepted** (documented, not hidden) | maintainer | [deployment playbook](../deployment.md), [adoption checklist](../adoption/checklist.md) |
 | F-03 | Injection detection is weighted heuristics; a motivated attacker can paraphrase, encode or split a payload to stay under threshold | Medium | Caller who can send queries or poison retrieved documents | **Accepted** (defense in depth; classifier extension point) | bot-uni | `core/implementations/injection_guardrail.py`, `test_injection_defense.py` |
-| F-04 | No application-layer rate limiting or per-caller quota; only per-request bounds and tenant budget caps | Medium | Any caller with `query` capability | **Tracked** | bot-uni | #224; T-DOS-1 |
+| F-04 | No application-layer rate limiting or per-caller quota; only per-request bounds and tenant budget caps | Medium | Any caller with `query` capability | **Tested** | bot-uni | #224; T-DOS-1; `api.rate_limit` off by default, process-local |
 | F-05 | CodeQL was advisory (not a required check); no dependency-audit or container-image scan gate in CI | Medium | Supply-chain regression merging with an open alert | **Fixed** (#225): CodeQL, pip-audit and Trivy are required; waivers are explicit and expiring | bot-uni | #225; scanning table and waiver policy below |
 | F-06 | `pytest==9.0.2` is affected by GHSA-6w46-j5rx-g56g (dev/test dependency, vulnerable tmpdir handling) | Medium | Local/CI test execution with untrusted tmp content | **Mitigated** in this PR (9.0.3) | bot-uni | Dependabot alert 1-3; `requirements.txt`, `pyproject.toml` |
 | F-07 | Run history, approvals and audit are in memory by default; restart loses evidence and a host compromise can rewrite it | Medium (integrity/availability) | Operator failure or host compromise | **Tracked** | bot-uni | #206; `docs/production-readiness.md` §1 |
@@ -91,6 +91,20 @@ ordering (header wins). In that mode, only expose the API behind an ingress that
 strips or authoritatively sets `X-Tenant-ID`, or run one tenant per deployment.
 ACL filtering (`acl.enabled`) constrains document visibility independently but
 does not protect tenant-scoped operational history.
+
+### F-04 remediation and residual risk (fixed in #224)
+
+`api.rate_limit` adds a process-local token bucket plus in-flight cap at the API
+edge. It returns a standard `429 rate_limited` envelope with `Retry-After` and
+increments `genai_rate_limit_events_total{scope,reason,tenant}`. Buckets can be
+isolated by API key, tenant, role, subject or client IP; identity/API-key values
+are hashed before use. It ships disabled so local/demo behaviour is unchanged.
+A batch query consumes one token, while `max_batch_size` and `batch_max_workers`
+still bound work inside that request; tenant `budget_cap_usd` remains a separate
+post-hoc spend guard. Each replica enforces its own limit, so a gateway/WAF is
+still responsible for global edge protection and distributed quotas.
+`tests/test_rate_limits.py` exercises within-limit requests, per-key/tenant
+isolation, 429/Retry-After, the in-flight cap, disabled mode and the metric.
 
 ## Dependency, container and secret scanning
 
@@ -117,8 +131,9 @@ and Eval gates remain explicitly advisory with the maintainer as owner.
 
 ### Scanner waiver policy
 
-`security/waivers.yml` is versioned with `version: 1` and an empty `waivers` list by default.
-Each entry must provide `id` (GHSA/CVE/PYSEC), `package`, `reason` (at least 20 characters),
+`security/waivers.yml` is versioned with `version: 1`; it currently contains three expiring
+image-scan waivers from #225 and starts empty for new deployments. Each entry must provide
+`id` (GHSA/CVE/PYSEC), `package`, `reason` (at least 20 characters),
 `expires` (future ISO date), `owner` and `approved_by`. Unknown fields, duplicate IDs,
 malformed IDs and expired waivers fail the gate before either scanner runs.
 
@@ -162,7 +177,7 @@ Response is best-effort by the maintainer; no SLA or bug bounty is offered.
   data exposure, not model behaviour or provider-side isolation.
 - The package does not test network topology, TLS configuration, IdP policy, cloud IAM,
   Kubernetes admission control, or the security of the adopter's data connectors.
-- Load and multi-replica correctness are covered separately (#197 harness, #206 open);
-  they are not security evidence.
+- Load and multi-replica correctness are covered separately (#197 harness, #206 bounded
+  two-process qualification); they are not security evidence.
 - Findings marked **Accepted** are deliberate trade-offs. They remain risks; they are not
   "passed".

@@ -12,7 +12,7 @@ Canonical positioning, GitHub metadata and maturity vocabulary live in
 
 ## Architecture
 
-See [docs/architecture.md](docs/architecture.md) for the full architecture, principles, composition root, registries, and contracts, and the [high-level architecture diagram](docs/architecture-diagram.md) for the end-to-end system view and trust boundaries. To run it (Docker Compose, Kubernetes, air-gapped, BYO-model, embedded), see the [deployment playbook](docs/deployment.md) (multi-replica HA + HPA/KEDA via G3 #68).
+See [docs/architecture.md](docs/architecture.md) for the full architecture, principles, composition root, registries, and contracts, and the [high-level architecture diagram](docs/architecture-diagram.md) for the end-to-end system view and trust boundaries. To run it (Docker Compose, Kubernetes, air-gapped, BYO-model, embedded), see the [deployment playbook](docs/deployment.md) (horizontal scaling is G3 #68). A [bounded two-replica qualification profile](deployment/multi-replica/README.md) verifies selected shared-state and tenant-isolation paths; it is not an HA/DR claim.
 
 ## Quickstart
 
@@ -400,7 +400,7 @@ All behaviour is driven by YAML in config/:
 - config/governance.yaml - cost/retrieval-policy governance (enabled, cost cap, safety margin)
 - config/observability.yaml - logging, redaction toggle, sensitive patterns, PII/DLP scrubbing (`pii:` block) and OTel tracing (`otel:` block), all disabled by default
 - config/prompt_config.yaml - prompt profiles
-- config/api.yaml - API key stub, rebuild gate, batch/store limits (all disabled/lean by default)
+- config/api.yaml - API key stub, rebuild gate, batch/store limits and a process-local `rate_limit:` token bucket + in-flight cap (`429 rate_limited`; disabled by default)
 - config/audit.yaml - append-only audit trail (disabled by default; optional JSONL `path`)
 - config/access_control.yaml - RBAC roles/personas, capabilities and request caps (disabled by default)
 - config/resilience.yaml - provider retries, circuit breaker and LLM failover (disabled by default)
@@ -551,6 +551,21 @@ python benchmarks/load/run_load.py --config-dir deployment/smoke/config \
 # Fast in-process run (used by tests/CI)
 python benchmarks/load/run_load.py --in-process --config-dir deployment/smoke/config \
   --concurrency 1 --requests 2 --scenarios health,ready,query
+```
+
+### Bounded multi-replica qualification
+
+[`deployment/multi-replica/`](deployment/multi-replica/README.md) runs two API processes against one
+shared SQLite store and verifies cross-replica traces, spend scoping, experiments, audit events,
+eval trends, tenant-isolated retrieval/cache keys and restart recovery. The committed evidence is
+[`docs/benchmarks/multi-replica.md`](docs/benchmarks/multi-replica.md). This is a single-host
+correctness qualification, not HA, DR or performance proof.
+
+```bash
+python -m app.config_validate --config-dir deployment/multi-replica/config
+python benchmarks/multi_replica/run_qualification.py \
+  --out docs/benchmarks/multi-replica.json --markdown docs/benchmarks/multi-replica.md
+python benchmarks/multi_replica/run_qualification.py --check docs/benchmarks/multi-replica.json
 ```
 
 ### How this compares to alternatives
@@ -918,6 +933,23 @@ blocked on input and masked on output):
 ```yaml
 profile: strict        # or standard (default), none
 ```
+
+**Enable API rate limits** - `config/api.yaml` ships a process-local token bucket and in-flight
+cap, disabled so local/demo behaviour is unchanged:
+
+```yaml
+rate_limit:
+  enabled: true
+  requests_per_minute: 60
+  burst: 10
+  in_flight_max: 4
+  scope: auto            # or key/tenant/role/subject/ip
+```
+
+Over-limit requests receive `429 rate_limited` with `Retry-After` and increment
+`genai_rate_limit_events_total`. Buckets are per-process: keep a gateway/WAF for global quotas,
+and remember that a batch request consumes one token while tenant budget caps remain a separate
+post-hoc spend guard.
 
 **Custom input/output guardrails** - edit the same file. `input` runs on the query + retrieved docs
 before prompt construction, `output` runs on the generated response before it is returned. Each is

@@ -81,14 +81,16 @@ class _ExperimentStore:
 
     def get(self, exp_id: str) -> Optional[Dict[str, Any]]:
         with self._lock:
-            entry = self._entries.get(exp_id)
-            if entry is None and self._store is not None:
+            entry: Optional[Dict[str, Any]] = None
+            if self._store is not None:
                 try:
                     entry = self._store.get(f"{self._prefix}:{exp_id}")
                     if entry is not None:
                         self._entries[exp_id] = entry
                 except Exception:
                     entry = None
+            if entry is None:
+                entry = self._entries.get(exp_id)
             return dict(entry) if entry is not None else None
 
     def complete(self, exp_id: str, result: Any) -> None:
