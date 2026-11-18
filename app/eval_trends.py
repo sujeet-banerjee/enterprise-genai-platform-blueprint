@@ -113,8 +113,22 @@ class EvalTrendStore:
         return point
 
     def _points_for(self, tenant: Optional[str]) -> List[Dict[str, Any]]:
-        with self._lock:
-            points = list(self._points)
+        points: List[Dict[str, Any]] = []
+        if self._store is not None:
+            try:
+                points = [
+                    item
+                    for item in self._store.list(
+                        prefix=f"{self._prefix}:point:", limit=10000
+                    )
+                    if isinstance(item, dict)
+                ]
+            except Exception:
+                points = []
+        if not points:
+            with self._lock:
+                points = list(self._points)
+        points.sort(key=lambda point: float(point.get("timestamp") or 0.0))
         if tenant is None:
             return points
         return [p for p in points if p.get("tenant") == str(tenant)]

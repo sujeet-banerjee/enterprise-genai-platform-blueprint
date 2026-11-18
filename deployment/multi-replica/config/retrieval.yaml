@@ -1,0 +1,24 @@
+retrieval:
+  default_retriever: dummy
+  top_k: 2
+  similarity_metric: cosine
+  low_score_threshold: 0.0
+  avg_chunk_tokens: 128
+  retrievers:
+    dummy:
+      provider: dummy
+      documents_path: config/documents.json
+
+evaluation:
+  enabled: false
+
+reranking:
+  enabled: false
+
+cache:
+  enabled: true
+  max_entries: 32
+  ttl_seconds: 300
+
+guardrails:
+  max_query_chars: 8000

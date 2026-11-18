@@ -1,8 +1,8 @@
 # Bot work split (H4/H5 — current open items)
 
-Reconciled 2026-11-18 from `origin/main` @ `782929b` (after #158, #189, #205, #223-#225, #233-#235, #237, #239 and #261 merged). No open PRs. #193 draft merged; awaiting maintainer approval/publish. Security follow-up #224 (rate limits) is merged/closed; #206 (durable multi-replica profile) remains open.
+Reconciled 2026-11-18 while completing #206 from `origin/main` @ `fdc7c73` (after #158, #189, #205, #223-#225, #233-#235, #237, #239, #261 and #262 merged). #193 draft merged; awaiting maintainer approval/publish. H5 qualification #206 (durable multi-replica profile) is in review.
 
-Open items: umbrella **#43**; showcase follow-up **#232** (external capture links, MANUAL, bot-win); showcase/proof **#187-#193** (only #193 still open — draft merged, awaiting maintainer approval/publish); H5 qualification **#206** (unassigned). Workstream M UX **completed** (#158 collaboration/feedback and #189 demo walkthrough delivered by bot-win). Workstream G
+Open items: umbrella **#43**; showcase follow-up **#232** (external capture links, MANUAL, bot-win); showcase/proof **#187-#193** (only #193 still open — draft merged, awaiting maintainer approval/publish); H5 qualification **#206** (in review). Workstream M UX **completed** (#158 collaboration/feedback and #189 demo walkthrough delivered by bot-win). Workstream G
 follow-ups (#64/#68-#71), #105/#109, #154 (UX11), #155 (UX12), #156 (UX13), #157 (UX14),
 #162, #175, #187-#192, #195-#199, #204, #205, #223-#225, #230-#235, #237, #239 and #261 are **closed** — do not treat them as open.
 Re-check open issues and PRs before each item.
@@ -27,7 +27,8 @@ Re-check open issues and PRs before each item.
 | 1 | **Showcase harness #195-#199** (H5) | Benchmark corpora/config (#195), reproducible report generator (#196), reference load/latency harness (#197), published results/methodology (#198), comparison matrix (#199). |
 | 2 | **Showcase docs owned by bot-uni** (H5) | #187 repository identity, #188 architecture diagram, #190 engineering lifecycle, #191 capability-status audit, #192 production-readiness gap, #193 LinkedIn draft (user approves/publishes). |
 | 3 | **Backend support for UX where agreed** | Prefer bot-win owns the `ui/` surface. Take narrowly-scoped backend contracts only after agreeing in the issue (e.g. a jobs API if #152's UI-side execution ever needs server-side scale). |
-| 4 | **Roadmap/docs reconciliation** | Small post-merge doc PRs; avoid concurrent edits to the same files. |
+| 4 | **Durable multi-replica profile #206** (H5, in review) | Bounded two-process single-host qualification: shared SQLite store, cross-replica trace/spend/experiment/audit/trend reads, tenant-isolation negatives, restart recovery, evidence and support matrix. Not HA/DR/performance proof. |
+| 5 | **Roadmap/docs reconciliation** | Small post-merge doc PRs; avoid concurrent edits to the same files. |
 
 Completed by this workstream since the last split: **#179** cost/latency experiment
 telemetry, **#180** budget-aware regression gates, **#181** config-driven parameter
