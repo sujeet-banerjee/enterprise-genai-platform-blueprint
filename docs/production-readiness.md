@@ -141,11 +141,13 @@ and service-account keys (`core/services/identity.py`); capability-based RBAC
 (`core/services/access_control.py`); a tenant resolver with per-tenant policy
 (`core/services/tenancy.py`); per-request attribution (`core/services/attribution.py`); and
 permission-aware retrieval with AND-semantics ACL filtering before reranking/prompting
-(`core/services/acl.py`).
+(`core/services/acl.py`); and a config-driven API token bucket plus in-flight cap with a
+standard `429 rate_limited` envelope (`core/services/rate_limit.py`, `app/main.py`).
 
 **Evidence.** `tests/test_identity.py`, `tests/test_rbac_access_control.py`,
 `tests/test_tenancy.py`, `tests/test_attribution.py`, `tests/test_acl_retrieval.py`,
-`config/{identity,access_control,tenants,attribution,acl}.yaml`.
+`tests/test_rate_limits.py`,
+`config/{identity,access_control,tenants,attribution,acl,api}.yaml`.
 
 **Gaps.**
 - **All five controls default to disabled** (`enabled: false`) to preserve legacy behaviour;
@@ -154,6 +156,8 @@ permission-aware retrieval with AND-semantics ACL filtering before reranking/pro
   testing; there is no independent review of the isolation model.
 - Native SAML is not implemented (OIDC only); tenant isolation depends on correct header/JWT
   handling that is tested but not fuzz-tested.
+- `api.rate_limit` is process-local and off by default; a gateway/WAF is still needed for
+  distributed quotas and global edge protection.
 
 **Impact.** The controls are real and tested individually, but their *combined* posture under
 hostile input and concurrency is **not independently validated**.

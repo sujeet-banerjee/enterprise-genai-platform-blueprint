@@ -42,9 +42,11 @@ non-trivial consumer and living proof that the contract is sufficient.
    during transition (existing tests depend on it).
 4. **One error envelope** reusing the existing `FailureType` taxonomy
    (`core/services/failure_classifier.py`; see architecture §8.1 for the current
-   members, including the API-level `not_ready`, `unauthorized` and `batch_too_large`,
-   the query guard `query_too_long`, and the guardrail `guardrail_input_blocked` /
-   `guardrail_output_blocked`) + `request_id` + `failure_tags`.
+    members, including the API-level `not_ready`, `unauthorized`, `batch_too_large` and
+    `rate_limited` (429 with `Retry-After`), the query guard `query_too_long`, and the
+    guardrail `guardrail_input_blocked` / `guardrail_output_blocked`) + `request_id` +
+    `failure_tags`.
+
 5. **Redaction at the edge**: any config/trace/audit text leaving the API passes
    through `SensitiveDataRedactor`; `${VAR}`/`env:` references are never resolved in
    responses.

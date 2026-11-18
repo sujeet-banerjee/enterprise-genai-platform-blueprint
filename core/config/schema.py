@@ -222,6 +222,16 @@ class ObservabilityConfig(_StrictModel):
 # -- api.yaml ------------------------------------------------------------
 
 
+class RateLimitConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    enabled: Optional[bool] = None
+    requests_per_minute: Optional[int] = Field(default=None, ge=1)
+    burst: Optional[int] = Field(default=None, ge=1)
+    scope: Optional[str] = None
+    in_flight_max: Optional[int] = Field(default=None, ge=1)
+
+
 class ApiConfig(_StrictModel):
     require_api_key: Optional[bool] = None
     api_key: Optional[str] = None
@@ -231,6 +241,7 @@ class ApiConfig(_StrictModel):
     max_batch_size: Optional[int] = None
     batch_max_workers: Optional[int] = None
     approvals_page_size_max: Optional[int] = None
+    rate_limit: Optional[RateLimitConfig] = None
 
 
 # -- audit.yaml ----------------------------------------------------------

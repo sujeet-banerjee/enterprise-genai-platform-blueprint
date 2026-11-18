@@ -53,6 +53,11 @@ from core.services.identity import (
     IdentityResolver,
     ScimDirectory,
 )
+from core.services.rate_limit import (
+    RateLimiter,
+    RateLimitSettings,
+    resolve_rate_key,
+)
 from core.services.telemetry import PrometheusCollector
 from core.services.tenancy import (
     TenantResolver,
@@ -271,6 +276,7 @@ def create_app(
     max_batch_size = int(api_config.get("max_batch_size", 25))
     batch_max_workers = int(api_config.get("batch_max_workers", 4))
     approvals_page_size_max = int(api_config.get("approvals_page_size_max", 100))
+    rate_limit_settings = RateLimitSettings.from_config(api_config)
 
     access_config = _load_config(access_control_config_path) or {}
     access_controller = AccessController.from_config(access_config)
@@ -416,6 +422,8 @@ def create_app(
     application.state.identity = identity_resolver
     application.state.access = access_controller
     application.state.approvals_page_size_max = approvals_page_size_max
+    application.state.rate_limit = rate_limit_settings
+    application.state.rate_limiter = RateLimiter(rate_limit_settings)
 
     def _path_capability(path: str) -> Optional[str]:
         """Map a request path to the capability required to access it (issue #29).
@@ -621,10 +629,44 @@ def create_app(
                 headers={"X-Request-ID": request_id},
             )
 
+        effective_scope, rate_key = resolve_rate_key(
+            rate_limit_settings.scope,
+            api_key=provided_key,
+            subject=principal.subject if principal is not None else None,
+            tenant=tenant.id,
+            role=role,
+            client_host=request.client.host if request.client else None,
+            tenancy_enabled=tenancy_on,
+        )
+        decision = application.state.rate_limiter.acquire(rate_key, effective_scope)
+        if not decision.allowed:
+            telemetry = getattr(application.state, "telemetry", None)
+            if telemetry is not None and hasattr(telemetry, "record_rate_limit"):
+                telemetry.record_rate_limit(
+                    decision.scope, decision.reason, tenant.id
+                )
+            message = (
+                "Concurrent request limit exceeded."
+                if decision.reason == "in_flight"
+                else "Request rate limit exceeded."
+            )
+            tags = ["rate_limited", f"rate_limit_{decision.reason}"]
+            return JSONResponse(
+                status_code=429,
+                content=_error_envelope(
+                    message, FailureType.RATE_LIMITED.value, tags, request_id
+                ),
+                headers={
+                    "X-Request-ID": request_id,
+                    "Retry-After": str(decision.retry_after),
+                },
+            )
+
         token = set_attribution(attribution)
         try:
             response = await call_next(request)
         finally:
+            application.state.rate_limiter.release(decision)
             reset_attribution(token)
         response.headers["X-Request-ID"] = request_id
         return response
