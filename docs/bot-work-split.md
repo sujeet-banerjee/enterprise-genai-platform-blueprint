@@ -1,11 +1,8 @@
-# Bot work split (H4/H5 — current open items)
+# Bot work split (current open items)
 
-Reconciled 2026-11-18 after #206 merged via PR #263 (`origin/main` @ `a58dbd0`), following #158, #189, #205, #223-#225, #233-#235, #237, #239, #261 and #262. #193 draft merged; awaiting maintainer approval/publish. H5 qualification #206 (durable multi-replica profile) is done.
+Reconciled 2026-11-18 after Dependabot #258/#259 merged (`origin/main` @ `ef40bc9`) and the UI look/feel plan tracker audit. #240-#257 were added to Project #8 Workstream M; new bot-uni support issue #265 carries the cross-cutting guard/docs half. No open PRs at reconciliation.
 
-Open items: umbrella **#43**; showcase follow-up **#232** (external capture links, MANUAL, bot-win); showcase/proof **#187-#193** (only #193 still open — draft merged, awaiting maintainer approval/publish). Workstream M UX **completed** (#158 collaboration/feedback and #189 demo walkthrough delivered by bot-win). Workstream G
-follow-ups (#64/#68-#71), #105/#109, #154 (UX11), #155 (UX12), #156 (UX13), #157 (UX14),
-#162, #175, #187-#192, #195-#199, #204-#206, #223-#225, #230-#235, #237, #239, #261 and #263 are **closed** — do not treat them as open.
-Re-check open issues and PRs before each item.
+Open items: umbrella **#43**; **#193** (LinkedIn package, MANUAL, maintainer approves/publishes); **#232** (external demo capture links, MANUAL, bot-win); UI look/feel plan **#240-#257** (bot-win) and cross-cutting support **#265** (bot-uni). Workstreams A-L are closed except the manifest-driven open umbrellas noted above. Re-check open issues and PRs before each item.
 
 ## Bot identities
 
@@ -20,32 +17,30 @@ Re-check open issues and PRs before each item.
   `enterprise-gen-ai-bot-win[bot] <353281915+enterprise-gen-ai-bot-win[bot]@users.noreply.github.com>`.
   Auth via the GitHub App helper, not a shared `GH_TOKEN`.
 
-## Work items for enterprise-gen-ai-bot-uni — platform/backend
+## Work items for enterprise-gen-ai-bot-uni — platform, backend, CI and docs
 
 | Order | Item | Notes |
 |---|---|---|
-| 1 | **Showcase harness #195-#199** (H5) | Benchmark corpora/config (#195), reproducible report generator (#196), reference load/latency harness (#197), published results/methodology (#198), comparison matrix (#199). |
-| 2 | **Showcase docs owned by bot-uni** (H5) | #187 repository identity, #188 architecture diagram, #190 engineering lifecycle, #191 capability-status audit, #192 production-readiness gap, #193 LinkedIn draft (user approves/publishes). |
-| 3 | **Backend support for UX where agreed** | Prefer bot-win owns the `ui/` surface. Take narrowly-scoped backend contracts only after agreeing in the issue (e.g. a jobs API if #152's UI-side execution ever needs server-side scale). |
-| 4 | **Durable multi-replica profile #206** (H5, done) | Bounded two-process single-host qualification merged via PR #263: shared SQLite store, cross-replica trace/spend/experiment/audit/trend reads, tenant-isolation negatives, restart recovery, evidence and support matrix. Not HA/DR/performance proof. |
-| 5 | **Roadmap/docs reconciliation** | Small post-merge doc PRs; avoid concurrent edits to the same files. |
+| 1 | **#265 UI look/feel cross-cutting guards** (H4, Workstream M) | Contract/AST/docs guards for #240-#257. No `ui/` edits: bot-uni only touches `tests/`, docs and backend contracts. Extend HTTP-only AST checks, API contract/redaction checks and plan-to-tracker structural guards; >=6 focused tests. |
+| 2 | **Docs reconciliation after bot-win UI merges** | After each #240-#257 merge, update this split, `docs/ux-and-api.md`, `docs/capability-status.md`, `docs/enterprise-roadmap.md` and README links when behaviour changes. Avoid concurrent edits to files bot-win is editing. |
+| 3 | **Manual #193 / umbrella #43 monitoring** | #193 draft is merged; only maintainer approval/publish remains. Update #43 checklist/status in small dedicated PRs. |
+| 4 | **Backend support for UX where explicitly agreed** | Prefer bot-win owns the `ui/` surface. Take narrowly scoped backend contracts only after agreement in the relevant issue (e.g. a jobs API if UI execution needs server-side scale). |
 
 Completed by this workstream since the last split: **#179** cost/latency experiment
 telemetry, **#180** budget-aware regression gates, **#181** config-driven parameter
-sweep + Pareto report; earlier #121 hybrid policy registry, #122 CEL evaluator +
-bundles, #123 HITL workflow, #124 eval dataset schema/loaders, #125 CI regression
-gates, #126 eval dashboard metrics, #127 golden paths, #128 `genai init`, #129
-onboarding guide, #162 generic redaction fallback, #175 HITL approvals queue
-contract (server-side pagination/filter/sort/tenant scope), #223 identity-bound
-tenant selection (PR #237), #224 config-driven API rate limits and in-flight caps
-(PR #261).
+sweep + Pareto report, **#195-#199** showcase harness/results/comparison, **#187/#188/
+#190-#192** showcase docs, **#204** adoption kit, **#205** security qualification,
+**#206** durable multi-replica profile (PR #263), **#223** identity-bound tenant
+selection (PR #237), **#224** API rate limits (PR #261), **#225** supply-chain gates
+(PR #239), docs follow-ups #260/#262/#264, and Dependabot PRs #258/#259.
 
-## Work items for enterprise-gen-ai-bot-win — UX/console and docs polish
+## Work items for enterprise-gen-ai-bot-win — UX/console
 
 | Order | Item | Notes |
 |---|---|---|
-| 1 | **Docs reconciliation after merges** | Low-risk sync of this split/roadmap after bot-uni and bot-win merges; #235 (merge artifacts) is done. |
+| 1 | **UI look/feel plan #240-#257** (H4, Workstream M) | All 18 UI implementation trackers. P0 #240-#241 (shell/design-system), P1 #242-#248 (structured screens and visualizations), P2 #249-#255 (screen parity, responsiveness, density), P3 #256-#257 (trust/copy/loading polish, QA and captures). Owner `owner:bot-win`, Status Todo, Project #8 Workstream M. |
 | 2 | **#232 showcase external capture links** (H5, MANUAL) | Replace `_Pending - add external link_` placeholders in `docs/showcase/demo-walkthrough.md` once the maintainer publishes captures; then close. |
+| 3 | **UI plan document upkeep** | Keep `docs/ui-enterprise-look-and-feel-plan.md` consistent with implemented screen changes; do not edit backend/CI files without agreement. |
 
 Completed by this workstream since the last split: #130-#136, #145, #151 (workspace/deep
 links), #152 (background evaluation jobs), #153 (Dataset Studio authoring), #154
@@ -54,6 +49,20 @@ layout/density/themes), #157 (role journeys + safe demo mode), #158 (collaborati
 PR #230), #163 (HITL review console), #164 (queue operations/SLA/safe export), #189
 (showcase demo walkthrough, PR #231), the enterprise look-and-feel plan (PR #234) and #235
 (merge-artifact repairs).
+
+## UI look/feel redistribution (2026-11-18)
+
+| Plan area | Issues | Owner | Boundary |
+|---|---|---|---|
+| P0 branded shell, metadata, typography | #240 | bot-win | `ui/` app shell/theme only |
+| P0 design-system primitives | #241 | bot-win | `ui/` components/theme only |
+| P1 structured screens and visualizations | #242-#248 | bot-win | `ui/` screens; bot-uni verifies API contracts in #265 |
+| P2 screen parity and responsiveness | #249-#255 | bot-win | `ui/` screens/components; bot-uni verifies contracts/docs after merge |
+| P3 trust/copy/loading polish, QA, captures | #256-#257 | bot-win | `ui/` polish and visual QA; bot-uni verifies CI/API guards in #265 |
+| Cross-cutting contract, AST and docs guards | #265 | bot-uni | `tests/`, docs and backend contracts only; never `ui/` |
+
+All #240-#257 and #265 are Project #8 items, Status Todo, Workstream **M UX polish &
+adoption**. #240-#257 carry `owner:bot-win`; #265 carries `owner:bot-uni`.
 
 ## Showcase/proof workstream (H5)
 
@@ -65,7 +74,7 @@ PR #230), #163 (HITL review console), #164 (queue operations/SLA/safe export), #
 | #190 engineering lifecycle / agent contribution docs | bot-uni | Done (merged) | — |
 | #191 capability-status audit | bot-uni | Done (merged) | — |
 | #192 production-readiness gap assessment | bot-uni | Done (merged) | — |
-| #193 LinkedIn project entry + announcement | bot-uni (user approves/publishes) | In review (draft merged; awaiting maintainer approval/publish) | #187/#188/#191 (all merged) |
+| #193 LinkedIn project entry + announcement | bot-uni (user approves/publishes) | In review (MANUAL; draft merged, awaiting maintainer approval/publish) | #187/#188/#191 (all merged) |
 | #195 showcase benchmark corpora + suite config | bot-uni | Done (merged) | — |
 | #196 reproducible benchmark report generator + CI check | bot-uni | Done (merged) | #195 |
 | #197 reference load/latency harness + numbers | bot-uni | Done (merged) | #195 |
@@ -83,9 +92,11 @@ PR #230), #163 (HITL review console), #164 (queue operations/SLA/safe export), #
 
 - **Claim before starting:** comment on the issue with the bot identity and open a draft
   PR early; re-check `gh pr list` and issue state each time.
-- **Ownership boundary:** bot-uni = `core/`, `app/`, `config/`, registries, CI, CLI,
-  eval/policy backend; bot-win = `ui/`, UX flows, console docs — except explicitly split
-  backend contracts agreed in the issue.
+- **Ownership boundary:** bot-uni = `core/`, `app/`, `config/`, registries, CI, `tests/`,
+  CLI, eval/policy backend and reconciliation docs; bot-win = `ui/`, UX flows and
+  console docs — except explicitly split backend contracts agreed in the issue.
+- **UI look/feel split:** bot-win implements #240-#257; bot-uni handles #265 only.
+  Bot-uni must not edit `ui/*.py` for this tranche.
 - **Ownership labels:** every open issue carries exactly one `owner:bot-uni` or
   `owner:bot-win` label (umbrella #43 excepted). Keep them current when ownership changes.
 - **Rebase discipline:** both rebase feature branches onto latest `origin/main` before
@@ -96,8 +107,8 @@ PR #230), #163 (HITL review console), #164 (queue operations/SLA/safe export), #
   secrets + registries) -> `app/bootstrap.py::assemble_components` -> `app/pipeline.py`
   -> `app/main.py`; safe/off defaults for new knobs.
 - **Quality:** feature branch + PR + rebase + delete branch; >=6 tests for code changes
-  where required; all CI checks green before merge (ruff, mypy, pytest 3.11/3.13, Deploy
-  smoke chart+image, CodeQL).
+  where required; all required CI checks green before merge (ruff, mypy, pytest 3.11/3.13,
+  CodeQL, SCA pip-audit, Image scan Trivy). Deploy smoke and Eval gates are advisory.
 - **`#43` umbrella:** update checklist/status only in dedicated small PRs or after
   merges (avoid concurrent edits).
 - **Identity:** each bot uses its own GitHub App/bot git identity and app auth for push/
