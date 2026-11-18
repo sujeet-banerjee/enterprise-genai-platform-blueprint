@@ -1,0 +1,14 @@
+enabled: true
+path: ""
+max_entries: 1000
+immutable:
+  enabled: false
+  path: ""
+  default_region: default
+  regions: {}
+  tenant_regions: {}
+retention:
+  default_days: 0
+  event_types: {}
+  tenants: {}
+  export_dir: ""

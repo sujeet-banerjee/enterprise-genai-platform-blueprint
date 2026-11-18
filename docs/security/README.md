@@ -177,7 +177,7 @@ Response is best-effort by the maintainer; no SLA or bug bounty is offered.
   data exposure, not model behaviour or provider-side isolation.
 - The package does not test network topology, TLS configuration, IdP policy, cloud IAM,
   Kubernetes admission control, or the security of the adopter's data connectors.
-- Load and multi-replica correctness are covered separately (#197 harness, #206 open);
-  they are not security evidence.
+- Load and multi-replica correctness are covered separately (#197 harness, #206 bounded
+  two-process qualification); they are not security evidence.
 - Findings marked **Accepted** are deliberate trade-offs. They remain risks; they are not
   "passed".

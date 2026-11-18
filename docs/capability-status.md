@@ -79,7 +79,7 @@ Two rules keep this honest:
 | OpenTelemetry tracing (OTLP) | Implemented | `core/services/telemetry.py`, `config/observability.yaml`, `tests/test_otel_tracing.py` | Optional `[observability]` extra; span tests skip in CI when absent. |
 | Provider resilience (retries, circuit breaker, failover) | Tested | `core/services/resilience.py`, `tests/test_resilience.py` | Default off; chain configured in `config/resilience.yaml`. |
 | Persistence (`BaseStore`: memory/SQLite/Postgres) + backup/restore | Implemented | `core/services/base_store.py`, `core/services/store_backends.py`, `tests/test_backup_restore.py` | Memory/SQLite tested; Postgres backend requires a server (not exercised in CI). |
-| Durable shared state for traces/experiments/approvals | Partial | `core/services/audit_store.py`, `app/ops_api.py`, `app/evaluation_api.py` | Audit store is pluggable; run history, traces, experiment store and approvals are process-local by default. Tracked by **#192** and **#206**. |
+| Durable shared state for traces/experiments/audit/trends | Qualified (bounded) | `app/ops_api.py`, `app/evaluation_api.py`, `app/eval_trends.py`, `core/services/audit_log.py`, `tests/test_multi_replica_qualification.py` | Shared-store reads qualified across two processes; approvals remain process-local and memory is still the shipped default. |
 | Ingestion pipeline + connectors (S3/GCS/Azure Blob/Confluence/SharePoint) | Tested | `core/services/ingestion_service.py`, `core/implementations/connectors/`, `tests/test_ingestion_framework.py`, `tests/test_connectors_object_storage.py` | Connectors use vendor SDKs/HTTP; incremental/CDC sync is **Partial**. |
 
 ## Console and delivery
@@ -95,13 +95,14 @@ Two rules keep this honest:
 | GitOps at scale (ArgoCD app-of-apps, Flux, promotion) | Tested | `deployment/gitops/`, `deployment/terraform/`, `tests/test_gitops_scale.py` | — |
 | Codespaces devcontainer | Tested | `.devcontainer/devcontainer.json`, `deployment/codespace/`, `tests/test_codespace_deployment.py` | Boots API + console; no model downloads in the default smoke. |
 | Reference load/latency harness + published numbers | Tested | `core/evaluation/load_harness.py`, `benchmarks/load/run_load.py`, `tests/test_load_harness.py` | Single-node reference CPU numbers, not capacity guarantees. |
+| Durable multi-replica qualification profile | Tested | `deployment/multi-replica/`, `benchmarks/multi_replica/run_qualification.py`, `docs/benchmarks/multi-replica.md`, `tests/test_multi_replica_qualification.py` | Two-process single-host SQLite qualification only; not HA/DR/performance evidence. |
 
 ## Planned or unqualified (not claimed)
 
 | Capability | Status | Tracked by | Notes |
 | --- | --- | --- | --- |
 | Production-readiness gap assessment | Implemented | [production-readiness.md](production-readiness.md) | Published; separates implemented from production-validated and prioritizes gaps by operational risk. |
-| Durable multi-replica deployment profile | Planned | #206 | Requires shared persistence, coordination and failover validation. |
+| Durable multi-replica deployment profile | Qualified (bounded) | #206 | Two-process single-host SQLite profile landed; HA/DR, Postgres runtime and coordination remain out of scope. |
 | Security qualification (threat model, abuse-case matrix, findings) | Implemented | `docs/security/README.md`, `docs/security/test-plan.md`, `tests/test_security_qualification.py`, `tests/test_security_docs.py` | First-party evidence only; no independent penetration test or certification (F-09). |
 | Required CI supply-chain gates (CodeQL, pip-audit, Trivy) | Tested | `.github/workflows/ci.yml`, `.github/dependabot.yml`, `security/waivers.yml`, `app/supply_chain.py`, `tests/test_supply_chain_gates.py` | F-05 fixed; no SBOM/signing/provenance and no independent assessment. |
 | Engineering-team adoption / pilot kit | Implemented | `docs/adoption/README.md`, `tests/test_adoption_kit.py` | Landing page, pilot brief, checklist and scorecard; no pre-filled success numbers, and support/SLA/certification are explicitly not offered. |

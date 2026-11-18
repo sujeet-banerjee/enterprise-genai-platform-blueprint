@@ -1,0 +1,12 @@
+log_level: INFO
+redact_sensitive_data: true
+low_retrieval_score_threshold: 0.0
+sensitive_patterns: []
+otel:
+  enabled: false
+  endpoint: ""
+  service_name: genai-multi-replica-qualification
+  sample_ratio: 1.0
+pii:
+  enabled: false
+  classes: []

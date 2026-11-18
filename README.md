@@ -12,7 +12,7 @@ Canonical positioning, GitHub metadata and maturity vocabulary live in
 
 ## Architecture
 
-See [docs/architecture.md](docs/architecture.md) for the full architecture, principles, composition root, registries, and contracts, and the [high-level architecture diagram](docs/architecture-diagram.md) for the end-to-end system view and trust boundaries. To run it (Docker Compose, Kubernetes, air-gapped, BYO-model, embedded), see the [deployment playbook](docs/deployment.md) (multi-replica HA + HPA/KEDA via G3 #68).
+See [docs/architecture.md](docs/architecture.md) for the full architecture, principles, composition root, registries, and contracts, and the [high-level architecture diagram](docs/architecture-diagram.md) for the end-to-end system view and trust boundaries. To run it (Docker Compose, Kubernetes, air-gapped, BYO-model, embedded), see the [deployment playbook](docs/deployment.md) (horizontal scaling is G3 #68). A [bounded two-replica qualification profile](deployment/multi-replica/README.md) verifies selected shared-state and tenant-isolation paths; it is not an HA/DR claim.
 
 ## Quickstart
 
@@ -551,6 +551,21 @@ python benchmarks/load/run_load.py --config-dir deployment/smoke/config \
 # Fast in-process run (used by tests/CI)
 python benchmarks/load/run_load.py --in-process --config-dir deployment/smoke/config \
   --concurrency 1 --requests 2 --scenarios health,ready,query
+```
+
+### Bounded multi-replica qualification
+
+[`deployment/multi-replica/`](deployment/multi-replica/README.md) runs two API processes against one
+shared SQLite store and verifies cross-replica traces, spend scoping, experiments, audit events,
+eval trends, tenant-isolated retrieval/cache keys and restart recovery. The committed evidence is
+[`docs/benchmarks/multi-replica.md`](docs/benchmarks/multi-replica.md). This is a single-host
+correctness qualification, not HA, DR or performance proof.
+
+```bash
+python -m app.config_validate --config-dir deployment/multi-replica/config
+python benchmarks/multi_replica/run_qualification.py \
+  --out docs/benchmarks/multi-replica.json --markdown docs/benchmarks/multi-replica.md
+python benchmarks/multi_replica/run_qualification.py --check docs/benchmarks/multi-replica.json
 ```
 
 ### How this compares to alternatives

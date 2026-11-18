@@ -378,6 +378,9 @@ def create_app(
         application.state.audit = AuditLogger.from_config(
             audit_config, redactor=application.state.history.redactor, store=_audit_store
         )
+        application.state.persistence_stores = [
+            store for store in (_exp_store, _store, _audit_store) if store is not None
+        ]
         audit_logger = application.state.audit
         audit_logger.record(
             "config", "startup", "success", details={"config_revision": 0}
@@ -412,6 +415,11 @@ def create_app(
             audit_logger = getattr(application.state, "audit", None)
             if audit_logger is not None:
                 audit_logger.close()
+            for store in getattr(application.state, "persistence_stores", []):
+                try:
+                    store.close()
+                except Exception:
+                    pass
 
     application = FastAPI(
         title="Enterprise GenAI RAG Platform",

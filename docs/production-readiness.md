@@ -29,8 +29,8 @@ behaviour on a single reference node, not capacity, certification or regulatory 
 
 | # | Area | Status | Risk | Primary next step |
 | --- | --- | --- | --- | --- |
-| 1 | Durable/shared persistence | Partial | **High** | Make the shared store the default before running more than one replica (#206). |
-| 2 | Multi-replica consistency & coordination | Unvalidated | **High** | Validate correctness across replicas once shared state lands (#206). |
+| 1 | Durable/shared persistence | Partial → qualified profile | Medium-High | Adopt a shared backend as the default for multi-replica deployments; declare the optional Postgres driver (#206). |
+| 2 | Multi-replica consistency & coordination | Qualified (bounded) | Medium | Extend evidence to Postgres/multi-node; add PDB/NetworkPolicy and a rebuild broadcast story (#206). |
 | 5 | Security testing & independent validation | Partial | **High** | Independent validation; CodeQL/SCA/image gates landed in #225. |
 | 4 | Authn/authz & tenant isolation | Implemented | Medium | Adversarial multi-tenant validation; ship a hardening profile on by default. |
 | 6 | Load/performance & SLOs | Partial | Medium | Define SLOs from real baselines; soak and autoscaling tests on target hardware. |
@@ -53,12 +53,15 @@ Export/verify/restore helpers live in `core/services/backup_restore.py`.
 
 **Evidence.** `config/persistence.yaml`, `core/services/base_store.py`,
 `core/services/store_backends.py`, `tests/test_backup_restore.py`,
-`tests/test_cross_region_persistence.py`, `tests/test_immutable_audit.py`.
+`tests/test_cross_region_persistence.py`, `tests/test_immutable_audit.py`,
+`deployment/multi-replica/`, `docs/benchmarks/multi-replica.md`,
+`benchmarks/multi_replica/run_qualification.py`.
 
 **Gaps.**
-- The default is process-local memory: state is lost on restart and is not shared between
-  replicas.
-- SQLite is a single-file store, unsuitable for concurrent writers across replicas.
+- The default is still process-local memory: state is lost on restart and is not shared between
+  replicas unless `persistence.yaml` is changed.
+- The qualified profile uses one SQLite file on one host; it is not evidence for concurrent
+  cross-replica writers or multi-node filesystems.
 - The **approval queue is in-memory only** (`core/services/approval.py` keeps a plain dict);
   it is not backed by `BaseStore`, so pending approvals do not survive a restart.
 - The Postgres backend imports `psycopg2` lazily but **`psycopg2` is not declared** in
@@ -66,14 +69,14 @@ Export/verify/restore helpers live in `core/services/backup_restore.py`.
   out of band.
 - Prometheus metrics and the response cache are in-process (no remote write / shared cache).
 
-**Impact.** With more than one replica or after any restart, traces, cost windows, eval
-trends, experiments and approvals are inconsistent or lost. This is the single largest
-correctness risk for scaling out.
+**Impact.** The selected shared read paths are now qualified for a bounded two-replica profile,
+but the shipped single-replica memory default, approvals and process-local utilities still require
+operator action before scaling out.
 
-**Recommended next step.** Ship a production profile that sets `persistence.yaml` to a
-shared backend, declare the Postgres driver as an optional extra, back the approval queue
-with `BaseStore`, and document the single-replica default explicitly. Tracked by **#206**
-(durable multi-replica deployment profile); the store plumbing is already in place (#56).
+**Recommended next step.** Adopt a shared backend as the default for multi-replica deployments,
+declare the Postgres driver as an optional extra, back the approval queue with `BaseStore`, and
+document the single-replica default explicitly. Tracked by **#206** (durable multi-replica
+deployment profile); the bounded profile and evidence are in place.
 
 **Status: Partial.**
 
@@ -84,24 +87,25 @@ scale with HPA and KEDA (`deployment/helm/genai-platform/templates/hpa.yaml`,
 `keda-scaledobject.yaml`). Configuration is read once per process at startup.
 
 **Evidence.** `deployment/helm/genai-platform/`, `tests/test_deployment_ha.py`,
-`app/main.py` (per-process lifespan state), `app/ops_api.py` (per-process run history).
+`app/main.py` (per-process lifespan state), `deployment/multi-replica/`,
+`benchmarks/multi_replica/run_qualification.py`, `docs/benchmarks/multi-replica.md`.
 
 **Gaps.**
 - No leader election, distributed lock or coordination primitive.
-- Per-process state (run history, traces, response cache, `config_revision`, approval queue)
-  is not reconciled across replicas.
+- Response cache, `config_revision`, approval queue, SCIM directory and Prometheus counters are
+  per-process and not reconciled across replicas.
 - `POST /v1/pipeline:rebuild` swaps the pipeline **in one process**; other replicas keep
   serving the old revision until restarted or rebuilt independently.
 - No PodDisruptionBudget or NetworkPolicy in the chart (no disruption budget or default-deny
   network posture).
 
-**Impact.** Horizontal scaling multiplies inconsistent views: a trace, cost total or
-approval may be visible on one replica and absent on another, and a rebuild is not
-cluster-wide. This is **unvalidated** because no multi-replica test exists.
+**Impact.** The gap is now qualified as a bounded two-process profile: shared traces, spend,
+experiments, audit and eval trends are verified across two processes, but caches, rebuilds and
+approvals still require an external coordination story.
 
-**Recommended next step.** After shared state (#206), add multi-replica correctness tests
-and a documented coordination story for rebuilds and caches; add PDB/NetworkPolicy to the
-chart. Tracked by **#206**.
+**Recommended next step.** Extend the harness to Postgres and multi-node, add a documented
+coordination story for rebuilds/caches/approvals, and add PDB/NetworkPolicy to the chart.
+Tracked by **#206** and the broader HA roadmap.
 
 **Status: Unvalidated.**
 

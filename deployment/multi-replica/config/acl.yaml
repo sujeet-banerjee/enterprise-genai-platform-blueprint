@@ -1,0 +1,4 @@
+enabled: true
+default_policy: deny
+overfetch_factor: 4
+bypass_roles: []
