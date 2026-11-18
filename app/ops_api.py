@@ -102,6 +102,40 @@ class RunHistory:
     def redact(self, obj: Any) -> Any:
         return self._redactor.redact_obj(obj)
 
+    def _stored_runs(self) -> List[Dict[str, Any]]:
+        """Read run records from the shared store (issue #206)."""
+        if self._store is None:
+            return []
+        try:
+            items = self._store.list(
+                prefix=f"{self._store_prefix}:run:", limit=max(self.max_runs, 10000)
+            )
+        except Exception:
+            return []
+        runs = [item for item in items if isinstance(item, dict)]
+        runs.sort(key=lambda item: float(item.get("timestamp") or 0.0), reverse=True)
+        return runs[: self.max_runs]
+
+    def _stored_traces(self) -> "OrderedDict[str, Dict[str, Any]]":
+        """Read redacted traces from the shared store (issue #206)."""
+        if self._store is None:
+            return OrderedDict()
+        try:
+            items = self._store.list(
+                prefix=f"{self._store_prefix}:trace:", limit=max(self.max_traces, 10000)
+            )
+        except Exception:
+            return OrderedDict()
+        traces: "OrderedDict[str, Dict[str, Any]]" = OrderedDict()
+        for item in sorted(items, key=lambda entry: float(entry.get("timestamp") or 0.0)):
+            if not isinstance(item, dict):
+                continue
+            request_id = str(item.get("request_id") or "")
+            payload = item.get("trace") if "trace" in item else item
+            if request_id and isinstance(payload, dict):
+                traces[request_id] = payload
+        return traces
+
     # -- ingestion --------------------------------------------------------
 
     def record(
@@ -172,15 +206,44 @@ class RunHistory:
                     self._store.set(f"{self._store_prefix}:run:{request_id}", entry)
                     tr = self._traces.get(request_id)
                     if tr is not None:
-                        self._store.set(f"{self._store_prefix}:trace:{request_id}", tr)
+                        self._store.set(
+                            f"{self._store_prefix}:trace:{request_id}",
+                            {
+                                "request_id": request_id,
+                                "timestamp": round(time.time(), 6),
+                                "trace": tr,
+                            },
+                        )
+                        stored_traces = self._store.list(
+                            prefix=f"{self._store_prefix}:trace:", limit=10000
+                        )
+                        if len(stored_traces) > self.max_traces:
+                            stored_traces.sort(
+                                key=lambda entry: float(entry.get("timestamp") or 0.0)
+                            )
+                            for old in stored_traces[: len(stored_traces) - self.max_traces]:
+                                old_id = str(old.get("request_id") or "")
+                                if old_id:
+                                    self._store.delete(f"{self._store_prefix}:trace:{old_id}")
                 except Exception:
                     pass
+
 
     # -- reads ------------------------------------------------------------
 
     def trace(self, request_id: str, tenant: Optional[str] = None) -> Optional[Any]:
+        stored = None
+        if self._store is not None:
+            try:
+                stored_record = self._store.get(f"{self._store_prefix}:trace:{request_id}")
+                if isinstance(stored_record, dict) and "trace" in stored_record:
+                    stored = stored_record.get("trace")
+                else:
+                    stored = stored_record
+            except Exception:
+                stored = None
         with self._lock:
-            trace = self._traces.get(request_id)
+            trace = stored if stored is not None else self._traces.get(request_id)
             if (
                 trace is not None
                 and tenant is not None
@@ -193,16 +256,26 @@ class RunHistory:
             return dict(trace) if isinstance(trace, dict) else trace
 
     def run_count(self) -> int:
+        stored = self._stored_runs()
+        if stored:
+            return len(stored)
         with self._lock:
             return len(self._runs)
 
     def trace_count(self) -> int:
+        stored = self._stored_traces()
+        if stored:
+            return len(stored)
         with self._lock:
             return len(self._traces)
 
     def _runs_for(self, tenant: Optional[str]) -> List[Dict[str, Any]]:
-        with self._lock:
-            runs = list(self._runs)
+        stored = self._stored_runs()
+        if stored:
+            runs = stored
+        else:
+            with self._lock:
+                runs = list(self._runs)
         if tenant is None:
             return runs
         return [entry for entry in runs if entry.get("tenant") == str(tenant)]

@@ -1,10 +1,10 @@
 # Bot work split (H4/H5 — current open items)
 
-Reconciled 2026-11-17 from `origin/main` @ `3d98ff8` (after #158, #189, #205, #223, #233-#235 and #237 merged). No open PRs. #193 draft merged; awaiting maintainer approval/publish. Security follow-ups #224 (rate limits) and #225 (CI supply-chain gates) remain open; #223 (tenant-header binding) is merged/closed.
+Reconciled 2026-11-18 after #206 merged via PR #263 (`origin/main` @ `a58dbd0`), following #158, #189, #205, #223-#225, #233-#235, #237, #239, #261 and #262. #193 draft merged; awaiting maintainer approval/publish. H5 qualification #206 (durable multi-replica profile) is done.
 
-Open items: umbrella **#43**; showcase follow-up **#232** (external capture links, MANUAL, bot-win); showcase/proof **#187-#193** (only #193 still open — draft merged, awaiting maintainer approval/publish); H5 qualification **#206** (unassigned); security follow-ups **#224** (rate limits) and **#225** (CI supply-chain gates). Workstream M UX **completed** (#158 collaboration/feedback and #189 demo walkthrough delivered by bot-win). Workstream G
+Open items: umbrella **#43**; showcase follow-up **#232** (external capture links, MANUAL, bot-win); showcase/proof **#187-#193** (only #193 still open — draft merged, awaiting maintainer approval/publish). Workstream M UX **completed** (#158 collaboration/feedback and #189 demo walkthrough delivered by bot-win). Workstream G
 follow-ups (#64/#68-#71), #105/#109, #154 (UX11), #155 (UX12), #156 (UX13), #157 (UX14),
-#162, #175, #187-#192, #195-#199, #204, #205, #223, #230-#235 and #237 are **closed** — do not treat them as open.
+#162, #175, #187-#192, #195-#199, #204-#206, #223-#225, #230-#235, #237, #239, #261 and #263 are **closed** — do not treat them as open.
 Re-check open issues and PRs before each item.
 
 ## Bot identities
@@ -27,7 +27,8 @@ Re-check open issues and PRs before each item.
 | 1 | **Showcase harness #195-#199** (H5) | Benchmark corpora/config (#195), reproducible report generator (#196), reference load/latency harness (#197), published results/methodology (#198), comparison matrix (#199). |
 | 2 | **Showcase docs owned by bot-uni** (H5) | #187 repository identity, #188 architecture diagram, #190 engineering lifecycle, #191 capability-status audit, #192 production-readiness gap, #193 LinkedIn draft (user approves/publishes). |
 | 3 | **Backend support for UX where agreed** | Prefer bot-win owns the `ui/` surface. Take narrowly-scoped backend contracts only after agreeing in the issue (e.g. a jobs API if #152's UI-side execution ever needs server-side scale). |
-| 4 | **Roadmap/docs reconciliation** | Small post-merge doc PRs; avoid concurrent edits to the same files. |
+| 4 | **Durable multi-replica profile #206** (H5, done) | Bounded two-process single-host qualification merged via PR #263: shared SQLite store, cross-replica trace/spend/experiment/audit/trend reads, tenant-isolation negatives, restart recovery, evidence and support matrix. Not HA/DR/performance proof. |
+| 5 | **Roadmap/docs reconciliation** | Small post-merge doc PRs; avoid concurrent edits to the same files. |
 
 Completed by this workstream since the last split: **#179** cost/latency experiment
 telemetry, **#180** budget-aware regression gates, **#181** config-driven parameter
@@ -36,7 +37,8 @@ bundles, #123 HITL workflow, #124 eval dataset schema/loaders, #125 CI regressio
 gates, #126 eval dashboard metrics, #127 golden paths, #128 `genai init`, #129
 onboarding guide, #162 generic redaction fallback, #175 HITL approvals queue
 contract (server-side pagination/filter/sort/tenant scope), #223 identity-bound
-tenant selection (PR #237).
+tenant selection (PR #237), #224 config-driven API rate limits and in-flight caps
+(PR #261).
 
 ## Work items for enterprise-gen-ai-bot-win — UX/console and docs polish
 
@@ -71,10 +73,10 @@ PR #230), #163 (HITL review console), #164 (queue operations/SLA/safe export), #
 | #199 comparison matrix vs alternatives | bot-uni | Done (merged) | — |
 | #204 engineering-team adoption + pilot kit | bot-uni | Done (merged) | — |
 | #205 security qualification: threat model + adversarial evidence | bot-uni | Done (merged, PR #226) | — |
-| #206 durable multi-replica deployment profile qualification | unassigned (re-check) | Todo | — |
+| #206 durable multi-replica deployment profile qualification | bot-uni | Done (merged, PR #263) | — |
 | #223 bind tenant header to authenticated identity | bot-uni | Done (merged, PR #237) | — |
-| #224 configurable API rate limits and quotas | bot-uni | Todo (security follow-up) | — |
-| #225 required CodeQL + dependency/image scanning gates | bot-uni | Todo (security follow-up) | — |
+| #224 configurable API rate limits and quotas | bot-uni | Done (merged, PR #261) | — |
+| #225 required CodeQL + dependency/image scanning gates | bot-uni | Done (merged, PR #239; 7 required checks) | — |
 | #232 showcase external capture links | bot-win | Todo (MANUAL; awaiting maintainer captures) | #189 (merged) |
 
 ## Suggested operating rules (to avoid collisions)

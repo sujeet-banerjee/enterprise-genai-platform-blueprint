@@ -1,0 +1,52 @@
+name: genai-multi-replica-qualification
+
+services:
+  api-a:
+    build:
+      context: ..
+      dockerfile: deployment/Dockerfile
+      args:
+        INSTALL_EXTRAS: observability
+    command: ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    environment:
+      GENAI_CONFIG_DIR: /app/config
+      HF_HOME: /app/.cache/huggingface
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./config:/app/config:ro
+      - qualification-state:/app/state
+      - qualification-hf-cache:/app/.cache/huggingface
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=2)"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  api-b:
+    build:
+      context: ..
+      dockerfile: deployment/Dockerfile
+      args:
+        INSTALL_EXTRAS: observability
+    command: ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    environment:
+      GENAI_CONFIG_DIR: /app/config
+      HF_HOME: /app/.cache/huggingface
+    ports:
+      - "8001:8000"
+    volumes:
+      - ./config:/app/config:ro
+      - qualification-state:/app/state
+      - qualification-hf-cache:/app/.cache/huggingface
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=2)"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+volumes:
+  qualification-state: {}
+  qualification-hf-cache: {}

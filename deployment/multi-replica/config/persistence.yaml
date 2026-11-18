@@ -1,0 +1,3 @@
+backend: sqlite
+path: /app/state/store.db
+max_entries: 5000

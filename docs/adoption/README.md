@@ -88,8 +88,8 @@ owner.
 - **Certification:** no independent security certification or penetration test is claimed
   (tracked by #205).
 - **References:** there are no customer references or adoption claims.
-- **Scale:** default persistence and caches are process-local; validate multi-replica
-  behaviour before relying on it (tracked by #206).
+- **Scale:** default persistence and caches are process-local; a bounded two-replica profile
+  is qualified in #206, but adopters must validate their own topology before relying on it.
 - **Demo data:** the bundled corpora are synthetic; use your own evaluation data for a pilot.
 
 Escalate through a GitHub issue using the templates in [CONTRIBUTING.md](../../CONTRIBUTING.md).

@@ -1,0 +1,16 @@
+[
+  {
+    "content": "ACME internal runbook: rotate the acme service key every 30 days.",
+    "metadata": {
+      "doc_id": "acme-runbook",
+      "allowed_tenants": ["acme"]
+    }
+  },
+  {
+    "content": "Beta research note: quarterly retrieval quality experiment.",
+    "metadata": {
+      "doc_id": "beta-note",
+      "allowed_tenants": ["beta"]
+    }
+  }
+]
