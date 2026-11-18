@@ -17,7 +17,7 @@ DEPENDABOT = REPO / ".github" / "dependabot.yml"
 WAIVERS = REPO / "security" / "waivers.yml"
 SECURITY_DOC = REPO / "docs" / "security" / "README.md"
 LIFECYCLE_DOC = REPO / "docs" / "engineering-lifecycle.md"
-TRIVY_SHA = "a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8"
+TRIVY_SHA = "ed142fd0673e97e23eac54620cfb913e5ce36c25"
 UPLOAD_SHA = "cf430e030ddbb5b0abf93d22962f4752f3646cd9"
 REQUIRED_CONTEXTS = [
     "Lint (ruff)",
