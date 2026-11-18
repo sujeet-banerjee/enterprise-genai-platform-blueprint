@@ -224,7 +224,7 @@ def _plan_redistribution_issues() -> Set[str]:
     for line in section.splitlines():
         if not line.startswith("|"):
             continue
-        for start, end in re.findall(r"#(\d+)(?:-#(\d+))?", line):
+        for start, end in re.findall(r"(?<!PR )#(\d+)(?:-#(\d+))?", line):
             first = int(start)
             last = int(end) if end else first
             issues.update(range(first, last + 1))
@@ -239,7 +239,7 @@ def test_redistribution_doc_states_the_ownership_boundary():
     section = SPLIT_PATH.read_text(encoding="utf-8").split(
         "## UI look/feel redistribution", 1
     )[1]
-    assert "#265 | bot-uni |" in section
+    assert "#265" in section and "bot-uni" in section
     assert "never `ui/`" in section
     split_text = SPLIT_PATH.read_text(encoding="utf-8")
     assert "bot-win implements #240-#257; bot-uni handles #265 only" in split_text

@@ -1,8 +1,8 @@
 # Bot work split (current open items)
 
-Reconciled 2026-11-18 after Dependabot #258/#259 merged (`origin/main` @ `ef40bc9`) and the UI look/feel plan tracker audit. #240-#257 were added to Project #8 Workstream M; new bot-uni support issue #265 carries the cross-cutting guard/docs half. No open PRs at reconciliation.
+Reconciled 2026-11-18 after #265 merged via PR #266 (`origin/main` @ `9d268d3`) and the UI look/feel plan tracker audit. #240-#257 remain bot-win implementation items in Project #8 Workstream M; bot-uni's cross-cutting guard/support half (#265) is done. No open PRs at reconciliation.
 
-Open items: umbrella **#43**; **#193** (LinkedIn package, MANUAL, maintainer approves/publishes); **#232** (external demo capture links, MANUAL, bot-win); UI look/feel plan **#240-#257** (bot-win) and cross-cutting support **#265** (bot-uni). Workstreams A-L are closed except the manifest-driven open umbrellas noted above. Re-check open issues and PRs before each item.
+Open items: umbrella **#43**; **#193** (LinkedIn package, MANUAL, maintainer approves/publishes); **#232** (external demo capture links, MANUAL, bot-win); UI look/feel plan **#240-#257** (bot-win). Cross-cutting support **#265** (bot-uni) is done (PR #266). Workstreams A-L are closed except the manifest-driven open umbrellas noted above. Re-check open issues and PRs before each item.
 
 ## Bot identities
 
@@ -21,7 +21,7 @@ Open items: umbrella **#43**; **#193** (LinkedIn package, MANUAL, maintainer app
 
 | Order | Item | Notes |
 |---|---|---|
-| 1 | **#265 UI look/feel cross-cutting guards** (H4, Workstream M) | Contract/AST/docs guards for #240-#257. No `ui/` edits: bot-uni only touches `tests/`, docs and backend contracts. Extend HTTP-only AST checks, API contract/redaction checks and plan-to-tracker structural guards; >=6 focused tests. |
+| 1 | **#265 UI look/feel cross-cutting guards** (H4, Workstream M) | Done via PR #266: 10 focused tests in `tests/test_ui_plan_guards.py` for plan/tracker mapping, ownership boundary, HTTP-only rule, API paths, declared client methods, typed schemas and redaction/tenant-scope guards. No `ui/` edits. |
 | 2 | **Docs reconciliation after bot-win UI merges** | After each #240-#257 merge, update this split, `docs/ux-and-api.md`, `docs/capability-status.md`, `docs/enterprise-roadmap.md` and README links when behaviour changes. Avoid concurrent edits to files bot-win is editing. |
 | 3 | **Manual #193 / umbrella #43 monitoring** | #193 draft is merged; only maintainer approval/publish remains. Update #43 checklist/status in small dedicated PRs. |
 | 4 | **Backend support for UX where explicitly agreed** | Prefer bot-win owns the `ui/` surface. Take narrowly scoped backend contracts only after agreement in the relevant issue (e.g. a jobs API if UI execution needs server-side scale). |
@@ -32,7 +32,8 @@ sweep + Pareto report, **#195-#199** showcase harness/results/comparison, **#187
 #190-#192** showcase docs, **#204** adoption kit, **#205** security qualification,
 **#206** durable multi-replica profile (PR #263), **#223** identity-bound tenant
 selection (PR #237), **#224** API rate limits (PR #261), **#225** supply-chain gates
-(PR #239), docs follow-ups #260/#262/#264, and Dependabot PRs #258/#259.
+(PR #239), **#265** UI look/feel cross-cutting guards (PR #266), docs
+follow-ups #260/#262/#264, and Dependabot PRs #258/#259.
 
 ## Work items for enterprise-gen-ai-bot-win — UX/console
 
@@ -59,10 +60,11 @@ PR #230), #163 (HITL review console), #164 (queue operations/SLA/safe export), #
 | P1 structured screens and visualizations | #242-#248 | bot-win | `ui/` screens; bot-uni verifies API contracts in #265 |
 | P2 screen parity and responsiveness | #249-#255 | bot-win | `ui/` screens/components; bot-uni verifies contracts/docs after merge |
 | P3 trust/copy/loading polish, QA, captures | #256-#257 | bot-win | `ui/` polish and visual QA; bot-uni verifies CI/API guards in #265 |
-| Cross-cutting contract, AST and docs guards | #265 | bot-uni | `tests/`, docs and backend contracts only; never `ui/` |
+| Cross-cutting contract, AST and docs guards | #265 (done, PR #266) | bot-uni | `tests/`, docs and backend contracts only; never `ui/` |
 
-All #240-#257 and #265 are Project #8 items, Status Todo, Workstream **M UX polish &
-adoption**. #240-#257 carry `owner:bot-win`; #265 carries `owner:bot-uni`.
+All #240-#257 and #265 are Project #8 items, Workstream **M UX polish &
+adoption**. #240-#257 remain Status Todo with `owner:bot-win`; #265 is Status Done with
+`owner:bot-uni`.
 
 ## Showcase/proof workstream (H5)
 
