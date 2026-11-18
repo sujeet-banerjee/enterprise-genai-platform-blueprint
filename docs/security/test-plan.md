@@ -78,7 +78,7 @@ status code:
 - Adaptive/obfuscated prompt-injection research, model-level jailbreaks and classifier
   evasion beyond the shipped heuristics.
 - Network/TLS, ingress, WAF, Kubernetes admission, cloud IAM, IdP configuration.
-- Load, soak and multi-replica consistency (see #197 harness, #206 open).
+- Load, soak and full multi-replica consistency (see #197 harness; #206 bounded two-process qualification landed).
 - Third-party provider isolation and data-retention behaviour.
 - Container escape, host compromise, side channels, physical access.
 - Independent assessment: **not performed** (see [README.md](README.md)).
