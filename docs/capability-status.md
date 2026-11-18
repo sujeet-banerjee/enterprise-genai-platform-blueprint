@@ -68,6 +68,7 @@ Two rules keep this honest:
 | Permission-aware retrieval (document ACL) | Tested | `core/services/acl.py`, `tests/test_acl_retrieval.py` | Over-fetch then filter before reranking/prompting; leak tests across backends. |
 | Input redaction (query + docs before prompt) | Tested | `app/pipeline.py`, `tests/test_input_redaction.py` | Closes the raw-egress gap (#72). |
 | Query-length guard | Tested | `core/services/guardrails.py`, `tests/test_query_length_guard.py` | `retrieval.guardrails.max_query_chars`; HTTP 400. |
+| API rate limits + in-flight cap | Tested | `core/services/rate_limit.py`, `app/main.py`, `tests/test_rate_limits.py` | `api.rate_limit` token bucket, 429/Retry-After, per-key/tenant scope, Prometheus counter; process-local and default-off. |
 
 ## Observability and operations
 

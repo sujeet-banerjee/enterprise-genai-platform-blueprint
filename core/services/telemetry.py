@@ -143,6 +143,12 @@ class PrometheusCollector:
             labelnames=("tenant", "app", "user", "status"),
             registry=self._registry,
         )
+        self._rate_limits = Counter(
+            "genai_rate_limit_events_total",
+            "API requests rejected by the configured rate limiter.",
+            labelnames=("scope", "reason", "tenant"),
+            registry=self._registry,
+        )
 
     def is_available(self) -> bool:
         return self.available
@@ -153,6 +159,15 @@ class PrometheusCollector:
         if not self.available:
             return
         self._in_flight.inc(delta)
+
+    def record_rate_limit(self, scope: str, reason: str, tenant: str) -> None:
+        if not self.available:
+            return
+        self._rate_limits.labels(
+            scope=scope or "auto",
+            reason=reason or "request_rate",
+            tenant=tenant or "default",
+        ).inc()
 
     def record(self, result: Dict[str, Any]) -> None:
         """Update counters/histograms from one pipeline run result."""

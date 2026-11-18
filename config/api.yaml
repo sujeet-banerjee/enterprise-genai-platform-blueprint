@@ -29,3 +29,22 @@ batch_max_workers: 4
 # ``GET /v1/approvals`` rejects larger pages with a 400 ``approval_invalid``
 # envelope; the default page size is 50.
 approvals_page_size_max: 100
+
+# Application-layer abuse protection (issue #224). Disabled by default so legacy
+# single-tenant deployments behave exactly as before; enable it at the edge or
+# alongside a gateway/WAF. This is a process-local token bucket plus in-flight
+# cap, not a distributed quota: each replica enforces its own limits and the
+# gateway/WAF remains responsible for global edge protection.
+#
+# ``scope`` selects the bucket identity: ``auto`` (subject -> API key -> tenant
+# -> role -> client IP), ``key``, ``tenant``, ``role``, ``subject`` or ``ip``.
+# API keys and subjects are hashed before use; raw values never enter metrics.
+# A batch request consumes one token; ``max_batch_size`` and
+# ``batch_max_workers`` still bound work inside that request. Tenant
+# ``budget_cap_usd`` remains a separate post-hoc spend guard, not a rate limit.
+rate_limit:
+  enabled: false
+  requests_per_minute: 60
+  burst: 10
+  scope: auto
+  in_flight_max: 4

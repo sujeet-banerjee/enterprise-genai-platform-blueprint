@@ -400,7 +400,7 @@ All behaviour is driven by YAML in config/:
 - config/governance.yaml - cost/retrieval-policy governance (enabled, cost cap, safety margin)
 - config/observability.yaml - logging, redaction toggle, sensitive patterns, PII/DLP scrubbing (`pii:` block) and OTel tracing (`otel:` block), all disabled by default
 - config/prompt_config.yaml - prompt profiles
-- config/api.yaml - API key stub, rebuild gate, batch/store limits (all disabled/lean by default)
+- config/api.yaml - API key stub, rebuild gate, batch/store limits and a process-local `rate_limit:` token bucket + in-flight cap (`429 rate_limited`; disabled by default)
 - config/audit.yaml - append-only audit trail (disabled by default; optional JSONL `path`)
 - config/access_control.yaml - RBAC roles/personas, capabilities and request caps (disabled by default)
 - config/resilience.yaml - provider retries, circuit breaker and LLM failover (disabled by default)
@@ -918,6 +918,23 @@ blocked on input and masked on output):
 ```yaml
 profile: strict        # or standard (default), none
 ```
+
+**Enable API rate limits** - `config/api.yaml` ships a process-local token bucket and in-flight
+cap, disabled so local/demo behaviour is unchanged:
+
+```yaml
+rate_limit:
+  enabled: true
+  requests_per_minute: 60
+  burst: 10
+  in_flight_max: 4
+  scope: auto            # or key/tenant/role/subject/ip
+```
+
+Over-limit requests receive `429 rate_limited` with `Retry-After` and increment
+`genai_rate_limit_events_total`. Buckets are per-process: keep a gateway/WAF for global quotas,
+and remember that a batch request consumes one token while tenant budget caps remain a separate
+post-hoc spend guard.
 
 **Custom input/output guardrails** - edit the same file. `input` runs on the query + retrieved docs
 before prompt construction, `output` runs on the generated response before it is returned. Each is

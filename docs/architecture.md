@@ -585,6 +585,17 @@ sees everything. Traces and results gain `access_control
 (tenant/groups/roles) to prevent cross-caller reuse, and the API forwards
 `role`/`groups` to the pipeline only when ACLs are enabled.
 
+**API abuse protection (roadmap #224).** The `rate_limit:` block in `config/api.yaml`
+drives `core/services/rate_limit.py::RateLimiter`, built in `app/main.py::create_app` and
+applied in the HTTP middleware after identity/tenant/RBAC resolution but before the pipeline.
+It combines a process-local token bucket (`requests_per_minute`, `burst`) with a concurrent
+in-flight cap (`in_flight_max`). `scope` selects the bucket identity: `auto`, `key`,
+`tenant`, `role`, `subject` or `ip`; identity/API-key values are hashed before use. Rejections
+return `429 rate_limited` with `Retry-After`, are counted by
+`genai_rate_limit_events_total`, and never expose the bucket key. The shipped default is
+`enabled: false`, so legacy deployments are unchanged; a gateway/WAF remains responsible for
+distributed/global quotas.
+
 **Ingestion connectors (roadmap H, #115-#117).** `config/ingestion.yaml` drives
 `ConnectorRegistry` and `IngestionService` (disabled by default). Providers are
 `noop`, `filesystem`, `sharepoint`, `confluence`, `s3`, `azure_blob` and `gcs`;
@@ -804,6 +815,7 @@ exposition** format, for scraping by Prometheus/Grafana (roadmap issue #44). The
 | `genai_guardrail_decisions_total` | counter | `guardrail`, `decision` (allow/redact/block) |
 | `genai_guardrail_blocks_total` | counter | `guardrail`, `stage` (input/output) |
 | `genai_in_flight_requests` | gauge | — |
+| `genai_rate_limit_events_total` | counter | `scope`, `reason` (request_rate/in_flight), `tenant` |
 
 Guardrail counters (issue #87) are fed from the per-request `guardrail_decisions` records,
 so measuring hit-rate costs no extra scanning. Cache hits replays the original decisions
