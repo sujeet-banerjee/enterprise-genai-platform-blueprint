@@ -403,6 +403,8 @@ def styles(
 .genai-card dd {{ margin: 0; word-break: break-word; }}
 .genai-card-description {{ color: var(--genai-muted); margin: 0 0 0.6rem 0; }}
 .genai-actions {{ display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.6rem; }}
+.genai-checklist {{ margin: 0; padding-left: 1.25rem; }}
+.genai-checklist-item {{ margin: 0 0 0.45rem 0; line-height: 1.5; }}
 .genai-action {{
   display: inline-flex;
   align-items: center;

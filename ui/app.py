@@ -64,6 +64,7 @@ from ui.approvals import (
 from ui.client import ApiClient, ApiResult
 from ui.common import api_base_url, latency_rows, metric_rows, require_ok
 from ui.components import (
+    DETAIL_EXPANDER_LABEL,
     alert_markdown,
     detail_drawer_markdown,
     detail_drawer_model,
@@ -185,6 +186,14 @@ from ui.navigation import (
     landing_screen,
     quick_actions_for,
     role_label,
+)
+from ui.overview import (
+    active_label,
+    checklist_card_view,
+    component_cards,
+    component_cards_markdown,
+    overview_kpis,
+    raw_detail_drawer,
 )
 from ui.palette import (
     KIND_LABELS,
@@ -870,8 +879,13 @@ def _render_kpi_strip(items: List[Dict[str, Any]]) -> None:
     st.markdown(kpi_strip_markdown(kpi_strip(items)), unsafe_allow_html=True)
 
 
-def _render_detail_drawer(title: Any, summary: Any, payload: Any = None) -> None:
-    drawer = detail_drawer_model(title, summary, payload)
+def _render_detail_drawer(
+    title: Any,
+    summary: Any,
+    payload: Any = None,
+    expander_label: Any = DETAIL_EXPANDER_LABEL,
+) -> None:
+    drawer = detail_drawer_model(title, summary, payload, expander_label)
     st.markdown(detail_drawer_markdown(drawer), unsafe_allow_html=True)
     with st.expander(drawer["expander_label"], expanded=False):
         st.json(drawer["payload"])
@@ -989,7 +1003,7 @@ def _render_sidebar_navigation(access: Dict[str, Any]) -> None:
 
 
 def _render_get_started(backend_ok: bool) -> None:
-    """A short, click-through onboarding checklist for first-run users (#130)."""
+    """A guided onboarding card driven by real console session flags (#130, #242)."""
     st.divider()
     st.subheader("Get started")
     if st.session_state.get("checklist_hidden"):
@@ -1010,31 +1024,17 @@ def _render_get_started(backend_ok: bool) -> None:
     }
     capabilities = (st.session_state.get("access_context") or {}).get("capabilities") or []
     statuses = checklist_status(done, capabilities)
-    completed = sum(1 for _, is_done in statuses if is_done)
+    checklist = checklist_card_view(done, capabilities, statuses)
+    st.markdown(checklist["card_markdown"], unsafe_allow_html=True)
     st.progress(
-        completed / len(statuses),
-        text=f"{completed} of {len(statuses)} steps complete",
+        checklist["progress"],
+        text=f"{checklist['completed']} of {checklist['total']} steps complete",
     )
-    st.dataframe(
-        [
-            {
-                "status": "Done" if is_done else "To do",
-                "step": step.label,
-                "what you get": step.detail,
-                "go to": step.screen or "sidebar",
-            }
-            for step, is_done in statuses
-        ],
-        use_container_width=True,
-        hide_index=True,
-    )
-
-    next_steps = [step for step, is_done in statuses if not is_done and step.screen]
-    if next_steps:
-        nxt = next_steps[0]
-        if st.button(f"Continue: {nxt.label}", key=f"checklist::{nxt.key}", type="primary"):
-            _navigate(nxt.screen or "Overview / Health")
-    if completed == len(statuses):
+    nxt = checklist["next"]
+    if nxt:
+        if st.button(f"Continue: {nxt['label']}", key=f"checklist::{nxt['key']}", type="primary"):
+            _navigate(nxt["screen"] or "Overview / Health")
+    if checklist["complete"]:
         st.success(
             "You have exercised the whole console for your role: query, trace, evaluation, "
             "governance and the role-relevant guardrails/audit/admin steps."
@@ -1060,71 +1060,36 @@ def screen_overview() -> None:
     if not ready.ok:
         require_ok(ready)
 
-    health_status = health.data.get("status") if health.ok else None
-    ready_status = ready.data.get("status") if ready.ok else None
-    config_revision = ready.data.get("config_revision") if ready.ok else None
-    components = ready.data.get("components", {}) if ready.ok else {}
-    kpis: List[Dict[str, Any]] = [
-        {
-            "label": "API health",
-            "value": health_status or "unavailable",
-            "status": "ok" if health.ok else "error",
-        },
-        {
-            "label": "Readiness",
-            "value": ready_status or "not ready",
-            "status": "ok" if ready.ok else "error",
-        },
-        {
-            "label": "Config revision",
-            "value": config_revision or "-",
-            "hint": "active pipeline",
-        },
-    ]
-    for label, call in (
-        ("Active model", api.models),
-        ("Retriever", api.retrievers),
-        ("Reranker", api.rerankers),
-        ("Evaluator", api.evaluators),
-    ):
-        result = call()
-        if not result.ok:
-            kpis.append({"label": label, "value": "unavailable", "status": "error"})
-            continue
-        value = _active_label(label, result.data)
-        if value == "disabled":
-            status = "disabled"
-        elif value in {"-", ""}:
-            status = "neutral"
-        else:
-            status = "ok"
-        kpis.append({"label": label, "value": value, "status": status})
+    access = st.session_state.get("access_context") or {}
+    discovery = {
+        "models": api.models(),
+        "retrievers": api.retrievers(),
+        "rerankers": api.rerankers(),
+        "evaluators": api.evaluators(),
+    }
+    kpis = overview_kpis(health, ready, access, discovery, api_base_url())
     _render_kpi_strip(kpis)
 
-    if ready.ok:
-        _render_detail_drawer(
-            "Registered components",
-            {
-                "config_revision": config_revision or "-",
-                "component_groups": len(components),
-                "readiness": ready_status or "-",
-            },
-            components,
-        )
+    components = ready.data.get("components", {}) if ready.ok else {}
+    cards = component_cards(components)
+    if cards:
+        st.markdown(component_cards_markdown(cards), unsafe_allow_html=True)
     else:
-        st.info("Service is not ready yet.")
+        st.info("No registered components reported by readiness.")
+
+    detail = raw_detail_drawer(health, ready)
+    _render_detail_drawer(
+        detail["title"],
+        detail["summary_rows"],
+        detail["payload"],
+        detail["expander_label"],
+    )
 
     _render_get_started(health.ok and ready.ok)
 
 
 def _active_label(label: str, data: Dict[str, Any]) -> str:
-    if label == "Active model":
-        return str(data.get("active", "-"))
-    if label == "Retriever":
-        return str(data.get("default_retriever", "-"))
-    if label == "Reranker":
-        return str(data.get("active_reranker") or ("disabled" if not data.get("enabled", True) else "-"))
-    return str(data.get("active_evaluator") or ("disabled" if not data.get("enabled", True) else "-"))
+    return active_label(label, data)
 
 
 def _render_query_templates() -> None:
