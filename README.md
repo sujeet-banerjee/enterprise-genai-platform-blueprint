@@ -182,107 +182,24 @@ pip install -r requirements-ui.txt
 streamlit run ui/app.py -- --api-base http://localhost:8000
 ```
 
-Walkthrough: open **Query Studio**, apply a **template** (or type a question), set `top_k`,
-and click **Run query**. Results are tabbed - **Answer** (cost/latency plus a copy/share
-Markdown export and download), **Documents** (scores), **Trace** (per-stage latency + redacted
-trace), **Guardrails**, **Resilience** and **Cache**. The sidebar tracks a bounded, local
-**Recent runs** history; restore a run or run the same query again to see a **Compare with
-last run** delta table. Batch mode runs one query per line.
-Open **Traces** with the returned `request_id` to see the same trace the server logs;
-**Governance & Cost** shows the spend window, metrics, the guardrail hit-rate breakdown and a
-raw Prometheus `/metrics` panel. **Compare (what-if)** rebuilds the
-pipeline with overrides when `api.allow_rebuild=true`. **Guardrails** previews the resolved
-input/output chains (and the selected `profile`), runs a probe query to show per-request
-decisions, and reports hit-rate. **Approvals** is the HITL review queue: default
-`pending` view with action/policy/requester/tenant/age filters, search, sorting,
-pagination and configurable SLA warning/critical thresholds; inspect redacted
-context/policy and correlation ids, then approve or reject with an optional
-reviewer/note. Bulk decisions submit pending items one at a time after explicit
-confirmation and report partial failures; export is safe metadata only (no raw context).
-Requires the `approve` capability. **Audit** reads
-the redacted trail (`limit`/`event_type` filters) and **Access / RBAC** shows the calling
-persona's role/capabilities. The
-**Evaluation** screen adds a dataset picker (built-in benchmark summary or custom
-query/response), ground-truth guidance, metric explanations and a run comparison matrix. Its
-**Dataset evaluation** panel runs every built-in or pasted case as a **background job**
-(#152): each case still goes through `/v1/query` and `/v1/evaluate` with per-case failure
-isolation, but the console stays responsive for datasets up to 200 cases. The job panel
-auto-refreshes with live progress, cancellation that takes effect between cases,
-**Retry failed cases**, **Resume unfinished cases** (retry results overlay the original
-rows), a bounded job history, a case-by-metric matrix, average-score chart, delta against
-the previous run and JSON/CSV export. Jobs survive a page refresh within the console
-process and are deep-linkable via the workspace (`eval_job` parameter). The **Dataset Studio**
-(#153) authors datasets without raw JSON: case and document tables with add/remove/reorder,
-reference/ground-truth and tag fields, inline case-numbered validation (invalid rows stay in
-the editor), preview, benchmark-shaped or bare-list import, round-trip export with redaction,
-and save/load/duplicate/delete of up to 10 named datasets persisted through the workspace
-layer. **Traces** renders a stage timeline/waterfall and now links one request across
-trace, audit, metrics and governance (#154): copy the `request_id`, pivot in one click,
-filter **Audit** by request id, compare two requests side by side (stage latency, failure
-type/tags, retrieved documents, guardrail decisions, resilience, cost when recorded) and
-download a redacted JSON/Markdown **evidence pack** (summary + timeline + matching audit
-events + metrics scope + diff); request ids are deep-linkable through the workspace.
-**Governance & Cost** adds time/tenant/app/user filters, alert previews and CSV/JSON export;
-**Admin** adds scope indicators, confirmation prompts and audit export. API failures render as
-the failure taxonomy plus a remediation hint (`failure_type` + `failure_tags`), not stack
-traces.
+Quick path: open **Query Studio**, choose a template or enter a question, set `top_k`, and
+click **Run query**. The result tabs expose the answer with cost/latency and Markdown export,
+retrieved documents with scores, a redacted trace, guardrail decisions, resilience and cache
+status. Copy the returned `request_id` to inspect the same run in **Traces**, then use
+**Governance & Cost**, **Guardrails**, **Approvals**, **Audit** and **Access / RBAC** for
+operational and security context.
 
-The sidebar groups screens by job (Start here / Experiment / Governance & security /
-Operate / Reference), resolves your role through `GET /v1/access`, lands you on the
-screen that role usually needs, and hides screens your capabilities cannot open (the
-**Show all screens** box previews the full surface). The **Get started** checklist on
-Overview walks connect -> query -> trace -> evaluate -> governance + guardrails/audit/admin
-for roles that hold those capabilities, and tracks real
-actions, while **Quick actions** jump straight to the next task.
+The sidebar groups screens by job and adapts them to the caller's capabilities. First-time
+users can choose **Take the tour**, a short **Role journey**, or **Demo mode** (seeded
+fixtures, no backend and no production data). Explore with **Compare (what-if)**,
+**Evaluation** / **Dataset Studio**, and the read-only **Settings** screen; screen state
+survives reloads and can be shared through redacted workspace links.
 
-**Role journeys** (#157) turn onboarding into a short, persona-specific path: pick
-Architect, Analyst, Security/Compliance, Ops or Admin in the sidebar and the console shows
-one step at a time with a goal, a try-it hint and a link to the matching documentation
-(`< 10` minutes per journey). **Start / restart**, **Back / Next / Finish** and **Skip** are
-always available, and visited screens drive the journey progress bar. **Demo mode** (#157)
-seeds the whole console from local fixtures - query history, a saved dataset, a trace,
-guardrails, approvals and admin data - and returns a `DemoApi` instead of the HTTP client,
-so no backend request is issued and production tenant data is never read or written. A
-persistent banner marks demo mode; **Exit demo and reset** clears the seed and restores a
-clean workspace.
-
-**Command palette (Ctrl+K)** is the keyboard-first launcher (#155): search screens,
-quick actions, recent request ids and tenants with `/`, `>`, `#` and `@` prefixes
-(`?palette=1` opens it from a deep link, and the sidebar button is always available;
-browsers may reserve Ctrl+K, and this limitation is documented with the alternatives).
-The palette is a plain form, so it is fully keyboard-operable, and selecting a result
-navigates with the same workspace/deep-link state as a click. **Keyboard shortcuts**
-opens the same help overlay from the sidebar and lists the keyboard map, the
-WCAG 2.2 AA checklist and the documented exceptions. The console injects a skip link
-(`Skip to main content`), visible focus rings and a `prefers-reduced-motion` reset;
-see `docs/accessibility.md` for the decision record and screen-reader test script.
-
-The sidebar **Appearance** panel switches **theme** (Light, Dark, High contrast),
-**density** (Comfortable, Compact) and **table layout** (Table, Cards) without leaving
-the current screen (#156). Breakpoints are tuned for 375/768/1280 px; narrow views
-reduce padding and degrade tables to cards that keep every column and action, while
-desktop keeps the sidebar actions sticky. Every text/status token meets WCAG 2.2 AA
-(4.5:1) and chart colours meet 3:1. Tokens and the degradation contract are documented in
-[docs/layout-and-theme.md](docs/layout-and-theme.md); `ui/theme.py` holds the pure helpers.
-The console's visual design, information hierarchy and an incremental enterprise-polish plan
-are reviewed in [docs/ui-enterprise-look-and-feel-plan.md](docs/ui-enterprise-look-and-feel-plan.md).
-
-The console keeps a **persistent workspace** across reloads and share links (#151).
-Screen, query, filters, selected trace, comparisons, datasets and saved views are encoded
-in managed URL parameters (`screen`, `request_id` and the compact `ws` payload), so
-copying the address bar reproduces the current view. Use the sidebar to **Share this
-view** (bounded to 12,000 characters; bulky datasets/history are trimmed first), **Save
-view** on any screen, **Pin selected run** in **Recent runs**, or **Export workspace** /
-**Import workspace** as redacted JSON. **Reset workspace** clears it. URLs and exports are
-redacted and never contain secrets or raw config; saved views are capped at 5 per screen
-and saved runs at 20. The Streamlit dependency is pinned to `>=1.65` for query-param
-back/forward support.
-
-First-time users: click **Take the tour** in the sidebar for a guided, step-by-step
-walkthrough of every screen (Back / Next / Skip), start a **Role journey** for a
-persona-sized path, or use **Demo mode** to explore without a backend. The
-**Help & tour guide** expander keeps the same reference available at any time. Keyboard-first
-users can start with **Command palette (Ctrl+K)** and search for `shortcuts`.
+For the full screen-by-screen feature reference, see
+[docs/console-walkthrough.md](docs/console-walkthrough.md). For a repeatable demo script, see
+[docs/showcase/demo-walkthrough.md](docs/showcase/demo-walkthrough.md); external screenshot
+and recording links are tracked in #232. The click-through example immediately below runs
+one real query and scores it with every available metric.
 
 ## End-to-end scenario: real retrieval + all metrics via the console
 
