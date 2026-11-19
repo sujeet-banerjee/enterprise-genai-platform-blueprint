@@ -224,7 +224,10 @@ def _plan_redistribution_issues() -> Set[str]:
     for line in section.splitlines():
         if not line.startswith("|"):
             continue
-        for start, end in re.findall(r"(?<!PR )#(\d+)(?:-#(\d+))?", line):
+        cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
+        if len(cells) < 3:
+            continue
+        for start, end in re.findall(r"(?<!PR )#(\d+)(?:-#(\d+))?", cells[1]):
             first = int(start)
             last = int(end) if end else first
             issues.update(range(first, last + 1))
@@ -232,7 +235,9 @@ def _plan_redistribution_issues() -> Set[str]:
 
 
 def test_plan_tracker_map_covers_every_ui_look_feel_issue():
-    assert _plan_redistribution_issues() == PLAN_ISSUES
+    documented = _plan_redistribution_issues()
+    assert documented - {268} == PLAN_ISSUES
+    assert 268 in documented
 
 
 def test_redistribution_doc_states_the_ownership_boundary():
@@ -242,8 +247,9 @@ def test_redistribution_doc_states_the_ownership_boundary():
     assert "#265" in section and "bot-uni" in section
     assert "never `ui/`" in section
     split_text = SPLIT_PATH.read_text(encoding="utf-8")
-    assert "bot-win implements #240-#257; bot-uni handles #265 only" in split_text
-    assert "Bot-uni must not edit `ui/*.py` for this tranche" in split_text
+    assert "bot-win implements #240-#257; bot-uni handles #265 and the" in split_text
+    assert "maintainer-reassigned #268 README/docs cleanup only" in split_text
+    assert "Bot-uni must not edit `ui/*.py`" in split_text
 
 
 def test_plan_doc_retains_all_global_and_screen_areas():

@@ -1,8 +1,8 @@
 # Bot work split (current open items)
 
-Reconciled 2026-11-18 after #265 merged via PR #266 (`origin/main` @ `9d268d3`) and the UI look/feel plan tracker audit. #240-#257 remain bot-win implementation items in Project #8 Workstream M; bot-uni's cross-cutting guard/support half (#265) is done. No open PRs at reconciliation.
+Reconciled 2026-11-18 after #265 merged via PR #266 (`origin/main` @ `9d268d3`), the UI look/feel plan tracker audit, and maintainer reassignment of #268 to bot-uni. #240-#257 remain bot-win implementation items in Project #8 Workstream M; bot-uni's cross-cutting guard/support half (#265) is done.
 
-Open items: umbrella **#43**; **#193** (LinkedIn package, MANUAL, maintainer approves/publishes); **#232** (external demo capture links, MANUAL, bot-win); UI look/feel plan **#240-#257** (bot-win). Cross-cutting support **#265** (bot-uni) is done (PR #266). Workstreams A-L are closed except the manifest-driven open umbrellas noted above. Re-check open issues and PRs before each item.
+Open items: umbrella **#43**; **#193** (LinkedIn package, MANUAL, maintainer approves/publishes); **#232** (external demo capture links, MANUAL, bot-win); UI look/feel plan **#240-#257** (bot-win). Cross-cutting support **#265** (bot-uni) is done (PR #266). **#268** (README console walkthrough cleanup) is a one-off bot-uni docs exception; bot-win must not edit the same README section. Workstreams A-L are closed except the manifest-driven open umbrellas noted above. Re-check open issues and PRs before each item.
 
 ## Bot identities
 
@@ -21,10 +21,11 @@ Open items: umbrella **#43**; **#193** (LinkedIn package, MANUAL, maintainer app
 
 | Order | Item | Notes |
 |---|---|---|
-| 1 | **#265 UI look/feel cross-cutting guards** (H4, Workstream M) | Done via PR #266: 10 focused tests in `tests/test_ui_plan_guards.py` for plan/tracker mapping, ownership boundary, HTTP-only rule, API paths, declared client methods, typed schemas and redaction/tenant-scope guards. No `ui/` edits. |
-| 2 | **Docs reconciliation after bot-win UI merges** | After each #240-#257 merge, update this split, `docs/ux-and-api.md`, `docs/capability-status.md`, `docs/enterprise-roadmap.md` and README links when behaviour changes. Avoid concurrent edits to files bot-win is editing. |
-| 3 | **Manual #193 / umbrella #43 monitoring** | #193 draft is merged; only maintainer approval/publish remains. Update #43 checklist/status in small dedicated PRs. |
-| 4 | **Backend support for UX where explicitly agreed** | Prefer bot-win owns the `ui/` surface. Take narrowly scoped backend contracts only after agreement in the relevant issue (e.g. a jobs API if UI execution needs server-side scale). |
+| 1 | **#268 README console walkthrough cleanup** (H4, Workstream M, maintainer-assigned exception) | Done in this docs PR: README console section reduced to a quickstart/navigation pointer; detailed feature reference and renderable Mermaid mock-up wireframes moved to `docs/console-walkthrough.md`; structural guards added. No `ui/` or screenshot changes; #232 still owns external captures. |
+| 2 | **#265 UI look/feel cross-cutting guards** (H4, Workstream M) | Done via PR #266: 10 focused tests in `tests/test_ui_plan_guards.py` for plan/tracker mapping, ownership boundary, HTTP-only rule, API paths, declared client methods, typed schemas and redaction/tenant-scope guards. No `ui/` edits. |
+| 3 | **Docs reconciliation after bot-win UI merges** | After each #240-#257 merge, update this split, `docs/ux-and-api.md`, `docs/capability-status.md`, `docs/enterprise-roadmap.md` and README links when behaviour changes. Avoid concurrent edits to files bot-win is editing. |
+| 4 | **Manual #193 / umbrella #43 monitoring** | #193 draft is merged; only maintainer approval/publish remains. Update #43 checklist/status in small dedicated PRs. |
+| 5 | **Backend support for UX where explicitly agreed** | Prefer bot-win owns the `ui/` surface. Take narrowly scoped backend contracts only after agreement in the relevant issue (e.g. a jobs API if UI execution needs server-side scale). |
 
 Completed by this workstream since the last split: **#179** cost/latency experiment
 telemetry, **#180** budget-aware regression gates, **#181** config-driven parameter
@@ -61,6 +62,7 @@ PR #230), #163 (HITL review console), #164 (queue operations/SLA/safe export), #
 | P2 screen parity and responsiveness | #249-#255 | bot-win | `ui/` screens/components; bot-uni verifies contracts/docs after merge |
 | P3 trust/copy/loading polish, QA, captures | #256-#257 | bot-win | `ui/` polish and visual QA; bot-uni verifies CI/API guards in #265 |
 | Cross-cutting contract, AST and docs guards | #265 (done, PR #266) | bot-uni | `tests/`, docs and backend contracts only; never `ui/` |
+| README console walkthrough cleanup | #268 (maintainer-assigned exception) | bot-uni | README + `docs/` only; no `ui/` edits; external capture links stay with #232/bot-win |
 
 All #240-#257 and #265 are Project #8 items, Workstream **M UX polish &
 adoption**. #240-#257 remain Status Todo with `owner:bot-win`; #265 is Status Done with
@@ -96,9 +98,11 @@ adoption**. #240-#257 remain Status Todo with `owner:bot-win`; #265 is Status Do
   PR early; re-check `gh pr list` and issue state each time.
 - **Ownership boundary:** bot-uni = `core/`, `app/`, `config/`, registries, CI, `tests/`,
   CLI, eval/policy backend and reconciliation docs; bot-win = `ui/`, UX flows and
-  console docs — except explicitly split backend contracts agreed in the issue.
-- **UI look/feel split:** bot-win implements #240-#257; bot-uni handles #265 only.
-  Bot-uni must not edit `ui/*.py` for this tranche.
+  console docs — except explicitly reassigned docs work (#268) or backend contracts
+  agreed in the relevant issue.
+- **UI look/feel split:** bot-win implements #240-#257; bot-uni handles #265 and the
+  maintainer-reassigned #268 README/docs cleanup only. Bot-uni must not edit `ui/*.py`
+  for this tranche.
 - **Ownership labels:** every open issue carries exactly one `owner:bot-uni` or
   `owner:bot-win` label (umbrella #43 excepted). Keep them current when ownership changes.
 - **Rebase discipline:** both rebase feature branches onto latest `origin/main` before

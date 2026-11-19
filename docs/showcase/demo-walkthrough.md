@@ -3,7 +3,8 @@
 > **Repeatable showcase walkthrough (3-5 minutes).** This is a maintainer-reviewed demo
 > script for the Streamlit console. It uses the console's existing **Demo mode** (local
 > fixtures only) so it can be run without a backend, without model downloads, and without
-> any production data.
+> any production data. For the full screen-by-screen feature reference, see
+> [`docs/console-walkthrough.md`](../console-walkthrough.md).
 
 ## Safety and disclosure
 

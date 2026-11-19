@@ -167,6 +167,11 @@ React/Next.js frontend is the *production product* path — deferred to a later 
 because it is only justified once the API is stable (roadmap workstream F). Constraint
 from §3.2 applies to every UI: HTTP only, no `core.*` imports.
 
+For the scannable README entry point use the
+[Streamlit console section](../README.md#streamlit-console-ux); for the detailed
+screen-by-screen feature reference use [`docs/console-walkthrough.md`](console-walkthrough.md).
+The repeatable demo/capture script is [`docs/showcase/demo-walkthrough.md`](showcase/demo-walkthrough.md).
+
 ### Page map → endpoint mapping
 
 | Screen | User interactions | Endpoints |
