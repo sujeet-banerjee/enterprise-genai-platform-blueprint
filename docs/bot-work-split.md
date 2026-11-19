@@ -1,8 +1,8 @@
 # Bot work split (current open items)
 
-Reconciled 2026-11-18 after #265 merged via PR #266 (`origin/main` @ `9d268d3`), the UI look/feel plan tracker audit, and maintainer reassignment of #268 to bot-uni. #240-#257 remain bot-win implementation items in Project #8 Workstream M; bot-uni's cross-cutting guard/support half (#265) is done.
+Reconciled 2026-11-19 after #268 merged via PR #269 (`origin/main` @ `a326bc7`), the UI look/feel plan tracker audit, and the maintainer's standing bot-win review request. #240-#257 remain bot-win implementation items in Project #8 Workstream M; bot-uni's cross-cutting guard/support half (#265) and the #268 README/docs exception are done.
 
-Open items: umbrella **#43**; **#193** (LinkedIn package, MANUAL, maintainer approves/publishes); **#232** (external demo capture links, MANUAL, bot-win); UI look/feel plan **#240-#257** (bot-win). Cross-cutting support **#265** (bot-uni) is done (PR #266). **#268** (README console walkthrough cleanup) is a one-off bot-uni docs exception; bot-win must not edit the same README section. Workstreams A-L are closed except the manifest-driven open umbrellas noted above. Re-check open issues and PRs before each item.
+Open items: umbrella **#43**; **#193** (LinkedIn package, MANUAL, maintainer approves/publishes); **#232** (external demo capture links, MANUAL, bot-win); UI look/feel plan **#240-#257** (bot-win). Cross-cutting support **#265** (bot-uni) is done (PR #266). **#268** (README console walkthrough cleanup) is done (PR #269); bot-win must not edit the same README section. Workstreams A-L are closed except the manifest-driven open umbrellas noted above. Re-check open issues and PRs before each item.
 
 ## Bot identities
 
@@ -26,6 +26,7 @@ Open items: umbrella **#43**; **#193** (LinkedIn package, MANUAL, maintainer app
 | 3 | **Docs reconciliation after bot-win UI merges** | After each #240-#257 merge, update this split, `docs/ux-and-api.md`, `docs/capability-status.md`, `docs/enterprise-roadmap.md` and README links when behaviour changes. Avoid concurrent edits to files bot-win is editing. |
 | 4 | **Manual #193 / umbrella #43 monitoring** | #193 draft is merged; only maintainer approval/publish remains. Update #43 checklist/status in small dedicated PRs. |
 | 5 | **Backend support for UX where explicitly agreed** | Prefer bot-win owns the `ui/` surface. Take narrowly scoped backend contracts only after agreement in the relevant issue (e.g. a jobs API if UI execution needs server-side scale). |
+| 6 | **Standing daily review of bot-win work** | Check new bot-win PRs/check-ins (especially #240-#257) for API coherence and contract regressions. Add inline PR review comments for discrepancies; for merged check-ins that are not coherent with shipped APIs, open an `owner:bot-win` issue with file:line evidence and expected-vs-actual behaviour. Bot-uni stays read-only on `ui/*.py`. |
 
 Completed by this workstream since the last split: **#179** cost/latency experiment
 telemetry, **#180** budget-aware regression gates, **#181** config-driven parameter
@@ -126,3 +127,30 @@ adoption**. #240-#257 remain Status Todo with `owner:bot-win`; #265 is Status Do
 - **Project #8:** the board is user-owned; updates are made through the human-authenticated
   `gh` CLI (GraphQL), not the bot App token. Keep Status, Workstream and milestone in sync
   when issues are created, started or closed.
+
+## Standing bot-win review protocol (bot-uni)
+
+Owner: bot-uni. Cadence: every day / each new session, and immediately after any new bot-win
+PR or merged check-in. Scope: all bot-win PRs/commits, especially UI look/feel #240-#257,
+bot-win docs/showcase changes, and any change to client/API consumption.
+
+For each new bot-win PR/check-in:
+
+1. List open PRs and recent commits; identify only bot-win-owned changes.
+2. Run focused guards: `tests/test_ui_plan_guards.py`, `tests/test_ui_console.py`,
+   `tests/test_ui_new_features.py`, `tests/test_api_contract.py`,
+   `tests/test_docs_reconciliation.py`, `tests/test_readme_console_section.py`.
+3. Verify HTTP-only `ui/` imports, endpoint/method/schema parity with `EXPECTED_PATHS` and
+   `app/schemas.py`, error-envelope/failure taxonomy, redaction/tenant/API-key safety,
+   docs links, and required CI evidence.
+4. For an open PR, add inline review comments at the exact file:line with expected vs actual
+   behaviour and a requested change. For a merged check-in, open a GitHub issue labelled
+   `owner:bot-win` plus relevant `ui`/`ux`/`documentation`/`bug` labels, with PR/commit link,
+   file:line evidence, reproduction/check command and expected-vs-actual behaviour.
+5. Do not edit `ui/*.py` or implement bot-win fixes unless explicitly reassigned. Keep this
+   protocol and persistent memory in sync if the user changes cadence or scope.
+
+Baseline 2026-11-19: no open PRs; latest bot-win commits were #235 docs repairs (`b9245d2`),
+look/feel plan (`76a625e`), #158 feedback (`dc2d7af`), #189 demo walkthrough (`3ba6b09`),
+and #157 role journeys (`1017dd3`). Focused review checks: 105 passed; no PR comments or
+issues filed.
