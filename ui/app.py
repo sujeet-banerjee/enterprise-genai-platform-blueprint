@@ -63,6 +63,14 @@ from ui.approvals import (
 )
 from ui.client import ApiClient, ApiResult
 from ui.common import api_base_url, latency_rows, metric_rows, require_ok
+from ui.components import (
+    alert_markdown,
+    detail_drawer_markdown,
+    detail_drawer_model,
+    failure_alert_model,
+    kpi_strip,
+    kpi_strip_markdown,
+)
 from ui.dataset_studio import (
     MAX_SAVED_DATASETS,
     apply_case_rows,
@@ -356,14 +364,19 @@ def _bootstrap() -> None:
 
 
 def _failure_taxonomy(result) -> None:
-    rem = error_remediation(getattr(result, "status_code", 0) or 0, getattr(result, "failure_type", "") or "")
-    if result.failure_type:
-        st.warning(
-            f"{rem['title']}: `{result.failure_type}` | tags: "
-            f"{', '.join(result.failure_tags) or '-'} | {rem['hint']} â€” {rem['action']}"
-        )
-    elif getattr(result, "status_code", 0):
-        st.warning(f"{rem['title']} ({result.status_code}): {rem['hint']} â€” {rem['action']}")
+    status_code = getattr(result, "status_code", 0) or 0
+    failure_type = getattr(result, "failure_type", "") or ""
+    if not failure_type and not status_code:
+        return
+    rem = error_remediation(status_code, failure_type)
+    alert = failure_alert_model(
+        status_code,
+        failure_type,
+        getattr(result, "failure_tags", []) or [],
+        getattr(result, "request_id", "") or "",
+    )
+    alert.update({"title": rem["title"], "hint": rem["hint"], "action": rem["action"]})
+    _render_alert(alert)
 
 
 def _access_context(api: ApiClient) -> Dict[str, Any]:
@@ -849,6 +862,21 @@ def render_role_journey() -> None:
         st.code(journey_markdown(journey.key), language="markdown")
 
 
+def _render_alert(alert: Dict[str, Any]) -> None:
+    st.markdown(alert_markdown(alert), unsafe_allow_html=True)
+
+
+def _render_kpi_strip(items: List[Dict[str, Any]]) -> None:
+    st.markdown(kpi_strip_markdown(kpi_strip(items)), unsafe_allow_html=True)
+
+
+def _render_detail_drawer(title: Any, summary: Any, payload: Any = None) -> None:
+    drawer = detail_drawer_model(title, summary, payload)
+    st.markdown(detail_drawer_markdown(drawer), unsafe_allow_html=True)
+    with st.expander(drawer["expander_label"], expanded=False):
+        st.json(drawer["payload"])
+
+
 def _render_card_rows(
     rows: List[Dict[str, Any]],
     columns: Optional[List[str]] = None,
@@ -1027,33 +1055,64 @@ def screen_overview() -> None:
 
     health = st.session_state.get("shell_health") or api.health()
     ready = st.session_state.get("shell_ready") or api.ready()
-    left, right = st.columns(2)
-    with left:
-        if require_ok(health):
-            st.success(f"Health: {health.data.get('status')}")
-    with right:
-        if ready.ok:
-            st.success(f"Ready: {ready.data.get('status')} (revision {ready.data.get('config_revision')})")
-            st.json(ready.data.get("components", {}))
-        else:
-            st.info("Service is not ready yet.")
+    if not health.ok:
+        require_ok(health)
+    if not ready.ok:
+        require_ok(ready)
 
-    col1, col2, col3, col4 = st.columns(4)
-    for col, (label, call) in zip(
-        (col1, col2, col3, col4),
-        (
-            ("Active model", api.models),
-            ("Retriever", api.retrievers),
-            ("Reranker", api.rerankers),
-            ("Evaluator", api.evaluators),
-        ),
+    health_status = health.data.get("status") if health.ok else None
+    ready_status = ready.data.get("status") if ready.ok else None
+    config_revision = ready.data.get("config_revision") if ready.ok else None
+    components = ready.data.get("components", {}) if ready.ok else {}
+    kpis: List[Dict[str, Any]] = [
+        {
+            "label": "API health",
+            "value": health_status or "unavailable",
+            "status": "ok" if health.ok else "error",
+        },
+        {
+            "label": "Readiness",
+            "value": ready_status or "not ready",
+            "status": "ok" if ready.ok else "error",
+        },
+        {
+            "label": "Config revision",
+            "value": config_revision or "-",
+            "hint": "active pipeline",
+        },
+    ]
+    for label, call in (
+        ("Active model", api.models),
+        ("Retriever", api.retrievers),
+        ("Reranker", api.rerankers),
+        ("Evaluator", api.evaluators),
     ):
-        with col:
-            result = call()
-            if result.ok:
-                st.metric(label, _active_label(label, result.data))
-            else:
-                st.metric(label, "unavailable")
+        result = call()
+        if not result.ok:
+            kpis.append({"label": label, "value": "unavailable", "status": "error"})
+            continue
+        value = _active_label(label, result.data)
+        if value == "disabled":
+            status = "disabled"
+        elif value in {"-", ""}:
+            status = "neutral"
+        else:
+            status = "ok"
+        kpis.append({"label": label, "value": value, "status": status})
+    _render_kpi_strip(kpis)
+
+    if ready.ok:
+        _render_detail_drawer(
+            "Registered components",
+            {
+                "config_revision": config_revision or "-",
+                "component_groups": len(components),
+                "readiness": ready_status or "-",
+            },
+            components,
+        )
+    else:
+        st.info("Service is not ready yet.")
 
     _render_get_started(health.ok and ready.ok)
 
