@@ -112,6 +112,9 @@ STATUS_TONES: Dict[str, str] = {
     "blocked": "danger",
     "deny": "danger",
     "denied": "danger",
+    "disabled": "muted",
+    "off": "muted",
+    "neutral": "muted",
 }
 
 
@@ -398,6 +401,54 @@ def styles(
 .genai-card dl {{ margin: 0; display: grid; grid-template-columns: minmax(6rem, 30%) 1fr; gap: 0.15rem 0.75rem; }}
 .genai-card dt {{ color: var(--genai-muted); font-size: 0.85rem; }}
 .genai-card dd {{ margin: 0; word-break: break-word; }}
+.genai-card-description {{ color: var(--genai-muted); margin: 0 0 0.6rem 0; }}
+.genai-actions {{ display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.6rem; }}
+.genai-action {{
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.5rem;
+  border: 1px solid var(--genai-border);
+  border-radius: 0.35rem;
+  font-size: var(--genai-font-caption);
+}}
+.genai-kpi-strip {{
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: var(--genai-gap);
+  margin-bottom: var(--genai-gap);
+}}
+.genai-kpi {{
+  border: 1px solid var(--genai-border);
+  border-radius: 0.5rem;
+  padding: var(--genai-padding);
+  background: var(--genai-surface);
+  min-height: 5.25rem;
+}}
+.genai-kpi-label {{ color: var(--genai-muted); font-size: var(--genai-font-caption); }}
+.genai-kpi-value {{ font-size: 1.35rem; font-weight: 700; margin: 0.15rem 0; }}
+.genai-kpi-meta {{ display: flex; flex-wrap: wrap; gap: 0.35rem; align-items: center; font-size: var(--genai-font-caption); }}
+.genai-kpi-delta {{ font-weight: 600; color: var(--genai-text); }}
+.genai-alert {{
+  border: 1px solid var(--genai-border);
+  border-left: 4px solid var(--genai-muted);
+  border-radius: 0.5rem;
+  padding: var(--genai-padding);
+  margin-bottom: var(--genai-gap);
+  background: var(--genai-surface);
+}}
+.genai-alert-danger {{ border-left-color: var(--genai-danger); }}
+.genai-alert-warning {{ border-left-color: var(--genai-warning); }}
+.genai-alert-success {{ border-left-color: var(--genai-success); }}
+.genai-alert-info {{ border-left-color: var(--genai-accent); }}
+.genai-alert-title {{ font-weight: 700; margin-bottom: 0.25rem; }}
+.genai-alert-message {{ margin-bottom: 0.4rem; }}
+.genai-alert-meta {{ display: flex; flex-wrap: wrap; gap: 0.35rem; margin-bottom: 0.4rem; }}
+.genai-alert-code, .genai-alert-request code {{
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: var(--genai-font-caption);
+}}
+.genai-alert-hint {{ color: var(--genai-muted); }}
+.genai-alert-action {{ font-weight: 600; margin-top: 0.25rem; }}
 .genai-status {{ font-weight: 600; }}
 @media (min-width: 1024px) {{
   [data-testid="stSidebar"] > div:first-child {{
@@ -420,6 +471,7 @@ def styles(
   .stApp [data-testid="stHorizontalBlock"] {{ flex-wrap: wrap; }}
   .stApp .stDataFrame {{ overflow-x: auto; }}
   .genai-card {{ padding: 0.5rem; }}
+  .genai-kpi-strip {{ grid-template-columns: 1fr; }}
 }}
 </style>
 """

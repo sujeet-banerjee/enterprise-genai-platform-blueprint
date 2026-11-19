@@ -10,6 +10,7 @@ from typing import Any, Dict
 import streamlit as st
 
 from ui.client import ApiResult
+from ui.components import alert_markdown, error_alert_model
 
 
 def api_base_url() -> str:
@@ -17,20 +18,9 @@ def api_base_url() -> str:
 
 
 def show_error(result: ApiResult) -> None:
-    """Render a failed API call as a readable taxonomy-aware message."""
-    if result.error:
-        st.error(result.error)
-        return
-    failure_type = result.failure_type or "unknown_failure"
-    tags = ", ".join(result.failure_tags) or "-"
-    detail = result.data.get("error") or result.data.get("detail") or "Request failed"
-    st.error(
-        f"**{failure_type}** (HTTP {result.status_code})\n\n"
-        f"{detail}\n\n"
-        f"`failure_tags`: {tags}"
-    )
-    if result.request_id:
-        st.caption(f"request_id: {result.request_id}")
+    """Render a failed API call as a structured taxonomy-aware alert."""
+    alert = error_alert_model(result)
+    st.markdown(alert_markdown(alert), unsafe_allow_html=True)
 
 
 def require_ok(result: ApiResult) -> bool:

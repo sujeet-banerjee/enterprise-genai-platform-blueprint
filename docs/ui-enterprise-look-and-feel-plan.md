@@ -11,6 +11,7 @@ Wireframes are illustrative mock-ups, not screenshots or captured production dat
 | Issue | Surface | Wireframe |
 | --- | --- | --- |
 | #240 | Branded app shell | `<img src="wireframes/240-app-shell.svg" alt="Branded app shell wireframe showing header chips, sidebar groups, and primary content" width="900">` ([source](wireframes/240-app-shell.excalidraw)) |
+| #241 | Design-system primitives | `<img src="wireframes/241-design-system-primitives.svg" alt="Design-system primitives wireframe showing badges, KPI tiles, key-value panel, section card, detail drawer, structured alert and formatters" width="900">` ([source](wireframes/241-design-system-primitives.excalidraw)) |
 
 ## 1. Review basis and verdict
 
