@@ -85,6 +85,14 @@ DENSITIES: Dict[str, Dict[str, str]] = {
     },
 }
 
+TYPOGRAPHY: Dict[str, str] = {
+    "h1": "1.6rem",
+    "h2": "1.25rem",
+    "h3": "1.05rem",
+    "body": "var(--genai-font-size)",
+    "caption": "0.78rem",
+}
+
 STATUS_TONES: Dict[str, str] = {
     "success": "success",
     "ok": "success",
@@ -283,15 +291,87 @@ def styles(
   --genai-row-height: {spacing["row_height"]};
   --genai-font-size: {spacing["font_size"]};
   --genai-line-height: {spacing["line_height"]};
+  --genai-font-h1: {TYPOGRAPHY["h1"]};
+  --genai-font-h2: {TYPOGRAPHY["h2"]};
+  --genai-font-h3: {TYPOGRAPHY["h3"]};
+  --genai-font-body: {TYPOGRAPHY["body"]};
+  --genai-font-caption: {TYPOGRAPHY["caption"]};
 }}
 .stApp {{
   background: var(--genai-bg);
   color: var(--genai-text);
-  font-size: var(--genai-font-size);
+  font-size: var(--genai-font-body);
   line-height: var(--genai-line-height);
 }}
-.stApp h1, .stApp h2, .stApp h3, .stApp h4 {{ color: var(--genai-text); }}
+.stApp h1 {{ font-size: var(--genai-font-h1); font-weight: 650; letter-spacing: -0.015em; }}
+.stApp h2 {{ font-size: var(--genai-font-h2); font-weight: 620; letter-spacing: -0.01em; }}
+.stApp h3 {{ font-size: var(--genai-font-h3); font-weight: 600; }}
+.stApp h1, .stApp h2, .stApp h3, .stApp h4 {{ color: var(--genai-text); margin-top: 0; }}
 .stApp p, .stApp li, .stApp label, .stApp span {{ color: inherit; }}
+.stApp [data-testid="stCaptionContainer"], .genai-muted {{ color: var(--genai-muted); font-size: var(--genai-font-caption); }}
+.genai-app-header {{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--genai-gap);
+  padding: calc(var(--genai-padding) * 0.75) var(--genai-padding);
+  margin-bottom: var(--genai-gap);
+  border: 1px solid var(--genai-border);
+  border-radius: 0.6rem;
+  background: var(--genai-surface);
+}}
+.genai-header-identity, .genai-header-titles, .genai-header-chips {{
+  display: flex;
+  align-items: center;
+  gap: calc(var(--genai-gap) * 0.6);
+}}
+.genai-header-titles {{ flex-direction: column; align-items: flex-start; gap: 0.1rem; }}
+.genai-header-mark, .genai-sidebar-mark {{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.4rem;
+  background: var(--genai-accent);
+  color: var(--genai-accent-text);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}}
+.genai-header-mark {{ min-width: 3.25rem; height: 2.2rem; font-size: var(--genai-font-caption); }}
+.genai-product-title {{ font-size: var(--genai-font-h2); font-weight: 650; color: var(--genai-text); }}
+.genai-screen-title {{ font-size: var(--genai-font-caption); color: var(--genai-muted); }}
+.genai-chip {{
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.22rem 0.55rem;
+  border: 1px solid var(--genai-border);
+  border-radius: 999px;
+  font-size: var(--genai-font-caption);
+  white-space: nowrap;
+}}
+.genai-chip-neutral {{ color: var(--genai-muted); background: var(--genai-bg); }}
+.genai-chip-success {{ color: var(--genai-success); background: var(--genai-bg); }}
+.genai-chip-warning {{ color: var(--genai-warning); background: var(--genai-bg); }}
+.genai-chip-danger {{ color: var(--genai-danger); background: var(--genai-bg); }}
+.genai-health-dot {{
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 50%;
+  background: var(--genai-muted);
+}}
+.genai-dot-success {{ background: var(--genai-success); }}
+.genai-dot-warning {{ background: var(--genai-warning); }}
+.genai-dot-danger {{ background: var(--genai-danger); }}
+.genai-sidebar-brand {{
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.35rem 0 0.75rem 0;
+  margin-bottom: 0.75rem;
+  border-bottom: 1px solid var(--genai-border);
+}}
+.genai-sidebar-mark {{ min-width: 2.8rem; height: 1.8rem; font-size: 0.7rem; }}
+.genai-sidebar-name {{ font-weight: 650; color: var(--genai-text); }}
 [data-testid="stSidebar"] {{
   background: var(--genai-surface);
   border-right: 1px solid var(--genai-border);
@@ -330,9 +410,11 @@ def styles(
 @media (max-width: 1023px) {{
   .stApp .block-container {{ padding-left: 1rem; padding-right: 1rem; }}
   .genai-card dl {{ grid-template-columns: 1fr; }}
+  .genai-app-header {{ align-items: flex-start; flex-direction: column; }}
 }}
 @media (max-width: 640px) {{
   .stApp .block-container {{ padding-left: 0.5rem; padding-right: 0.5rem; }}
+  .genai-header-chips {{ flex-wrap: wrap; }}
   .stApp h1 {{ font-size: 1.5rem; }}
   .stApp h2 {{ font-size: 1.25rem; }}
   .stApp [data-testid="stHorizontalBlock"] {{ flex-wrap: wrap; }}
