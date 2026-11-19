@@ -2,6 +2,7 @@ import ast
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, Optional
+from urllib.parse import urlparse
 
 import pytest
 
@@ -76,7 +77,7 @@ def test_overview_kpis_include_health_revision_tenant_and_topology():
     assert by_label["Reranker"]["value"] == "disabled"
     assert by_label["Reranker"]["status"]["label"] == "disabled"
     assert by_label["Tenant"]["status"]["tone"] == "neutral"
-    assert "api.example.com" in by_label["Tenant"]["hint"]
+    assert urlparse(by_label["Tenant"]["hint"]).hostname == "api.example.com"
 
 
 def test_overview_kpis_mark_failed_discovery_as_unavailable():
