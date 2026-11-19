@@ -198,6 +198,14 @@ from ui.query_studio import (
     history_rows,
     result_markdown,
 )
+from ui.shell import (
+    PAGE_ICON,
+    PAGE_TITLE,
+    environment_label,
+    header_markdown,
+    header_view,
+    sidebar_brand_markdown,
+)
 from ui.theme import (
     DEFAULT_DENSITY,
     DEFAULT_TABLE_LAYOUT,
@@ -237,7 +245,8 @@ from ui.workspace import (
 )
 
 st.set_page_config(
-    page_title="Enterprise GenAI RAG Console",
+    page_title=PAGE_TITLE,
+    page_icon=PAGE_ICON,
     layout="wide",
     initial_sidebar_state="auto",
 )
@@ -857,6 +866,24 @@ def _render_card_rows(
         )
 
 
+def _render_app_header(api: ApiClient, access: Dict[str, Any], active: str) -> None:
+    """Render one branded banner for every screen using live status endpoints."""
+    shell_health = api.health()
+    shell_ready = api.ready()
+    st.session_state.shell_health = shell_health
+    st.session_state.shell_ready = shell_ready
+    demo_mode = bool(st.session_state.get("demo_mode"))
+    view = header_view(
+        active,
+        access,
+        shell_health,
+        shell_ready,
+        environment_label(st.session_state.get("api_base_url", ""), demo_mode),
+        demo_mode,
+    )
+    st.markdown(header_markdown(view), unsafe_allow_html=True)
+
+
 def _render_sidebar_navigation(access: Dict[str, Any]) -> None:
     capabilities = access["capabilities"]
     screens = list(SCREENS.keys())
@@ -995,11 +1022,11 @@ def _render_get_started(backend_ok: bool) -> None:
 
 
 def screen_overview() -> None:
-    st.header("Overview / Health")
+    st.subheader("Overview / Health")
     api = client()
 
-    health = api.health()
-    ready = api.ready()
+    health = st.session_state.get("shell_health") or api.health()
+    ready = st.session_state.get("shell_ready") or api.ready()
     left, right = st.columns(2)
     with left:
         if require_ok(health):
@@ -1203,7 +1230,7 @@ def _render_run_comparison(
 
 
 def screen_query_studio() -> None:
-    st.header("Query Studio")
+    st.subheader("Query Studio")
     api = client()
 
     _render_query_templates()
@@ -1521,7 +1548,7 @@ def _render_query_result(item: Dict[str, Any], query: str = "") -> None:
 
 
 def screen_compare() -> None:
-    st.header("Compare (what-if)")
+    st.subheader("Compare (what-if)")
     api = client()
 
     st.caption("Rebuild the live pipeline with config overrides, then run A/B queries.")
@@ -1980,7 +2007,7 @@ def _render_dataset_studio() -> None:
 
 
 def screen_evaluation() -> None:
-    st.header("Evaluation")
+    st.subheader("Evaluation")
     api = client()
 
     st.caption(
@@ -2194,7 +2221,7 @@ def screen_evaluation() -> None:
 
 
 def screen_governance() -> None:
-    st.header("Governance & Cost")
+    st.subheader("Governance & Cost")
     api = client()
 
     focus = clean_request_id(st.session_state.get("gov_request_id"))
@@ -2328,7 +2355,7 @@ def _render_guardrail_decisions(decisions: list) -> None:
 
 
 def screen_guardrails() -> None:
-    st.header("Guardrails")
+    st.subheader("Guardrails")
     api = client()
 
     result = api.guardrails()
@@ -2415,7 +2442,7 @@ def _render_approval_decisions(record: Dict[str, Any]) -> None:
 
 
 def screen_approvals() -> None:
-    st.header("Approvals (HITL)")
+    st.subheader("Approvals (HITL)")
     api = client()
 
     access = api.access()
@@ -2854,7 +2881,7 @@ def screen_approvals() -> None:
 
 
 def screen_audit() -> None:
-    st.header("Audit")
+    st.subheader("Audit")
     api = client()
 
     st.caption(
@@ -2923,7 +2950,7 @@ def screen_audit() -> None:
 
 
 def screen_access() -> None:
-    st.header("Access / RBAC")
+    st.subheader("Access / RBAC")
     api = client()
 
     result = api.access()
@@ -2956,7 +2983,7 @@ def screen_access() -> None:
 
 
 def screen_admin() -> None:
-    st.header("Admin")
+    st.subheader("Admin")
     api = client()
 
     access = api.access()
@@ -3209,7 +3236,7 @@ def _render_evidence_pack(
 
 
 def screen_traces() -> None:
-    st.header("Traces")
+    st.subheader("Traces")
     api = client()
     scope = _evidence_scope()
 
@@ -3305,7 +3332,7 @@ def screen_feedback() -> None:
 
     """Review flagged runs, capture notes, and promote them to datasets (#158)."""
 
-    st.header("Feedback")
+    st.subheader("Feedback")
 
     notice = st.session_state.pop("feedback_notice", "")
 
@@ -3546,7 +3573,7 @@ def screen_feedback() -> None:
 
 
 
-    st.header("Traces")
+    st.subheader("Traces")
     api = client()
     scope = _evidence_scope()
 
@@ -3639,7 +3666,7 @@ def screen_feedback() -> None:
 
 
 def screen_settings() -> None:
-    st.header("Settings (read-only)")
+    st.subheader("Settings (read-only)")
     api = client()
 
     st.caption("Read-only view of the redacted effective configuration. YAML files are the source of truth.")
@@ -3689,7 +3716,7 @@ def main() -> None:
         unsafe_allow_html=True,
     )
     st.markdown(skip_link_html(), unsafe_allow_html=True)
-    st.sidebar.title("GenAI RAG Console")
+    st.sidebar.markdown(sidebar_brand_markdown(), unsafe_allow_html=True)
     st.session_state.api_base_url = st.sidebar.text_input(
         "API base URL", value=st.session_state.api_base_url
     )
@@ -3716,6 +3743,7 @@ def main() -> None:
     if st.session_state.get("show_shortcuts"):
         _shortcuts_dialog()
     active = st.session_state.get("active_screen", "Overview / Health")
+    _render_app_header(api, access, active)
     if st.session_state.get("demo_mode"):
         st.warning(DEMO_WARNING)
     _mark_journey_visit(active)

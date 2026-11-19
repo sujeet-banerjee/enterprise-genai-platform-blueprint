@@ -4,6 +4,14 @@
 **Date:** 2026-11-16  
 **Scope:** Streamlit console (`ui/`) — visual design, information hierarchy, and perceived enterprise polish. Functional capability, accessibility baseline (UX12), and HTTP-only API contract are out of scope except where they affect presentation.
 
+## Wireframe index
+
+Wireframes are illustrative mock-ups, not screenshots or captured production data. Editable Excalidraw sources and committed SVG renders live in [`docs/wireframes/`](wireframes/).
+
+| Issue | Surface | Wireframe |
+| --- | --- | --- |
+| #240 | Branded app shell | `<img src="wireframes/240-app-shell.svg" alt="Branded app shell wireframe showing header chips, sidebar groups, and primary content" width="900">` ([source](wireframes/240-app-shell.excalidraw)) |
+
 ## 1. Review basis and verdict
 
 **Basis (code/structure review, not a rendered pixel audit):** `ui/app.py` (12 registered screens, ~3.7k LOC), `ui/theme.py`, `ui/a11y.py`, `ui/common.py`, `ui/polish.py`, `ui/navigation.py`, `docs/layout-and-theme.md`, `docs/accessibility.md`.
