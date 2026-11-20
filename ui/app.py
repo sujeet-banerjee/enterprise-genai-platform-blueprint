@@ -156,8 +156,12 @@ from ui.feedback import (
     export_filename as feedback_filename,
 )
 from ui.governance import (
-    alerts_preview,
+    alert_banner_markdown,
+    cost_chart_markdown,
+    failure_chart_markdown,
     filter_metrics,
+    governance_view_models,
+    guardrail_chart_markdown,
     metrics_to_csv,
     metrics_to_json,
     time_windows,
@@ -2259,55 +2263,36 @@ def screen_governance() -> None:
             st.session_state.gov_request_id = ""
             st.rerun()
 
+    gov_status: Dict[str, Any] = {}
     status = api.governance_status()
     if require_ok(status):
+        gov_status = status.data or {}
         st.session_state.last_governance_seen = True
-        c1, c2, c3 = st.columns(3)
-        c1.metric("Governance", "enabled" if status.data.get("enabled") else "disabled")
-        c2.metric("Max cost / request", status.data.get("max_cost_per_request_usd"))
-        c3.metric("Safety margin (tokens)", status.data.get("safety_margin_tokens"))
-        window = status.data.get("window", {})
-        st.subheader("Spend window")
-        st.json(window)
 
+    metrics: Dict[str, Any] = {}
     metrics_res = api.metrics()
     if require_ok(metrics_res):
-        metrics = metrics_res.data
+        metrics = metrics_res.data or {}
         st.session_state.last_metrics = metrics
-        st.subheader("Metrics filters & export")
-        f1, f2, f3, f4 = st.columns(4)
-        windows = time_windows()
-        _ensure_choice("gov_time_range", windows)
-        tw = f1.selectbox("Time range", windows, key="gov_time_range")
-        tenant = f2.text_input("Tenant (filter)", key="gov_tenant")
-        app = f3.text_input("App (filter)", key="gov_app")
-        user = f4.text_input("User (filter)", key="gov_user")
-        _ = filter_metrics(metrics, tenant=tenant, app=app, user=user)
-        st.caption(f"Time range: {tw} | filters: tenant={tenant or '*'} app={app or '*'} user={user or '*'}")
-        alerts = alerts_preview(metrics)
-        if alerts:
+
+    if gov_status or metrics:
+        views = governance_view_models(gov_status, metrics)
+        if views["alerts"]:
             st.subheader("Alerts preview")
-            for a in alerts:
-                st.warning(f"[{a['level']}] {a['name']}: {a['message']}")
-        e1, e2 = st.columns(2)
-        e1.download_button("Download JSON", data=metrics_to_json(metrics), file_name="metrics.json", mime="application/json")
-        e2.download_button("Download CSV", data=metrics_to_csv(metrics), file_name="metrics.csv", mime="text/csv")
+            st.markdown(alert_banner_markdown(views["alerts"]), unsafe_allow_html=True)
+        st.markdown(kpi_strip_markdown(views["kpis"]), unsafe_allow_html=True)
 
-        st.subheader("Metrics")
-        c1, c2, c3, c4 = st.columns(4)
-        c1.metric("Total runs", metrics.get("total_runs"))
-        c2.metric("Successes", metrics.get("success_count"))
-        c3.metric("Failures", metrics.get("failure_count"))
-        c4.metric("Failure rate", metrics.get("failure_rate"))
-        st.subheader("Failures by type")
-        st.json(metrics.get("failures_by_type", {}))
+        c1, c2 = st.columns(2)
+        with c1:
+            st.subheader("Cost breakdown")
+            st.markdown(cost_chart_markdown(views["cost_rows"]), unsafe_allow_html=True)
+        with c2:
+            st.subheader("Failures by type")
+            st.markdown(failure_chart_markdown(views["failure_rows"]), unsafe_allow_html=True)
 
+        st.subheader("Guardrail decisions")
+        st.markdown(guardrail_chart_markdown(views["guardrail_rows"]), unsafe_allow_html=True)
         guardrails = metrics.get("guardrails") or {}
-        st.subheader("Guardrail hit rate")
-        g1, g2, g3 = st.columns(3)
-        g1.metric("Decisions", guardrails.get("total_decisions", 0))
-        g2.metric("Blocks", guardrails.get("total_blocks", 0))
-        g3.metric("Guardrails seen", len(guardrails.get("by_guardrail") or {}))
         by_guardrail = guardrails.get("by_guardrail") or {}
         if by_guardrail:
             guardrail_rows = [
@@ -2325,18 +2310,36 @@ def screen_governance() -> None:
             "`genai_guardrail_blocks_total`."
         )
 
-    st.subheader("Prometheus scrape")
-    scrape = api.prometheus_metrics()
-    if scrape.ok:
-        raw = scrape.data.get("raw") or ""
-        st.caption(f"{len(raw.splitlines())} exposition lines at `/metrics`.")
-        with st.expander("Raw /metrics"):
-            st.code(raw or "(empty)", language="text")
-    else:
-        st.info(
-            "`/metrics` is unavailable. Install the observability extra: "
-            "`pip install -e .[observability]` (prometheus-client)."
-        )
+        with st.expander("Spend window (raw)", expanded=False):
+            st.json(gov_status.get("window", {}))
+
+    if metrics:
+        st.subheader("Metrics filters & export")
+        f1, f2, f3, f4 = st.columns(4)
+        windows = time_windows()
+        _ensure_choice("gov_time_range", windows)
+        tw = f1.selectbox("Time range", windows, key="gov_time_range")
+        tenant = f2.text_input("Tenant (filter)", key="gov_tenant")
+        app = f3.text_input("App (filter)", key="gov_app")
+        user = f4.text_input("User (filter)", key="gov_user")
+        _ = filter_metrics(metrics, tenant=tenant, app=app, user=user)
+        st.caption(f"Time range: {tw} | filters: tenant={tenant or '*'} app={app or '*'} user={user or '*'}")
+        e1, e2 = st.columns(2)
+        e1.download_button("Download JSON", data=metrics_to_json(metrics), file_name="metrics.json", mime="application/json")
+        e2.download_button("Download CSV", data=metrics_to_csv(metrics), file_name="metrics.csv", mime="text/csv")
+
+    with st.expander("Prometheus scrape (advanced)", expanded=False):
+        scrape = api.prometheus_metrics()
+        if scrape.ok:
+            raw = scrape.data.get("raw") or ""
+            st.caption(f"{len(raw.splitlines())} exposition lines at `/metrics`.")
+            with st.expander("Raw /metrics", expanded=False):
+                st.code(raw or "(empty)", language="text")
+        else:
+            st.info(
+                "`/metrics` is unavailable. Install the observability extra: "
+                "`pip install -e .[observability]` (prometheus-client)."
+            )
 
     _render_saved_views("governance")
 

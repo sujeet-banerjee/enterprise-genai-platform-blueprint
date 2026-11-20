@@ -15,6 +15,7 @@ Wireframes are illustrative mock-ups, not screenshots or captured production dat
 | #242 | Overview / Health | `<img src="wireframes/242-overview-health.svg" alt="Overview wireframe showing status KPIs, component key-value cards, guided checklist and redacted detail expander" width="900">` ([source](wireframes/242-overview-health.excalidraw)) |
 | #243 | Query Studio | `<img src="wireframes/243-query-studio.svg" alt="Query Studio wireframe showing an answer card with status badges, stage latency chart, ranked documents with score bars, curated trace and resilience summaries, comparison deltas and batch cards" width="900">` ([source](wireframes/243-query-studio.excalidraw)) |
 | #244 | Traces waterfall | `<img src="wireframes/244-traces-waterfall.svg" alt="Traces wireframe showing a request summary card, stage waterfall with running offsets, side-by-side diff highlights, guardrail/resilience summaries and redacted raw expanders" width="900">` ([source](wireframes/244-traces-waterfall.excalidraw)) |
+| #245 | Governance & Cost | `<img src="wireframes/245-governance-cost.svg" alt="Governance & Cost wireframe showing severity alerts, cost and policy KPIs, cost and failure bar charts, stacked guardrail decisions with legend, filters, export and advanced raw expanders" width="900">` ([source](wireframes/245-governance-cost.excalidraw)) |
 
 ## 1. Review basis and verdict
 
