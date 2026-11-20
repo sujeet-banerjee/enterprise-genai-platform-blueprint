@@ -490,6 +490,30 @@ def styles(
 .genai-delta-worse {{ color: var(--genai-danger); font-weight: 600; }}
 .genai-delta-neutral {{ color: var(--genai-muted); }}
 .genai-status {{ font-weight: 600; }}
+.genai-waterfall-table, .genai-diff-table {{ width: 100%; border-collapse: collapse; }}
+.genai-waterfall-table th, .genai-waterfall-table td,
+.genai-diff-table th, .genai-diff-table td {{
+  padding: 0.35rem 0.5rem;
+  border-bottom: 1px solid var(--genai-border);
+  text-align: left;
+  vertical-align: top;
+}}
+.genai-waterfall-stage {{ font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: var(--genai-font-caption); }}
+.genai-waterfall-track {{
+  display: block;
+  min-width: 6rem;
+  height: 0.5rem;
+  border: 1px solid var(--genai-border);
+  border-radius: 999px;
+  background: var(--genai-bg);
+  overflow: hidden;
+}}
+.genai-waterfall-fill {{
+  display: block;
+  height: 100%;
+  background: var(--genai-accent);
+  border-radius: 999px;
+}}
 @media (min-width: 1024px) {{
   [data-testid="stSidebar"] > div:first-child {{
     position: sticky;
@@ -515,7 +539,8 @@ def styles(
   .genai-latency-row {{ flex-wrap: wrap; }}
   .genai-latency-label, .genai-latency-value {{ min-width: 100%; text-align: left; }}
   .genai-score-track {{ width: 100%; }}
-  .genai-compare-table {{ font-size: var(--genai-font-caption); }}
+  .genai-compare-table, .genai-waterfall-table, .genai-diff-table {{ font-size: var(--genai-font-caption); }}
+  .genai-waterfall-track {{ min-width: 3rem; width: 100%; }}
 }}
 </style>
 """
