@@ -514,6 +514,59 @@ def styles(
   background: var(--genai-accent);
   border-radius: 999px;
 }}
+.genai-cost-chart, .genai-failure-chart, .genai-guardrail-chart {{ display: grid; gap: 0.45rem; }}
+.genai-cost-row, .genai-failure-row, .genai-guardrail-row {{
+  display: grid;
+  grid-template-columns: minmax(6rem, 10rem) 1fr auto;
+  gap: 0.6rem;
+  align-items: center;
+  font-size: var(--genai-font-caption);
+}}
+.genai-cost-label, .genai-failure-label, .genai-guardrail-label {{
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  overflow-wrap: anywhere;
+}}
+.genai-cost-track, .genai-failure-track, .genai-guardrail-track {{
+  display: flex;
+  min-width: 5rem;
+  height: 0.6rem;
+  border: 1px solid var(--genai-border);
+  border-radius: 999px;
+  background: var(--genai-bg);
+  overflow: hidden;
+}}
+.genai-cost-fill, .genai-failure-fill {{
+  display: block;
+  height: 100%;
+  background: var(--genai-accent);
+  border-radius: 999px;
+}}
+.genai-failure-fill {{ background: var(--genai-danger); }}
+.genai-cost-value, .genai-failure-value, .genai-guardrail-value {{
+  min-width: 5rem;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}}
+.genai-guardrail-segment {{ display: block; height: 100%; }}
+.genai-guardrail-allow {{ background: var(--genai-success); }}
+.genai-guardrail-redact {{ background: var(--genai-warning); }}
+.genai-guardrail-block {{ background: var(--genai-danger); }}
+.genai-guardrail-legend {{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 0.45rem;
+  font-size: var(--genai-font-caption);
+  color: var(--genai-muted);
+}}
+.genai-guardrail-legend-item {{ display: inline-flex; align-items: center; gap: 0.35rem; }}
+.genai-guardrail-legend-item::before {{
+  content: "";
+  display: inline-block;
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 2px;
+}}
 @media (min-width: 1024px) {{
   [data-testid="stSidebar"] > div:first-child {{
     position: sticky;
@@ -541,6 +594,8 @@ def styles(
   .genai-score-track {{ width: 100%; }}
   .genai-compare-table, .genai-waterfall-table, .genai-diff-table {{ font-size: var(--genai-font-caption); }}
   .genai-waterfall-track {{ min-width: 3rem; width: 100%; }}
+  .genai-cost-row, .genai-failure-row, .genai-guardrail-row {{ grid-template-columns: 1fr; gap: 0.2rem; }}
+  .genai-cost-value, .genai-failure-value, .genai-guardrail-value {{ min-width: 0; text-align: left; }}
 }}
 </style>
 """
