@@ -451,6 +451,44 @@ def styles(
 }}
 .genai-alert-hint {{ color: var(--genai-muted); }}
 .genai-alert-action {{ font-weight: 600; margin-top: 0.25rem; }}
+.genai-query-badges {{ display: flex; flex-wrap: wrap; gap: 0.35rem; margin-bottom: 0.6rem; }}
+.genai-query-answer {{ white-space: pre-wrap; line-height: 1.5; }}
+.genai-query-failure {{ color: var(--genai-danger); font-weight: 600; }}
+.genai-latency-chart {{ margin-bottom: var(--genai-gap); }}
+.genai-score-line, .genai-latency-row {{
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0.35rem 0;
+}}
+.genai-latency-label {{ min-width: 8rem; }}
+.genai-latency-value {{ min-width: 8rem; text-align: right; color: var(--genai-muted); font-size: var(--genai-font-caption); }}
+.genai-score-track {{
+  display: inline-block;
+  flex: 1;
+  min-width: 6rem;
+  height: 0.55rem;
+  border: 1px solid var(--genai-border);
+  border-radius: 999px;
+  background: var(--genai-bg);
+  overflow: hidden;
+}}
+.genai-score-fill {{
+  display: block;
+  height: 100%;
+  background: var(--genai-accent);
+  border-radius: 999px;
+}}
+.genai-compare-table {{ width: 100%; border-collapse: collapse; }}
+.genai-compare-table th, .genai-compare-table td {{
+  padding: 0.35rem 0.5rem;
+  border-bottom: 1px solid var(--genai-border);
+  text-align: left;
+  vertical-align: top;
+}}
+.genai-delta-better {{ color: var(--genai-success); font-weight: 600; }}
+.genai-delta-worse {{ color: var(--genai-danger); font-weight: 600; }}
+.genai-delta-neutral {{ color: var(--genai-muted); }}
 .genai-status {{ font-weight: 600; }}
 @media (min-width: 1024px) {{
   [data-testid="stSidebar"] > div:first-child {{
@@ -474,6 +512,10 @@ def styles(
   .stApp .stDataFrame {{ overflow-x: auto; }}
   .genai-card {{ padding: 0.5rem; }}
   .genai-kpi-strip {{ grid-template-columns: 1fr; }}
+  .genai-latency-row {{ flex-wrap: wrap; }}
+  .genai-latency-label, .genai-latency-value {{ min-width: 100%; text-align: left; }}
+  .genai-score-track {{ width: 100%; }}
+  .genai-compare-table {{ font-size: var(--genai-font-caption); }}
 }}
 </style>
 """

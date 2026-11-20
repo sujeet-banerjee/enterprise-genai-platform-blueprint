@@ -209,11 +209,18 @@ from ui.query_studio import (
     DEFAULT_QUERY,
     QUERY_TEMPLATES,
     add_history,
+    answer_card_markdown,
+    batch_cards_markdown,
     build_history_entry,
+    comparison_markdown,
     comparison_rows,
+    document_cards_markdown,
     find_baseline,
     history_rows,
+    resilience_summary_markdown,
     result_markdown,
+    stage_latency_markdown,
+    trace_summary_markdown,
 )
 from ui.shell import (
     PAGE_ICON,
@@ -1244,8 +1251,9 @@ def _render_run_comparison(
             "cost, retrieval, guardrail and answer deltas."
         )
         return
-    st.dataframe(
-        comparison_rows(previous, current), use_container_width=True, hide_index=True
+    st.markdown(
+        comparison_markdown(comparison_rows(previous, current)),
+        unsafe_allow_html=True,
     )
     st.caption(
         f"Baseline request_id `{previous.get('request_id') or '-'}` from "
@@ -1279,9 +1287,10 @@ def screen_query_studio() -> None:
                 result = api.batch_query(queries, top_k=top_k, include_trace=include_trace)
             if require_ok(result):
                 just_ran = True
-                st.json(result.data.get("summary", {}))
+                items = result.data.get("results") or []
+                st.markdown(batch_cards_markdown(items), unsafe_allow_html=True)
                 st.caption("Batch items are shown inline; history records single-query runs.")
-                for index, item in enumerate(result.data.get("results", []), start=1):
+                for index, item in enumerate(items, start=1):
                     label = str(item.get("query") or f"item {index}")[:60]
                     with st.expander(f"{index}. {label}", expanded=index == 1):
                         _render_query_result(item, item.get("query") or query)
@@ -1451,6 +1460,7 @@ def _render_query_result(item: Dict[str, Any], query: str = "") -> None:
     resilience = obs.get("resilience")
     otel = obs.get("otel") or {}
     request_id = item.get("request_id") or ""
+    st.markdown(answer_card_markdown(query or item.get("query") or "", item), unsafe_allow_html=True)
     tabs = st.tabs(
         ["Answer", "Documents", "Trace", "Guardrails", "Resilience", "Cache"]
     )
@@ -1500,24 +1510,7 @@ def _render_query_result(item: Dict[str, Any], query: str = "") -> None:
 
     with tabs[1]:
         docs = item.get("retrieved_docs_with_scores") or []
-        if docs:
-            st.dataframe(
-                [
-                    {
-                        "rank": index,
-                        "score": doc.get("score"),
-                        "content": (doc.get("content") or "")[:300],
-                    }
-                    for index, doc in enumerate(docs, start=1)
-                ],
-                use_container_width=True,
-                hide_index=True,
-            )
-        else:
-            st.info(
-                "No retrieved documents on this response "
-                "(for example, a cache hit or a blocked request)."
-            )
+        st.markdown(document_cards_markdown(docs), unsafe_allow_html=True)
 
     with tabs[2]:
         if obs:
@@ -1525,10 +1518,10 @@ def _render_query_result(item: Dict[str, Any], query: str = "") -> None:
                 st.caption(
                     f"OTel trace_id={otel.get('trace_id')} span_id={otel.get('span_id')}"
                 )
-            stages = latency_rows(latency)
-            if stages:
-                st.dataframe(stages, use_container_width=True)
-            st.json(obs)
+            st.markdown(stage_latency_markdown(latency), unsafe_allow_html=True)
+            st.markdown(trace_summary_markdown(item), unsafe_allow_html=True)
+            with st.expander(DETAIL_EXPANDER_LABEL, expanded=False):
+                st.json(obs)
         else:
             st.info(
                 "No trace on this response. Tick **Include redacted trace** before running."
@@ -1553,10 +1546,10 @@ def _render_query_result(item: Dict[str, Any], query: str = "") -> None:
         _render_guardrail_decisions(decisions)
 
     with tabs[4]:
+        st.markdown(resilience_summary_markdown(resilience), unsafe_allow_html=True)
         if resilience:
-            st.json(resilience)
-        else:
-            st.info("No provider resilience events on this request.")
+            with st.expander(DETAIL_EXPANDER_LABEL, expanded=False):
+                st.json(resilience)
 
     with tabs[5]:
         c1, c2, c3 = st.columns(3)

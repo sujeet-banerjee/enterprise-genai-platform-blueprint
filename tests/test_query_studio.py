@@ -12,13 +12,25 @@ from ui.query_studio import (
     MAX_HISTORY,
     QUERY_TEMPLATES,
     add_history,
+    answer_card_markdown,
+    batch_cards,
+    batch_cards_markdown,
     build_history_entry,
+    comparison_markdown,
     comparison_rows,
+    document_cards_markdown,
+    document_rows,
     find_baseline,
     history_rows,
+    resilience_summary_markdown,
+    result_badges,
     result_markdown,
+    stage_latency_markdown,
+    stage_latency_rows,
     template_by_label,
     template_labels,
+    trace_summary_markdown,
+    trace_summary_rows,
 )
 
 REPO_BASE = Path(__file__).resolve().parents[1]
@@ -285,3 +297,192 @@ def test_tour_query_studio_step_covers_the_new_workflow():
     assert "history" in body.lower()
     assert "Compare with last run" in body
     assert "tabbed results" in body.lower()
+
+
+def test_result_badges_summarise_outcome_cache_and_guardrails():
+    badges = result_badges(_item(cache_hit=True))
+    assert [badge["label"] for badge in badges] == [
+        "Success",
+        "Cache hit",
+        "1 redaction(s)",
+    ]
+    assert [badge["tone"] for badge in badges] == ["success", "success", "warning"]
+
+    blocked = result_badges(
+        _item(
+            failure_type="guardrail_input_blocked",
+            cache_hit=False,
+            guardrail_decisions=[{"guardrail": "injection", "decision": "block"}],
+        )
+    )
+    assert [badge["label"] for badge in blocked] == [
+        "Failed",
+        "Cache miss",
+        "1 guardrail block(s)",
+    ]
+    assert blocked[0]["tone"] == "danger"
+    assert blocked[2]["tone"] == "danger"
+
+
+def test_answer_card_markdown_shows_prominent_answer_and_curated_metadata():
+    card = answer_card_markdown("What is RAG?", _item(response="RAG <grounds> answers."))
+    assert "Answer" in card
+    assert "What is RAG?" in card
+    assert "genai-query-badges" in card
+    assert "RAG &lt;grounds&gt; answers." in card
+    assert "req-1" in card
+    assert "200.0 ms" not in card
+    assert "120.0 ms" in card
+    assert "raw" not in card.lower()
+
+
+def test_answer_card_markdown_handles_a_blocked_result():
+    card = answer_card_markdown(
+        "probe",
+        _item(
+            response="",
+            failure_type="guardrail_input_blocked",
+            error="blocked <script>",
+            guardrail_decisions=[{"guardrail": "injection", "decision": "block"}],
+            observability={},
+            retrieved_docs_with_scores=[],
+        ),
+    )
+    assert "Failed" in card
+    assert "blocked &lt;script&gt;" in card
+    assert "1 guardrail block(s)" in card
+
+
+def test_stage_latency_rows_and_chart_exclude_total_and_show_relative_bars():
+    latency = {"total_ms": 120.0, "retrieval_ms": 30.0, "llm_generation_ms": 90.0}
+    rows = stage_latency_rows(latency)
+    assert [row["stage"] for row in rows] == ["Llm Generation", "Retrieval"]
+    assert rows[0]["latency_ms"] == 90.0
+    assert rows[0]["share_pct"] == 75.0
+    assert rows[1]["share_pct"] == 25.0
+    chart = stage_latency_markdown(latency)
+    assert "genai-latency-chart" in chart
+    assert 'style="width:75.0%"' in chart
+    assert 'style="width:25.0%"' in chart
+    assert "No stage latency available" in stage_latency_markdown({})
+
+
+def test_document_rows_and_markdown_rank_score_and_escape_content():
+    docs = [
+        {"score": 0.5, "content": "lower <b>rank</b>"},
+        {
+            "score": 0.9,
+            "content": "higher score",
+            "metadata": {"title": "Policy 42"},
+        },
+    ]
+    rows = document_rows(docs)
+    assert [row["rank"] for row in rows] == [1, 2]
+    assert rows[1]["title"] == "Policy 42"
+    assert rows[1]["score_pct"] == 100.0
+    assert rows[0]["score_pct"] == 55.6
+    markdown = document_cards_markdown(docs)
+    assert "1. Document 1" in markdown
+    assert "2. Policy 42" in markdown
+    assert "lower &lt;b&gt;rank&lt;/b&gt;" in markdown
+    assert "genai-score-fill" in markdown
+    assert "No retrieved documents" in document_cards_markdown([])
+
+
+def test_trace_and_resilience_summaries_are_curated():
+    item = _item()
+    rows = trace_summary_rows(item)
+    labels = {row["label"] for row in rows}
+    assert {"Status", "Failed Stage", "Guardrails", "Trace Id", "Span Id"} <= labels
+    summary = trace_summary_markdown(item)
+    assert "trace-abc" in summary
+    assert "input_redaction" not in summary
+    resilience = resilience_summary_markdown(
+        {"served_by": "primary", "retries": 1, "failovers": 0, "breaker_opens": 0}
+    )
+    assert "Served By" in resilience
+    assert "primary" in resilience
+    assert "served_by" not in resilience.lower()
+    assert "Raw payload" not in resilience
+    assert "No provider resilience events" in resilience_summary_markdown(None)
+
+
+def test_batch_cards_summarise_each_item_without_raw_payloads():
+    items = [
+        dict(_item(request_id="batch-1"), query="first question"),
+        dict(
+            _item(request_id="batch-2", failure_type="query_too_long"),
+            query="second question",
+        ),
+    ]
+    cards = batch_cards(items)
+    assert [card["index"] for card in cards] == [1, 2]
+    assert cards[0]["query"] == "first question"
+    assert cards[1]["failure_type"] == "query_too_long"
+    markdown = batch_cards_markdown(items)
+    assert "1. first question" in markdown
+    assert "2. second question" in markdown
+    assert "Cache miss" in markdown
+    assert "genai-batch-card" in markdown
+    assert "retrieved_docs_with_scores" not in markdown
+
+
+def test_comparison_markdown_colors_semantic_deltas():
+    previous = _entry(
+        "same",
+        _item(
+            latency={"total_ms": 100.0},
+            cost={"estimated_cost_usd": 0.001},
+            guardrail_decisions=[],
+        ),
+    )
+    current = _entry(
+        "same",
+        _item(
+            latency={"total_ms": 70.0},
+            cost={"estimated_cost_usd": 0.002},
+            failure_type="guardrail_output_blocked",
+            cache_hit=True,
+            guardrail_decisions=[{"guardrail": "deny_list", "decision": "block"}],
+        ),
+    )
+    markdown = comparison_markdown(comparison_rows(previous, current))
+    assert "genai-delta-better" in markdown
+    assert "genai-delta-worse" in markdown
+    assert "-30.0 ms" in markdown
+    assert "+0.001000 USD" in markdown
+    assert "No comparison rows" in comparison_markdown([])
+
+
+def test_app_wires_structured_query_studio_presentation():
+    text = APP_PATH.read_text(encoding="utf-8")
+    for needle in (
+        "answer_card_markdown(",
+        "batch_cards_markdown(",
+        "document_cards_markdown(",
+        "stage_latency_markdown(",
+        "trace_summary_markdown(",
+        "resilience_summary_markdown(",
+        "comparison_markdown(comparison_rows(previous, current))",
+        "DETAIL_EXPANDER_LABEL",
+    ):
+        assert needle in text, f"ui/app.py is missing {needle!r}"
+    theme = (REPO_BASE / "ui" / "theme.py").read_text(encoding="utf-8")
+    assert ".genai-latency-chart" in theme
+    assert ".genai-score-fill" in theme
+    assert ".genai-delta-better" in theme
+
+
+def test_query_studio_structured_helpers_remain_pure():
+    source = (REPO_BASE / "ui" / "query_studio.py").read_text(encoding="utf-8")
+    tree = ast.parse(source, filename="ui/query_studio.py")
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            names = [alias.name for alias in node.names]
+            assert not any(name.startswith("streamlit") for name in names)
+            assert not any(name.startswith("app.") or name.startswith("core.") for name in names)
+        if isinstance(node, ast.ImportFrom):
+            module = node.module or ""
+            assert module != "streamlit"
+            assert not module.startswith("app.")
+            assert not module.startswith("core.")

@@ -13,6 +13,7 @@ Wireframes are illustrative mock-ups, not screenshots or captured production dat
 | #240 | Branded app shell | `<img src="wireframes/240-app-shell.svg" alt="Branded app shell wireframe showing header chips, sidebar groups, and primary content" width="900">` ([source](wireframes/240-app-shell.excalidraw)) |
 | #241 | Design-system primitives | `<img src="wireframes/241-design-system-primitives.svg" alt="Design-system primitives wireframe showing badges, KPI tiles, key-value panel, section card, detail drawer, structured alert and formatters" width="900">` ([source](wireframes/241-design-system-primitives.excalidraw)) |
 | #242 | Overview / Health | `<img src="wireframes/242-overview-health.svg" alt="Overview wireframe showing status KPIs, component key-value cards, guided checklist and redacted detail expander" width="900">` ([source](wireframes/242-overview-health.excalidraw)) |
+| #243 | Query Studio | `<img src="wireframes/243-query-studio.svg" alt="Query Studio wireframe showing an answer card with status badges, stage latency chart, ranked documents with score bars, curated trace and resilience summaries, comparison deltas and batch cards" width="900">` ([source](wireframes/243-query-studio.excalidraw)) |
 
 ## 1. Review basis and verdict
 
