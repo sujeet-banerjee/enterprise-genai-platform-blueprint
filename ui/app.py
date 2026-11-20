@@ -130,7 +130,6 @@ from ui.evidence import (
     evidence_pack_filename,
     evidence_pack_markdown,
     lookup_links,
-    trace_summary,
     validate_request_id,
 )
 from ui.feedback import (
@@ -245,7 +244,16 @@ from ui.theme import (
     styles as theme_styles,
 )
 from ui.tour import render_help_expander, render_tour, start_tour
-from ui.traces import build_timeline, redaction_safe_view, span_filters, trace_context
+from ui.traces import (
+    build_timeline,
+    build_waterfall,
+    compare_highlight_markdown,
+    redaction_safe_view,
+    span_filters,
+    summary_card_markdown,
+    trace_context,
+    waterfall_markdown,
+)
 from ui.workspace import (
     MANAGED_PARAMS,
     WorkspaceError,
@@ -3137,20 +3145,11 @@ def _evidence_scope() -> Dict[str, str]:
 
 
 def _render_trace_summary_card(container: Any, trace: Dict[str, Any]) -> None:
-    summary = trace_summary(trace)
-    container.metric("request_id", summary["request_id"] or "-")
-    container.caption(
-        f"status={summary['status']} | docs={summary['documents']} | "
-        f"latency={summary['total_ms'] if summary['total_ms'] is not None else '-'} ms | "
-        f"cost={summary['cost_usd'] if summary['cost_usd'] is not None else 'n/a'}"
-    )
-    if summary["failure_type"]:
-        container.warning(f"failure_type={summary['failure_type']}")
-    if summary["failure_tags"]:
-        container.caption("failure_tags: " + summary["failure_tags"])
+    container.markdown(summary_card_markdown(trace), unsafe_allow_html=True)
 
 
 def _render_trace_view(trace: Dict[str, Any], *, key_prefix: str) -> None:
+    _render_trace_summary_card(st, trace)
     ctx = trace_context(trace)
     if ctx:
         st.caption(" | ".join(f"{k}={v}" for k, v in ctx.items()))
@@ -3160,26 +3159,26 @@ def _render_trace_view(trace: Dict[str, Any], *, key_prefix: str) -> None:
             f"OTel correlation: trace_id={otel.get('trace_id')} "
             f"span_id={otel.get('span_id')}"
         )
-    timeline = build_timeline(trace)
-    if timeline:
+    waterfall = build_waterfall(trace)
+    if waterfall:
         st.subheader("Timeline / waterfall")
-        st.dataframe(timeline, use_container_width=True, hide_index=True)
-        stages = span_filters(timeline)
+        st.markdown(waterfall_markdown(waterfall), unsafe_allow_html=True)
+        stages = span_filters(build_timeline(trace))
         if stages:
             st.caption("Spans: " + ", ".join(stages))
     resilience = trace.get("resilience")
     if resilience:
-        st.subheader("Provider resilience")
-        st.json(resilience)
+        st.markdown(resilience_summary_markdown(resilience), unsafe_allow_html=True)
+        with st.expander("Raw provider resilience", expanded=False):
+            st.json(resilience)
     decisions = trace.get("guardrail_decisions") or []
     if decisions:
         st.subheader("Guardrail decisions")
         _render_guardrail_decisions(decisions)
-    st.subheader("Trace (redaction-safe view)")
-    st.json(redaction_safe_view(trace))
-    rows = latency_rows(trace.get("latency", {}))
-    if rows:
-        st.dataframe(rows, use_container_width=True)
+    latency_detail = latency_rows(trace.get("latency", {}))
+    if latency_detail:
+        with st.expander("Latency detail", expanded=False):
+            st.dataframe(latency_detail, use_container_width=True, hide_index=True)
     rid = clean_request_id(trace.get("request_id"))
     if rid:
         _render_feedback_controls(
@@ -3188,7 +3187,7 @@ def _render_trace_view(trace: Dict[str, Any], *, key_prefix: str) -> None:
             failure_type=str(trace.get("failure_type") or ""),
             key_prefix=f"trace::{key_prefix}",
         )
-    with st.expander("Raw trace payload"):
+    with st.expander(DETAIL_EXPANDER_LABEL, expanded=False):
         st.code(json.dumps(redaction_safe_view(trace), indent=2, default=str), language="json")
 
 
@@ -3327,8 +3326,8 @@ def screen_traces() -> None:
                 f"{len(highlights)} meaningful difference(s) across "
                 f"{len(comparison_rows)} compared metrics."
             )
-            st.dataframe(highlights or comparison_rows, use_container_width=True, hide_index=True)
-            with st.expander("All compared metrics"):
+            st.markdown(compare_highlight_markdown(highlights), unsafe_allow_html=True)
+            with st.expander("All compared metrics", expanded=False):
                 st.dataframe(comparison_rows, use_container_width=True, hide_index=True)
         else:
             _failure_taxonomy(result)
@@ -3586,100 +3585,6 @@ def screen_feedback() -> None:
 
 
     st.caption("Feedback annotations are part of your workspace; use Export/Import workspace to persist or share (redacted).")
-
-
-
-
-    st.subheader("Traces")
-    api = client()
-    scope = _evidence_scope()
-
-    if not st.session_state.get("trace_request_id"):
-        st.session_state.trace_request_id = (
-            st.session_state.get("last_trace_request_id")
-            or st.session_state.get("last_request_id")
-            or ""
-        )
-
-    col1, col2 = st.columns([3, 2])
-    request_id = col1.text_input("request_id", key="trace_request_id")
-    compare_request_id = col2.text_input(
-        "Compare with request_id (optional)", key="trace_compare_request_id"
-    )
-
-    lookup_col, compare_col, clear_col = st.columns(3)
-    autoload = bool(st.session_state.pop("trace_autoload", False))
-    compare_autoload = bool(st.session_state.pop("trace_compare_autoload", False))
-    lookup = lookup_col.button("Look up trace", key="trace_lookup")
-    compare = compare_col.button("Compare requests", key="trace_compare")
-    if clear_col.button("Clear", key="trace_clear"):
-        st.session_state.trace_request_id = ""
-        st.session_state.trace_compare_request_id = ""
-        st.session_state.last_trace_request_id = ""
-        st.rerun()
-
-    primary_error = validate_request_id(request_id) if request_id else ""
-    compare_error = validate_request_id(compare_request_id) if compare_request_id else ""
-    if primary_error and (autoload or lookup):
-        st.error(primary_error)
-    if compare_error and (compare or compare_autoload):
-        st.error("Compare field: " + compare_error)
-
-    want_compare = bool(compare_request_id) and not compare_error and (
-        compare or compare_autoload
-    )
-    primary: Optional[Dict[str, Any]] = None
-    secondary: Optional[Dict[str, Any]] = None
-
-    if request_id and not primary_error and (autoload or lookup or want_compare):
-        result = _fetch_trace(api, request_id)
-        if require_ok(result):
-            primary = result.data
-            st.session_state.last_trace_request_id = clean_request_id(request_id)
-            notice = cross_scope_notice(primary, scope.get("tenant", ""))
-            if notice:
-                st.warning(notice)
-            else:
-                _render_evidence_links(
-                    primary.get("request_id") or request_id,
-                    key_prefix="trace_primary",
-                    exclude="trace",
-                )
-            _render_trace_view(primary, key_prefix="trace_primary")
-        else:
-            _failure_taxonomy(result)
-
-    comparison_rows: Optional[List[Dict[str, Any]]] = None
-    if want_compare and primary is not None:
-        result = _fetch_trace(api, compare_request_id)
-        if require_ok(result):
-            secondary = result.data
-            comparison_rows = diff_traces(primary, secondary)
-            st.subheader("Compare requests")
-            left, right = st.columns(2)
-            _render_trace_summary_card(left, primary)
-            _render_trace_summary_card(right, secondary)
-            highlights = changed_rows(comparison_rows)
-            st.caption(
-                f"{len(highlights)} meaningful difference(s) across "
-                f"{len(comparison_rows)} compared metrics."
-            )
-            st.dataframe(highlights or comparison_rows, use_container_width=True, hide_index=True)
-            with st.expander("All compared metrics"):
-                st.dataframe(comparison_rows, use_container_width=True, hide_index=True)
-        else:
-            _failure_taxonomy(result)
-
-    if primary is not None:
-        _render_evidence_pack(
-            api,
-            primary,
-            comparison_rows,
-            key_prefix="trace_pack",
-            annotation=_annotation_for(primary.get("request_id") or request_id),
-        )
-
-    _render_saved_views("traces")
 
 
 def screen_settings() -> None:
