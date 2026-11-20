@@ -103,6 +103,7 @@ STATUS_TONES: Dict[str, str] = {
     "warning": "warning",
     "degraded": "warning",
     "redacted": "warning",
+    "redact": "warning",
     "pending": "warning",
     "danger": "danger",
     "error": "danger",
@@ -567,6 +568,81 @@ def styles(
   height: 0.6rem;
   border-radius: 2px;
 }}
+.genai-guardrail-legend-item.genai-guardrail-allow::before {{ background: var(--genai-success); }}
+.genai-guardrail-legend-item.genai-guardrail-redact::before {{ background: var(--genai-warning); }}
+.genai-guardrail-legend-item.genai-guardrail-block::before {{ background: var(--genai-danger); }}
+.genai-guardrail-chain {{
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.9rem;
+}}
+.genai-guardrail-edge {{
+  border: 1px solid var(--genai-border);
+  border-radius: 0.5rem;
+  padding: 0.75rem;
+  background: var(--genai-surface);
+}}
+.genai-guardrail-edge h4 {{
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 0.6rem;
+}}
+.genai-guardrail-count {{
+  font-size: var(--genai-font-caption);
+  font-weight: 400;
+  color: var(--genai-muted);
+}}
+.genai-guardrail-node {{
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  vertical-align: top;
+  max-width: 100%;
+}}
+.genai-guardrail-node + .genai-guardrail-arrow {{
+  display: inline-flex;
+  align-items: center;
+  padding: 0 0.35rem;
+  color: var(--genai-muted);
+}}
+.genai-guardrail-order {{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.4rem;
+  height: 1.4rem;
+  flex: 0 0 1.4rem;
+  border-radius: 999px;
+  background: var(--genai-accent);
+  color: #ffffff;
+  font-size: var(--genai-font-caption);
+  font-weight: 700;
+}}
+.genai-guardrail-node-body {{ min-width: 0; overflow-wrap: anywhere; }}
+.genai-guardrail-node-body .genai-card {{ margin-top: 0.4rem; }}
+.genai-table-scroll {{ overflow-x: auto; }}
+.genai-decision-table {{
+  width: 100%;
+  min-width: 52rem;
+  border-collapse: collapse;
+  font-size: var(--genai-font-caption);
+}}
+.genai-decision-table th, .genai-decision-table td {{
+  padding: 0.45rem 0.5rem;
+  border-bottom: 1px solid var(--genai-border);
+  text-align: left;
+  vertical-align: top;
+}}
+.genai-decision-table th {{ color: var(--genai-muted); font-weight: 600; }}
+.genai-raw-record summary {{ cursor: pointer; color: var(--genai-accent); }}
+.genai-raw-record pre {{
+  max-height: 14rem;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: var(--genai-font-caption);
+}}
 @media (min-width: 1024px) {{
   [data-testid="stSidebar"] > div:first-child {{
     position: sticky;
@@ -596,6 +672,10 @@ def styles(
   .genai-waterfall-track {{ min-width: 3rem; width: 100%; }}
   .genai-cost-row, .genai-failure-row, .genai-guardrail-row {{ grid-template-columns: 1fr; gap: 0.2rem; }}
   .genai-cost-value, .genai-failure-value, .genai-guardrail-value {{ min-width: 0; text-align: left; }}
+  .genai-guardrail-chain {{ grid-template-columns: 1fr; }}
+  .genai-guardrail-node {{ display: flex; width: 100%; }}
+  .genai-guardrail-node + .genai-guardrail-arrow {{ padding: 0.25rem 0; }}
+  .genai-decision-table {{ min-width: 44rem; }}
 }}
 </style>
 """
