@@ -238,7 +238,12 @@ Issues are tracked in GitHub; see [capability-status.md](capability-status.md) f
   semantic/prefix caching is planned (candidate follow-up under #43).
 - **D3. Async & streaming** — async pipeline path, token **streaming** (SSE/WebSocket) end to
   end including the UI; backpressure and queueing.
-  *Planned:* the API is request/response only (candidate follow-up under #43).
+  *Tracked (#279/#280, accepted defaults):* keep `POST /v1/query` and `/v1/query:batch`
+  synchronous; add async operation submit/poll/list endpoints with instant `request_id`,
+  owner=`principal.subject` else tenant-scoped `X-Client-Session` fallback, coarse
+  `queued|running|completed|failed|cancelled` + timestamps (+ stage), bounded in-memory
+  + honor `BaseStore` when configured, in-progress + recent-completed window, and
+  unified listing including experiments. Token streaming/SSE/WebSocket remains planned.
 - **D4. Real vector scale** — production vector backends (pgvector, Qdrant, Milvus, Weaviate,
   Pinecone) behind the existing `BaseRetriever`; index lifecycle (build/refresh/reindex),
   hybrid at scale, metadata filtering.
