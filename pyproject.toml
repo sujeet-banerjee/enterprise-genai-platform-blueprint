@@ -8,9 +8,9 @@ version = "0.2.0"
 description = "Enterprise GenAI / RAG platform blueprint with pluggable, vendor-neutral components"
 requires-python = ">=3.11"
 dependencies = [
-    "fastapi==0.163.0",
-    "openai==3.51.0",
-    "pydantic==2.14.3",
+    "fastapi==0.165.0",
+    "openai==3.57.0",
+    "pydantic==2.14.4",
     "PyYAML==6.0.3",
     "uvicorn>=0.30.0",
     "torch>=2.4.0",
