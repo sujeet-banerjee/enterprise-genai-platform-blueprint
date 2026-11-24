@@ -17,6 +17,7 @@ Wireframes are illustrative mock-ups, not screenshots or captured production dat
 | #244 | Traces waterfall | `<img src="wireframes/244-traces-waterfall.svg" alt="Traces wireframe showing a request summary card, stage waterfall with running offsets, side-by-side diff highlights, guardrail/resilience summaries and redacted raw expanders" width="900">` ([source](wireframes/244-traces-waterfall.excalidraw)) |
 | #245 | Governance & Cost | `<img src="wireframes/245-governance-cost.svg" alt="Governance & Cost wireframe showing severity alerts, cost and policy KPIs, cost and failure bar charts, stacked guardrail decisions with legend, filters, export and advanced raw expanders" width="900">` ([source](wireframes/245-governance-cost.excalidraw)) |
 | #246 | Guardrails | `<img src="wireframes/246-guardrails-view.svg" alt="Guardrails wireframe showing status KPIs, ordered input and output chain cards, stacked hit-rate chart with legend, and a structured decision history table with per-row raw disclosures" width="900">` ([source](wireframes/246-guardrails-view.excalidraw)) |
+| #247 | Compare (what-if) | `<img src="wireframes/247-compare-diff.svg" alt="Compare wireframe showing before and after component cards, a semantic component delta table, applied config override deltas and a redacted raw expander" width="900">` ([source](wireframes/247-compare-diff.excalidraw)) |
 
 ## 1. Review basis and verdict
 

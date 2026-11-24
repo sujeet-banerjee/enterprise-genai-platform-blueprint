@@ -63,6 +63,7 @@ from ui.approvals import (
 )
 from ui.client import ApiClient, ApiResult
 from ui.common import api_base_url, latency_rows, metric_rows, require_ok
+from ui.compare import compare_view_models, delta_table_markdown
 from ui.components import (
     DETAIL_EXPANDER_LABEL,
     alert_markdown,
@@ -1605,12 +1606,32 @@ def screen_compare() -> None:
             overrides["similarity_metric"] = metric
         if retriever != "(keep)":
             overrides["default_retriever"] = retriever
+        before_ready = api.ready()
+        before_config = api.effective_config()
         with st.spinner("Rebuilding pipeline..."):
             rebuild = api.rebuild(overrides)
         if not require_ok(rebuild):
             return
-        st.success(f"Rebuilt at revision {rebuild.data.get('config_revision')}")
-        st.json(rebuild.data.get("components", {}))
+        views = compare_view_models(
+            before_ready.data if before_ready.ok else {},
+            rebuild.data,
+            before_config.data if before_config.ok else {},
+        )
+        st.success(f"Rebuilt at revision {views['revision']}")
+        st.markdown(kpi_strip_markdown(views["kpis"]), unsafe_allow_html=True)
+        if not views["before_available"]:
+            st.caption("Before snapshot unavailable; the after-state is still shown.")
+        st.subheader("Pipeline components")
+        st.markdown(views["cards"], unsafe_allow_html=True)
+        st.subheader("Component deltas")
+        st.markdown(delta_table_markdown(views["components"]), unsafe_allow_html=True)
+        st.subheader("Applied config overrides")
+        if views["overrides"]:
+            st.markdown(delta_table_markdown(views["overrides"]), unsafe_allow_html=True)
+        else:
+            st.caption("No config overrides were applied in this rebuild.")
+        with st.expander(DETAIL_EXPANDER_LABEL, expanded=False):
+            st.json(views["raw"])
         after = api.query(query, include_trace=False)
         if require_ok(after):
             _render_query_result(after.data, query)

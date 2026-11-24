@@ -499,6 +499,13 @@ def styles(
   text-align: left;
   vertical-align: top;
 }}
+.genai-diff-cards {{
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}}
+.genai-diff-cards .genai-card {{ height: 100%; }}
+.genai-diff-table th {{ color: var(--genai-muted); font-weight: 600; }}
 .genai-waterfall-stage {{ font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: var(--genai-font-caption); }}
 .genai-waterfall-track {{
   display: block;
@@ -672,6 +679,7 @@ def styles(
   .genai-waterfall-track {{ min-width: 3rem; width: 100%; }}
   .genai-cost-row, .genai-failure-row, .genai-guardrail-row {{ grid-template-columns: 1fr; gap: 0.2rem; }}
   .genai-cost-value, .genai-failure-value, .genai-guardrail-value {{ min-width: 0; text-align: left; }}
+  .genai-diff-cards {{ grid-template-columns: 1fr; }}
   .genai-guardrail-chain {{ grid-template-columns: 1fr; }}
   .genai-guardrail-node {{ display: flex; width: 100%; }}
   .genai-guardrail-node + .genai-guardrail-arrow {{ padding: 0.25rem 0; }}
