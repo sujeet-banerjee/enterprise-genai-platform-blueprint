@@ -19,6 +19,7 @@ Wireframes are illustrative mock-ups, not screenshots or captured production dat
 | #246 | Guardrails | `<img src="wireframes/246-guardrails-view.svg" alt="Guardrails wireframe showing status KPIs, ordered input and output chain cards, stacked hit-rate chart with legend, and a structured decision history table with per-row raw disclosures" width="900">` ([source](wireframes/246-guardrails-view.excalidraw)) |
 | #247 | Compare (what-if) | `<img src="wireframes/247-compare-diff.svg" alt="Compare wireframe showing before and after component cards, a semantic component delta table, applied config override deltas and a redacted raw expander" width="900">` ([source](wireframes/247-compare-diff.excalidraw)) |
 | #248 | Evaluation | `<img src="wireframes/248-evaluation-view.svg" alt="Evaluation wireframe showing dataset, run and results cards, background job status badges and progress, a highlighted comparison matrix with charts, and structured experiment status before a redacted raw expander" width="900">` ([source](wireframes/248-evaluation-view.excalidraw)) |
+| #249 | Approvals (HITL) | `<img src="wireframes/249-approvals-view.svg" alt="Approvals wireframe showing a request summary header with status/SLA/action/requester/tenant, key-value context and policy panels, linked evidence chips, decision history and an explicit approve/reject confirmation" width="900">` ([source](wireframes/249-approvals-view.excalidraw)) |
 
 ## 1. Review basis and verdict
 
