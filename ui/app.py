@@ -65,6 +65,7 @@ from ui.approvals import (
     sort_approval_records,
     summary_counts,
 )
+from ui.audit_view import audit_view_models
 from ui.client import ApiClient, ApiResult
 from ui.common import api_base_url, latency_rows, metric_rows, require_ok
 from ui.compare import compare_view_models, delta_table_markdown
@@ -2971,11 +2972,6 @@ def screen_audit() -> None:
     data = result.data
     st.session_state.last_audit_at = "loaded"
 
-    c1, c2 = st.columns(2)
-    c1.metric("Audit enabled", "yes" if data.get("enabled") else "no")
-    c2.metric("Events returned", data.get("count"))
-    st.caption(f"Total retained: {data.get('total')}")
-
     events = data.get("events") or []
     rid = clean_request_id(request_filter)
     if rid:
@@ -2990,25 +2986,34 @@ def screen_audit() -> None:
             )
             if st.button("Open trace for this request", key="audit_open_trace"):
                 _open_evidence(TRACE_SCREEN, rid)
-    if events:
-        st.dataframe(
-            [
-                {
-                    "timestamp": event.get("timestamp"),
-                    "event_type": event.get("event_type"),
-                    "action": event.get("action"),
-                    "outcome": event.get("outcome"),
-                    "request_id": event.get("request_id"),
-                }
-                for event in events
-            ],
-            use_container_width=True,
-        )
-        with st.expander("Raw events (redacted)"):
-            st.json(events)
-    else:
-        st.info("No audit events returned (auditing may be disabled in `config/audit.yaml`).")
 
+    view_data = dict(data)
+    view_data["events"] = events
+    view_data["count"] = len(events)
+    view = audit_view_models(view_data, request_id=rid, event_type=event_type)
+    st.markdown(kpi_strip_markdown(view["kpis"]), unsafe_allow_html=True)
+
+    st.subheader("Export")
+    st.caption("Metadata-only CSV/JSON; redacted detail stays in the timeline.")
+    export_c1, export_c2 = st.columns(2)
+    with export_c1:
+        st.download_button(
+            "Download audit CSV",
+            data=view["export_csv"],
+            file_name=view["csv_filename"],
+            mime="text/csv",
+            key="audit_timeline_csv",
+        )
+    with export_c2:
+        st.download_button(
+            "Download audit JSON",
+            data=view["export_json"],
+            file_name=view["json_filename"],
+            mime="application/json",
+            key="audit_timeline_json",
+        )
+
+    st.markdown(view["timeline_markdown"], unsafe_allow_html=True)
     _render_saved_views("audit")
 
 
