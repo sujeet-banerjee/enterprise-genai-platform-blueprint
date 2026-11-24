@@ -29,6 +29,10 @@ from ui.a11y import (
     styles as a11y_styles,
 )
 from ui.admin import audit_export_rows, confirm_action, scope_indicator
+from ui.approval_view import (
+    approval_detail_view,
+    decision_confirmation_markdown,
+)
 from ui.approvals import (
     AGE_FILTER_OPTIONS,
     ANY_VALUE,
@@ -109,7 +113,6 @@ from ui.eval_jobs import (
 from ui.evaluation import (
     CUSTOM_DATASET_TEMPLATE,
     available_datasets,
-    build_comparison_matrix,
     compare_metric_averages,
     dataset_preview_rows,
     ground_truth_hint,
@@ -118,6 +121,14 @@ from ui.evaluation import (
     metric_summary,
     metric_table_with_tooltips,
     parse_dataset_json,
+)
+from ui.evaluation_view import (
+    comparison_chart_data,
+    comparison_matrix_markdown,
+    comparison_matrix_rows,
+    evaluation_section_cards,
+    experiment_status_view,
+    job_status_markdown,
 )
 from ui.evidence import (
     AUDIT_SCREEN,
@@ -1677,11 +1688,7 @@ def _render_eval_job_detail(store, api: ApiClient, job_id: str) -> None:
     snap = job.snapshot()
     status = snap["status"]
 
-    c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Status", status)
-    c2.metric("Cases", f"{snap['done']} / {snap['total']}")
-    c3.metric("Succeeded", snap["succeeded"])
-    c4.metric("Failed", snap["failed"])
+    st.markdown(job_status_markdown(snap), unsafe_allow_html=True)
     st.progress(
         min(1.0, snap["progress"]),
         text=f"{snap['done']} of {snap['total']} cases evaluated ({status})",
@@ -2081,9 +2088,15 @@ def screen_evaluation() -> None:
         "Dataset", dataset_labels, key="evaluation_dataset_choice"
     )
     chosen = ds_map[dataset_choice]
-    with st.expander("Dataset details"):
-        st.write(chosen.description)
-        st.caption(f"docs: {chosen.docs_count} | cases: {chosen.cases_count}")
+    dataset_cards = evaluation_section_cards(
+        {
+            "label": chosen.label,
+            "description": chosen.description,
+            "docs_count": chosen.docs_count,
+            "cases_count": chosen.cases_count,
+        }
+    )
+    st.markdown(dataset_cards["dataset"], unsafe_allow_html=True)
 
     query = st.text_input("Query", key="eval_query")
     response = st.text_area("Response", key="eval_response")
@@ -2095,6 +2108,14 @@ def screen_evaluation() -> None:
     with gt_col:
         ground_truth = st.text_input("Ground truth (optional)", key="eval_ground_truth")
 
+    run_cards = evaluation_section_cards(
+        run={
+            "evaluator": evaluator,
+            "query": query,
+            "ground_truth": bool(ground_truth),
+        }
+    )
+    st.markdown(run_cards["run"], unsafe_allow_html=True)
     st.caption(ground_truth_hint(evaluator))
 
     if st.button("Evaluate", key="eval_run"):
@@ -2107,6 +2128,8 @@ def screen_evaluation() -> None:
         if require_ok(result):
             st.session_state.last_evaluation_at = "completed"
             st.session_state.last_evaluation_result = result.data
+            result_cards = evaluation_section_cards(results=result.data)
+            st.markdown(result_cards["results"], unsafe_allow_html=True)
             st.write(f"Evaluator: `{result.data.get('evaluator')}`")
             st.caption(
                 f"docs_source: {result.data.get('docs_source')} | "
@@ -2244,8 +2267,12 @@ def screen_evaluation() -> None:
             dedup[key] = run
         runs = list(dedup.values())[-10:]
         st.session_state.evaluation_runs = runs
-    if runs:
-        st.dataframe(build_comparison_matrix(runs), use_container_width=True, hide_index=True)
+    matrix_rows = comparison_matrix_rows(runs)
+    if matrix_rows:
+        st.markdown(comparison_matrix_markdown(matrix_rows), unsafe_allow_html=True)
+        chart_data = comparison_chart_data(matrix_rows)
+        if chart_data:
+            st.bar_chart(chart_data)
     else:
         st.caption("Run evaluations above to build a comparison matrix.")
 
@@ -2263,7 +2290,10 @@ def screen_evaluation() -> None:
         if require_ok(launch):
             st.session_state.last_experiment_id = launch.data.get("id")
             st.session_state.eval_exp_id = launch.data.get("id") or ""
-            st.json(launch.data)
+            launch_view = experiment_status_view(launch.data)
+            st.markdown(launch_view["markdown"], unsafe_allow_html=True)
+            with st.expander(DETAIL_EXPANDER_LABEL, expanded=False):
+                st.json(launch_view["raw"])
 
     if "eval_exp_id" not in st.session_state:
         st.session_state.eval_exp_id = (
@@ -2273,7 +2303,10 @@ def screen_evaluation() -> None:
     if exp_id and st.button("Poll experiment", key="eval_poll"):
         poll = api.get_experiment(exp_id)
         if require_ok(poll):
-            st.json(poll.data)
+            poll_view = experiment_status_view(poll.data)
+            st.markdown(poll_view["markdown"], unsafe_allow_html=True)
+            with st.expander(DETAIL_EXPANDER_LABEL, expanded=False):
+                st.json(poll_view["raw"])
 
     _render_saved_views("evaluation")
 
@@ -2472,14 +2505,6 @@ def screen_guardrails() -> None:
         "hit rate stays honest. Prometheus: `genai_guardrail_decisions_total` / "
         "`genai_guardrail_blocks_total`."
     )
-
-
-def _render_approval_decisions(record: Dict[str, Any]) -> None:
-    context = record.get("context")
-    decisions = context.get("decisions") if isinstance(context, dict) else None
-    if decisions:
-        st.subheader("Decision history")
-        st.json(decisions)
 
 
 def screen_approvals() -> None:
@@ -2832,57 +2857,41 @@ def screen_approvals() -> None:
             _failure_taxonomy(detail)
         else:
             record = redact_approval(detail.data)
-            st.subheader("Request detail")
-            d1, d2, d3, d4 = st.columns(4)
-            d1.metric("Status", record.get("status", "-"))
-            d2.metric("Action", record.get("action", "-"))
-            d3.metric("Created", format_timestamp(record.get("created_at")))
-            age_row = approval_rows([record], now, warning_hours, critical_hours)[0]
-            d4.metric(
-                "Age / SLA",
-                f"{age_row['age'] or '-'} / {age_row['sla']}",
+            detail_view = approval_detail_view(
+                record,
+                now=now,
+                warning_hours=warning_hours,
+                critical_hours=critical_hours,
             )
-            st.code(record.get("request_id", selected), language=None)
-            st.write("**Reason:** " + str(record.get("reason") or "-"))
-            policy = record.get("policy") or {}
-            if policy:
-                st.caption(
-                    "Policy: "
-                    + ", ".join(
-                        f"{key}={policy.get(key)}"
-                        for key in ("policy_id", "bundle", "action")
-                        if policy.get(key)
-                    )
-                )
+            st.subheader("Request detail")
+            st.markdown(detail_view["summary"], unsafe_allow_html=True)
 
             evidence = evidence_links(record)
-            if evidence:
-                st.subheader("Evidence / correlation ids")
-                st.dataframe(evidence, use_container_width=True, hide_index=True)
-                trace_values = [
-                    item["value"]
-                    for item in evidence
-                    if item["kind"] in ("request_id", "trace_request_id", "run_id")
-                ]
-                if trace_values and st.button("Open trace for request", key="approval_open_trace"):
-                    st.session_state.trace_request_id = trace_values[0]
-                    st.session_state.trace_autoload = True
-                    _navigate("Traces")
-                link = deep_link_params(selected)
-                if link:
-                    st.caption("Copyable workspace deep-link parameters:")
-                    st.code(
-                        "&".join(f"{key}={value}" for key, value in link.items()),
-                        language=None,
-                    )
-            else:
-                st.caption("No trace/audit correlation ids in this request context.")
+            st.subheader("Evidence / correlation ids")
+            st.markdown(detail_view["evidence"], unsafe_allow_html=True)
+            trace_values = [
+                item["value"]
+                for item in evidence
+                if item["kind"] in ("request_id", "trace_request_id", "run_id")
+            ]
+            if trace_values and st.button("Open trace for request", key="approval_open_trace"):
+                st.session_state.trace_request_id = trace_values[0]
+                st.session_state.trace_autoload = True
+                _navigate("Traces")
+            link = deep_link_params(selected)
+            if link:
+                st.caption("Copyable workspace deep-link parameters:")
+                st.code(
+                    "&".join(f"{key}={value}" for key, value in link.items()),
+                    language=None,
+                )
 
-            st.subheader("Context")
-            st.json(record.get("context") or {})
-            st.subheader("Policy metadata")
-            st.json(policy)
-            _render_approval_decisions(record)
+            st.markdown(detail_view["context"], unsafe_allow_html=True)
+            st.markdown(detail_view["policy"], unsafe_allow_html=True)
+            st.subheader("Decision history")
+            st.markdown(detail_view["decisions"], unsafe_allow_html=True)
+            with st.expander(DETAIL_EXPANDER_LABEL):
+                st.json(detail_view["raw"])
 
             if can_decide(record) and data.get("enabled"):
                 st.subheader("Decision")
@@ -2891,7 +2900,20 @@ def screen_approvals() -> None:
                 decision = st.radio(
                     "Decision", ("approved", "rejected"), horizontal=True, key="approval_decision"
                 )
-                if st.button("Submit decision", type="primary", key="approval_submit"):
+                st.markdown(
+                    decision_confirmation_markdown(record, decision, reviewer, note),
+                    unsafe_allow_html=True,
+                )
+                confirm_decision = st.checkbox(
+                    "I confirm this decision and understand it is recorded in the audit trail.",
+                    key=f"approval_decision_confirm_{selected}_{decision}",
+                )
+                if st.button(
+                    "Submit decision",
+                    type="primary",
+                    key="approval_submit",
+                    disabled=not confirm_decision,
+                ):
                     try:
                         payload = decision_payload(decision, reviewer, note)
                     except ValueError as exc:

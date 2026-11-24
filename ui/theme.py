@@ -506,6 +506,7 @@ def styles(
 }}
 .genai-diff-cards .genai-card {{ height: 100%; }}
 .genai-diff-table th {{ color: var(--genai-muted); font-weight: 600; }}
+.genai-eval-matrix td.genai-metric-best {{ color: var(--genai-success); font-weight: 600; }}
 .genai-waterfall-stage {{ font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: var(--genai-font-caption); }}
 .genai-waterfall-track {{
   display: block;
@@ -650,6 +651,26 @@ def styles(
   overflow-wrap: anywhere;
   font-size: var(--genai-font-caption);
 }}
+.genai-evidence-chips {{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: var(--genai-gap);
+}}
+.genai-chip-link {{
+  color: inherit;
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}}
+.genai-chip-link:hover, .genai-chip-link:focus-visible {{ text-decoration: underline; }}
+.genai-decision-history details {{
+  border: 1px solid var(--genai-border);
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  margin-bottom: 0.5rem;
+  background: var(--genai-surface);
+}}
+.genai-decision-history summary {{ cursor: pointer; color: var(--genai-accent); }}
 @media (min-width: 1024px) {{
   [data-testid="stSidebar"] > div:first-child {{
     position: sticky;
@@ -684,6 +705,8 @@ def styles(
   .genai-guardrail-node {{ display: flex; width: 100%; }}
   .genai-guardrail-node + .genai-guardrail-arrow {{ padding: 0.25rem 0; }}
   .genai-decision-table {{ min-width: 44rem; }}
+  .genai-evidence-chips {{ flex-direction: column; align-items: flex-start; }}
+  .genai-evidence-chips .genai-chip {{ max-width: 100%; }}
 }}
 </style>
 """

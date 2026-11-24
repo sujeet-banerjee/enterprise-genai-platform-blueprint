@@ -26,7 +26,7 @@ TENANT_SCOPE_TEST_PATHS = (
     REPO_BASE / "tests" / "test_approvals_queue.py",
 )
 
-PLAN_ISSUES = set(range(240, 258)) | {265}
+PLAN_ISSUES = set(range(240, 258)) | {265, 279, 280}
 
 REQUIRED_PLAN_AREAS = {
     "### P0 — App shell & branding",

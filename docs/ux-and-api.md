@@ -405,9 +405,10 @@ Streamlit-free) and is covered by `tests/test_ui_dataset_studio.py`.
 | (added during delivery) | role journeys (five personas, docs-linked steps, Back/Next/Skip, progress) and safe local demo mode (fixtures only, no HTTP, banner + reset), plus guardrails/audit/admin checklist steps | #157 |
 
 The forward roadmap (horizons H0-H4, workstreams A-M) is tracked in
-[enterprise-roadmap.md](enterprise-roadmap.md) and the GitHub Project board; API/UX
-items beyond v1 (React console, pipeline composer, graph visualizations) are
-workstream F there.
+[enterprise-roadmap.md](enterprise-roadmap.md) and the GitHub Project board. Async
+long-running operations are tracked as **#279 (bot-uni backend/contracts)** and
+**#280 (bot-win console UX, depends on #279)**; API/UX items beyond that (token
+streaming, React console, pipeline composer, graph visualizations) remain roadmap work.
 
 ## 8. Delivery plan
 
@@ -429,5 +430,10 @@ workstream F there.
   cross-object evidence (#154) **done**; command
   palette/WCAG 2.2 AA (#155) **done**; responsive layout/density/themes (#156) **done**;
   role journeys/demo mode (#157) **done**; collaboration/feedback (#158) **done**.
-- **P4 (optional, later)** — React/Next.js product frontend reusing the same OpenAPI
+- **P4 (tracked, #279/#280)** — Async long-running operations for query jobs:
+  keep `/v1/query` and `/v1/query:batch` synchronous; add async operation submit/poll/list
+  endpoints with instant `request_id`, owner+tenant scoped visibility, coarse status/progress,
+  and bounded in-memory/BaseStore-backed recent-completed window. UI consumes HTTP-only.
+  Token streaming/SSE/WebSocket remains separate D3 follow-up.
+- **P5 (optional, later)** — React/Next.js product frontend reusing the same OpenAPI
   contract; tracked as workstream F in the enterprise roadmap (not committed).
