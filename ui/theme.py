@@ -506,6 +506,7 @@ def styles(
 }}
 .genai-diff-cards .genai-card {{ height: 100%; }}
 .genai-diff-table th {{ color: var(--genai-muted); font-weight: 600; }}
+.genai-eval-matrix td.genai-metric-best {{ color: var(--genai-success); font-weight: 600; }}
 .genai-waterfall-stage {{ font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: var(--genai-font-caption); }}
 .genai-waterfall-track {{
   display: block;
