@@ -671,6 +671,29 @@ def styles(
   background: var(--genai-surface);
 }}
 .genai-decision-history summary {{ cursor: pointer; color: var(--genai-accent); }}
+.genai-audit-timeline {{ overflow-x: auto; }}
+.genai-audit-table {{
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--genai-font-caption);
+}}
+.genai-audit-table th, .genai-audit-table td {{
+  padding: 0.45rem 0.5rem;
+  border-bottom: 1px solid var(--genai-border);
+  text-align: left;
+  vertical-align: top;
+}}
+.genai-audit-table th {{ color: var(--genai-muted); font-weight: 600; }}
+.genai-audit-time, .genai-audit-request {{ white-space: nowrap; }}
+.genai-audit-detail {{ min-width: 12rem; }}
+.genai-audit-detail summary {{ cursor: pointer; color: var(--genai-accent); }}
+.genai-audit-detail pre {{
+  max-height: 12rem;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: var(--genai-font-caption);
+}}
 @media (min-width: 1024px) {{
   [data-testid="stSidebar"] > div:first-child {{
     position: sticky;
@@ -705,6 +728,7 @@ def styles(
   .genai-guardrail-node {{ display: flex; width: 100%; }}
   .genai-guardrail-node + .genai-guardrail-arrow {{ padding: 0.25rem 0; }}
   .genai-decision-table {{ min-width: 44rem; }}
+  .genai-audit-table {{ min-width: 52rem; }}
   .genai-evidence-chips {{ flex-direction: column; align-items: flex-start; }}
   .genai-evidence-chips .genai-chip {{ max-width: 100%; }}
 }}
