@@ -103,6 +103,7 @@ STATUS_TONES: Dict[str, str] = {
     "warning": "warning",
     "degraded": "warning",
     "redacted": "warning",
+    "redact": "warning",
     "pending": "warning",
     "danger": "danger",
     "error": "danger",
@@ -451,7 +452,204 @@ def styles(
 }}
 .genai-alert-hint {{ color: var(--genai-muted); }}
 .genai-alert-action {{ font-weight: 600; margin-top: 0.25rem; }}
+.genai-query-badges {{ display: flex; flex-wrap: wrap; gap: 0.35rem; margin-bottom: 0.6rem; }}
+.genai-query-answer {{ white-space: pre-wrap; line-height: 1.5; }}
+.genai-query-failure {{ color: var(--genai-danger); font-weight: 600; }}
+.genai-latency-chart {{ margin-bottom: var(--genai-gap); }}
+.genai-score-line, .genai-latency-row {{
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0.35rem 0;
+}}
+.genai-latency-label {{ min-width: 8rem; }}
+.genai-latency-value {{ min-width: 8rem; text-align: right; color: var(--genai-muted); font-size: var(--genai-font-caption); }}
+.genai-score-track {{
+  display: inline-block;
+  flex: 1;
+  min-width: 6rem;
+  height: 0.55rem;
+  border: 1px solid var(--genai-border);
+  border-radius: 999px;
+  background: var(--genai-bg);
+  overflow: hidden;
+}}
+.genai-score-fill {{
+  display: block;
+  height: 100%;
+  background: var(--genai-accent);
+  border-radius: 999px;
+}}
+.genai-compare-table {{ width: 100%; border-collapse: collapse; }}
+.genai-compare-table th, .genai-compare-table td {{
+  padding: 0.35rem 0.5rem;
+  border-bottom: 1px solid var(--genai-border);
+  text-align: left;
+  vertical-align: top;
+}}
+.genai-delta-better {{ color: var(--genai-success); font-weight: 600; }}
+.genai-delta-worse {{ color: var(--genai-danger); font-weight: 600; }}
+.genai-delta-neutral {{ color: var(--genai-muted); }}
 .genai-status {{ font-weight: 600; }}
+.genai-waterfall-table, .genai-diff-table {{ width: 100%; border-collapse: collapse; }}
+.genai-waterfall-table th, .genai-waterfall-table td,
+.genai-diff-table th, .genai-diff-table td {{
+  padding: 0.35rem 0.5rem;
+  border-bottom: 1px solid var(--genai-border);
+  text-align: left;
+  vertical-align: top;
+}}
+.genai-diff-cards {{
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}}
+.genai-diff-cards .genai-card {{ height: 100%; }}
+.genai-diff-table th {{ color: var(--genai-muted); font-weight: 600; }}
+.genai-waterfall-stage {{ font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: var(--genai-font-caption); }}
+.genai-waterfall-track {{
+  display: block;
+  min-width: 6rem;
+  height: 0.5rem;
+  border: 1px solid var(--genai-border);
+  border-radius: 999px;
+  background: var(--genai-bg);
+  overflow: hidden;
+}}
+.genai-waterfall-fill {{
+  display: block;
+  height: 100%;
+  background: var(--genai-accent);
+  border-radius: 999px;
+}}
+.genai-cost-chart, .genai-failure-chart, .genai-guardrail-chart {{ display: grid; gap: 0.45rem; }}
+.genai-cost-row, .genai-failure-row, .genai-guardrail-row {{
+  display: grid;
+  grid-template-columns: minmax(6rem, 10rem) 1fr auto;
+  gap: 0.6rem;
+  align-items: center;
+  font-size: var(--genai-font-caption);
+}}
+.genai-cost-label, .genai-failure-label, .genai-guardrail-label {{
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  overflow-wrap: anywhere;
+}}
+.genai-cost-track, .genai-failure-track, .genai-guardrail-track {{
+  display: flex;
+  min-width: 5rem;
+  height: 0.6rem;
+  border: 1px solid var(--genai-border);
+  border-radius: 999px;
+  background: var(--genai-bg);
+  overflow: hidden;
+}}
+.genai-cost-fill, .genai-failure-fill {{
+  display: block;
+  height: 100%;
+  background: var(--genai-accent);
+  border-radius: 999px;
+}}
+.genai-failure-fill {{ background: var(--genai-danger); }}
+.genai-cost-value, .genai-failure-value, .genai-guardrail-value {{
+  min-width: 5rem;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}}
+.genai-guardrail-segment {{ display: block; height: 100%; }}
+.genai-guardrail-allow {{ background: var(--genai-success); }}
+.genai-guardrail-redact {{ background: var(--genai-warning); }}
+.genai-guardrail-block {{ background: var(--genai-danger); }}
+.genai-guardrail-legend {{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 0.45rem;
+  font-size: var(--genai-font-caption);
+  color: var(--genai-muted);
+}}
+.genai-guardrail-legend-item {{ display: inline-flex; align-items: center; gap: 0.35rem; }}
+.genai-guardrail-legend-item::before {{
+  content: "";
+  display: inline-block;
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 2px;
+}}
+.genai-guardrail-legend-item.genai-guardrail-allow::before {{ background: var(--genai-success); }}
+.genai-guardrail-legend-item.genai-guardrail-redact::before {{ background: var(--genai-warning); }}
+.genai-guardrail-legend-item.genai-guardrail-block::before {{ background: var(--genai-danger); }}
+.genai-guardrail-chain {{
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.9rem;
+}}
+.genai-guardrail-edge {{
+  border: 1px solid var(--genai-border);
+  border-radius: 0.5rem;
+  padding: 0.75rem;
+  background: var(--genai-surface);
+}}
+.genai-guardrail-edge h4 {{
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 0.6rem;
+}}
+.genai-guardrail-count {{
+  font-size: var(--genai-font-caption);
+  font-weight: 400;
+  color: var(--genai-muted);
+}}
+.genai-guardrail-node {{
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  vertical-align: top;
+  max-width: 100%;
+}}
+.genai-guardrail-node + .genai-guardrail-arrow {{
+  display: inline-flex;
+  align-items: center;
+  padding: 0 0.35rem;
+  color: var(--genai-muted);
+}}
+.genai-guardrail-order {{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.4rem;
+  height: 1.4rem;
+  flex: 0 0 1.4rem;
+  border-radius: 999px;
+  background: var(--genai-accent);
+  color: #ffffff;
+  font-size: var(--genai-font-caption);
+  font-weight: 700;
+}}
+.genai-guardrail-node-body {{ min-width: 0; overflow-wrap: anywhere; }}
+.genai-guardrail-node-body .genai-card {{ margin-top: 0.4rem; }}
+.genai-table-scroll {{ overflow-x: auto; }}
+.genai-decision-table {{
+  width: 100%;
+  min-width: 52rem;
+  border-collapse: collapse;
+  font-size: var(--genai-font-caption);
+}}
+.genai-decision-table th, .genai-decision-table td {{
+  padding: 0.45rem 0.5rem;
+  border-bottom: 1px solid var(--genai-border);
+  text-align: left;
+  vertical-align: top;
+}}
+.genai-decision-table th {{ color: var(--genai-muted); font-weight: 600; }}
+.genai-raw-record summary {{ cursor: pointer; color: var(--genai-accent); }}
+.genai-raw-record pre {{
+  max-height: 14rem;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: var(--genai-font-caption);
+}}
 @media (min-width: 1024px) {{
   [data-testid="stSidebar"] > div:first-child {{
     position: sticky;
@@ -474,6 +672,18 @@ def styles(
   .stApp .stDataFrame {{ overflow-x: auto; }}
   .genai-card {{ padding: 0.5rem; }}
   .genai-kpi-strip {{ grid-template-columns: 1fr; }}
+  .genai-latency-row {{ flex-wrap: wrap; }}
+  .genai-latency-label, .genai-latency-value {{ min-width: 100%; text-align: left; }}
+  .genai-score-track {{ width: 100%; }}
+  .genai-compare-table, .genai-waterfall-table, .genai-diff-table {{ font-size: var(--genai-font-caption); }}
+  .genai-waterfall-track {{ min-width: 3rem; width: 100%; }}
+  .genai-cost-row, .genai-failure-row, .genai-guardrail-row {{ grid-template-columns: 1fr; gap: 0.2rem; }}
+  .genai-cost-value, .genai-failure-value, .genai-guardrail-value {{ min-width: 0; text-align: left; }}
+  .genai-diff-cards {{ grid-template-columns: 1fr; }}
+  .genai-guardrail-chain {{ grid-template-columns: 1fr; }}
+  .genai-guardrail-node {{ display: flex; width: 100%; }}
+  .genai-guardrail-node + .genai-guardrail-arrow {{ padding: 0.25rem 0; }}
+  .genai-decision-table {{ min-width: 44rem; }}
 }}
 </style>
 """
