@@ -191,7 +191,7 @@ The repeatable demo/capture script is [`docs/showcase/demo-walkthrough.md`](show
 | Screen | User interactions | Endpoints |
 |---|---|---|
 | **Overview / Health** | status, readiness + config revision, active model/retriever/reranker/evaluator, Get started checklist, role journey (Back/Next/Skip + docs links), demo-mode banner and reset | `/health`, `/ready`, `/v1/models`, `/v1/embedding-models`, `/v1/retrievers`, `/v1/rerankers`, `/v1/evaluators` |
-| **Query Studio** | task templates; enter query (or batch lines); `top_k`, rerank/include-trace; tabbed results (Answer, Documents, Trace, Guardrails, Resilience, Cache); copy/share Markdown + download; bounded local history with restore and **Compare with last run** deltas | `/v1/query`, `/v1/query:batch`, `/v1/config` |
+| **Query Studio** | task templates; enter query (or batch lines) synchronously or submit asynchronously for an instant `request_id` with in-place polling; `top_k`, rerank/include-trace; tabbed results (Answer, Documents, Trace, Guardrails, Resilience, Cache); copy/share Markdown + download; bounded local history with restore and **Compare with last run** deltas; sidebar Operations panel lists owner-scoped in-progress/recent work including experiments | `/v1/query`, `/v1/query:batch`, `/v1/operations/query`, `/v1/operations/{op_id}`, `/v1/operations`, `/v1/config` |
 | **Compare (what-if)** | pick config overrides (metric, retriever, model); rebuild then run A/B queries | `/v1/pipeline:rebuild`, `/v1/query` |
 | **Evaluation** | dataset picker (built-in benchmark, pasted JSON, or Dataset Studio authoring with case/document editors, inline validation, save/duplicate and round-trip import/export), background dataset jobs (up to 200 cases: live progress, cancel between cases, retry failed / resume unfinished, partial results, bounded history, JSON/CSV export), case-by-metric matrix, average-score chart, delta vs previous run, evaluator dropdown, ground-truth guidance, metric explanations, run comparison matrix, optional ground truth, auto-retrieved docs; launch + poll experiments | `/v1/evaluators`, `/v1/query`, `/v1/evaluate`, `/v1/experiments`, `/v1/experiments/{exp_id}` |
 | **Governance & Cost** | budget limits, spend window, per-request cost, guardrail hit-rate, time range + tenant/app/user filters, alerts preview, CSV/JSON metric export, raw Prometheus scrape | `/v1/governance/status`, `/v1/metrics`, `/metrics` |
@@ -203,6 +203,10 @@ The repeatable demo/capture script is [`docs/showcase/demo-walkthrough.md`](show
 | **Feedback** | review queue for flagged runs/annotations, reasons and notes attached to request id, one-action promote to dataset, redacted feedback export (JSON/CSV) and evidence-pack handoff; notes stay out of share links | /v1/traces/{request_id}, /v1/audit (evidence) |
 | **Traces** | look up `request_id`; stage latency timeline/waterfall with span list, failure taxonomy, guardrail decisions, resilience, OTel ids, redaction-safe and raw trace views; cross-links to audit/metrics/governance/feedback for the same request; two-request diff; redacted JSON/Markdown evidence pack | `/v1/traces/{request_id}`, `/v1/audit`, `/v1/metrics`, `/v1/governance/status` |
 | **Settings (read-only)** | effective config viewer (redacted), model/provider/guardrail lists | `/v1/config`, `/v1/models`, `/v1/embedding-models`, `/v1/retrievers`, `/v1/rerankers`, `/v1/evaluators`, `/v1/guardrails` |
+
+The Operations panel is server-backed and owner-scoped: authenticated subjects remain
+stable across refresh, while anonymous sessions use a UI-generated possession token that
+survives navigation/reruns within the browser session.
 
 No config-editing UI in v1 (write path = files in `config/`); `pipeline:rebuild` in the
 UI is expressed as preset "what-if" selections, keeping humans as the owners of YAML.
@@ -417,12 +421,13 @@ Streamlit-free) and is covered by `tests/test_ui_dataset_studio.py`.
 | (added during delivery) | command palette (`/`, `>`, `#`, `@` prefixes), keyboard-shortcuts overlay, skip link, focus rings, reduced motion, WCAG 2.2 AA checklist + decision record, screen-reader script | #155 |
 | (added during delivery) | responsive breakpoints (375/768/1280 px), compact density, table-to-card degradation, light/dark/high-contrast themes, semantic status/chart colours, sticky sidebar actions, documented layout/theme tokens | #156 |
 | (added during delivery) | role journeys (five personas, docs-linked steps, Back/Next/Skip, progress) and safe local demo mode (fixtures only, no HTTP, banner + reset), plus guardrails/audit/admin checklist steps | #157 |
+| (added during delivery) | async operations UX: instant request id, owner-scoped polling in Query Studio, server-backed operations panel including experiments, client-session header, HTTP-only demo fixtures | #280 (backend #279) |
 
 The forward roadmap (horizons H0-H4, workstreams A-M) is tracked in
 [enterprise-roadmap.md](enterprise-roadmap.md) and the GitHub Project board. Async
-long-running operations are tracked as **#279 (bot-uni backend/contracts)** and
-**#280 (bot-win console UX, depends on #279)**; API/UX items beyond that (token
-streaming, React console, pipeline composer, graph visualizations) remain roadmap work.
+long-running operations landed as **#279 (bot-uni backend/contracts)** and are consumed
+by **#280 (bot-win console UX)**; API/UX items beyond that (token streaming, React
+console, pipeline composer, graph visualizations) remain roadmap work.
 
 ## 8. Delivery plan
 
@@ -444,10 +449,11 @@ streaming, React console, pipeline composer, graph visualizations) remain roadma
   cross-object evidence (#154) **done**; command
   palette/WCAG 2.2 AA (#155) **done**; responsive layout/density/themes (#156) **done**;
   role journeys/demo mode (#157) **done**; collaboration/feedback (#158) **done**.
-- **P4 (tracked, #279/#280)** — Async long-running operations for query jobs:
-  keep `/v1/query` and `/v1/query:batch` synchronous; add async operation submit/poll/list
-  endpoints with instant `request_id`, owner+tenant scoped visibility, coarse status/progress,
-  and bounded in-memory/BaseStore-backed recent-completed window. UI consumes HTTP-only.
-  Token streaming/SSE/WebSocket remains separate D3 follow-up.
+- **P4 (#279/#280, done)** — Async long-running operations for query jobs:
+  `/v1/query` and `/v1/query:batch` stay synchronous; async operation submit/poll/list
+  endpoints provide an instant `request_id`, owner+tenant scoped visibility, coarse
+  status/progress and a bounded recent-completed window; the UI consumes them HTTP-only
+  with Query Studio polling and an always-available operations panel. Token
+  streaming/SSE/WebSocket remains separate D3 follow-up.
 - **P5 (optional, later)** — React/Next.js product frontend reusing the same OpenAPI
   contract; tracked as workstream F in the enterprise roadmap (not committed).

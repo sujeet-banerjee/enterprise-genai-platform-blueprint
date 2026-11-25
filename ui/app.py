@@ -213,6 +213,16 @@ from ui.navigation import (
     quick_actions_for,
     role_label,
 )
+from ui.operations import (
+    ensure_client_session,
+    is_active_operation,
+    normalize_operation,
+    operation_failure,
+    operation_result,
+    operations_summary,
+    operations_table_markdown,
+    pending_operation_markdown,
+)
 from ui.overview import (
     active_label,
     checklist_card_view,
@@ -324,6 +334,7 @@ def client() -> ApiClient:
     return ApiClient(
         base_url=api_base_url(),
         api_key=st.session_state.get("api_key", ""),
+        client_session=ensure_client_session(st.session_state),
     )
 
 
@@ -359,6 +370,14 @@ def _bootstrap() -> None:
         st.session_state.qs_include_trace = True
     if "qs_batch" not in st.session_state:
         st.session_state.qs_batch = False
+    if "qs_async" not in st.session_state:
+        st.session_state.qs_async = True
+    if "qs_active_operation" not in st.session_state:
+        st.session_state.qs_active_operation = ""
+    if "qs_async_queries" not in st.session_state:
+        st.session_state.qs_async_queries = {}
+    if "qs_async_finalized" not in st.session_state:
+        st.session_state.qs_async_finalized = []
     if "query_history" not in st.session_state:
         st.session_state.query_history = []
     if "qs_last_entry" not in st.session_state:
@@ -428,6 +447,119 @@ def _failure_taxonomy(result) -> None:
     )
     alert.update({"title": rem["title"], "hint": rem["hint"], "action": rem["action"]})
     _render_alert(alert)
+
+
+def _remember_async_query(op_id: str, query: str, top_k: Optional[int]) -> None:
+    queries = dict(st.session_state.get("qs_async_queries") or {})
+    queries[op_id] = {"query": query, "top_k": top_k}
+    while len(queries) > 50:
+        queries.pop(next(iter(queries)))
+    st.session_state.qs_async_queries = queries
+
+
+def _finalize_async_operation(operation: Dict[str, Any], query: str, top_k: Optional[int]) -> Dict[str, Any]:
+    op_id = operation.get("id") or operation.get("request_id") or ""
+    finalized = list(st.session_state.get("qs_async_finalized") or [])
+    if op_id and op_id not in finalized:
+        failure = operation_failure(operation)
+        result = operation_result(operation)
+        if not result and (failure.get("failure_type") or failure.get("error")):
+            result = {
+                "request_id": op_id,
+                "query": query,
+                "top_k": top_k,
+                "error": failure.get("error") or "operation failed",
+                "failure_type": failure.get("failure_type") or "unknown_failure",
+                "failure_tags": failure.get("failure_tags") or [],
+            }
+        if result:
+            result.setdefault("request_id", op_id)
+            result.setdefault("query", query)
+            st.session_state.last_request_id = str(result.get("request_id") or op_id)
+            st.session_state.last_query = query
+            _record_query_run(query, int(top_k or 3), result, str(result.get("request_id") or op_id))
+        finalized.append(op_id)
+        st.session_state.qs_async_finalized = finalized[-50:]
+        st.session_state.qs_active_operation = ""
+        queries = dict(st.session_state.get("qs_async_queries") or {})
+        queries.pop(op_id, None)
+        st.session_state.qs_async_queries = queries
+    return dict(st.session_state.get("qs_last_entry") or {"result": {}, "query": query})
+
+
+def _render_async_operation_body(api: ApiClient, op_id: str) -> None:
+    context = dict((st.session_state.get("qs_async_queries") or {}).get(op_id) or {})
+    query = str(context.get("query") or st.session_state.get("last_query") or "")
+    top_k = context.get("top_k")
+    result = api.operation(op_id)
+    if not result.ok:
+        if getattr(result, "status_code", 0) == 404:
+            st.session_state.qs_active_operation = ""
+            st.warning("Operation no longer exists. Submit the query again.")
+        else:
+            _failure_taxonomy(result)
+        return
+    operation = normalize_operation(result.data)
+    st.markdown(pending_operation_markdown(operation), unsafe_allow_html=True)
+    if is_active_operation(operation):
+        st.caption("Auto-refreshing operation status...")
+        return
+    entry = _finalize_async_operation(operation, query, top_k)
+    st.markdown("**Final result**")
+    _render_query_result(entry.get("result") or {}, query)
+    _render_run_comparison(st.session_state.get("qs_last_baseline"), entry)
+
+
+if hasattr(st, "fragment"):
+    _async_operation_fragment = st.fragment(run_every=1.0)(_render_async_operation_body)
+else:
+    _async_operation_fragment = None
+
+
+def _render_async_operation(api: ApiClient) -> None:
+    op_id = str(st.session_state.get("qs_active_operation") or "")
+    if not op_id:
+        return
+    st.subheader("Async operation")
+    if _async_operation_fragment is not None:
+        _async_operation_fragment(api, op_id)
+        return
+    _render_async_operation_body(api, op_id)
+    if st.button("Refresh operation"):
+        st.rerun()
+
+
+def _operations_panel_body(api: ApiClient) -> None:
+    result = api.operations(limit=50)
+    if not result.ok:
+        code = getattr(result, "status_code", 0) or 0
+        failure_type = getattr(result, "failure_type", "") or "unavailable"
+        st.caption(f"Operations unavailable ({code or failure_type}).")
+        return
+    operations = (result.data or {}).get("operations") or []
+    counts = operations_summary(operations)
+    st.caption(
+        f"Operations: {counts['active']} active, {counts['completed']} completed, "
+        f"{counts['failed']} failed, {counts['experiments']} experiments"
+    )
+    st.markdown(operations_table_markdown(operations), unsafe_allow_html=True)
+
+
+if hasattr(st, "fragment"):
+    _operations_panel_fragment = st.fragment(run_every=2.0)(_operations_panel_body)
+else:
+    _operations_panel_fragment = None
+
+
+def _render_operations_panel(api: ApiClient) -> None:
+    with st.sidebar.expander("Operations", expanded=False):
+        st.caption("Owner-scoped in-progress and recent work.")
+        if _operations_panel_fragment is not None:
+            _operations_panel_fragment(api)
+            return
+        _operations_panel_body(api)
+        if st.button("Refresh operations"):
+            st.rerun()
 
 
 def _access_context(api: ApiClient) -> Dict[str, Any]:
@@ -1313,6 +1445,12 @@ def screen_query_studio() -> None:
     include_col, batch_col = st.columns(2)
     include_trace = include_col.checkbox("Include redacted trace", key="qs_include_trace")
     use_batch = batch_col.checkbox("Batch mode (one query per line)", key="qs_batch")
+    async_mode = st.checkbox(
+        "Run asynchronously (return a request id immediately)",
+        key="qs_async",
+        disabled=use_batch,
+        help="Long-running queries are submitted to /v1/operations/query and polled in place.",
+    )
 
     just_ran = False
     if st.button("Run query", type="primary"):
@@ -1329,12 +1467,26 @@ def screen_query_studio() -> None:
                     label = str(item.get("query") or f"item {index}")[:60]
                     with st.expander(f"{index}. {label}", expanded=index == 1):
                         _render_query_result(item, item.get("query") or query)
+        elif async_mode:
+            result = api.submit_query_operation(
+                query, top_k=top_k, include_trace=include_trace
+            )
+            if require_ok(result):
+                operation = normalize_operation(result.data)
+                op_id = operation.get("id") or ""
+                if not op_id:
+                    st.error("Operation response did not include an id.")
+                else:
+                    st.session_state.qs_active_operation = op_id
+                    _remember_async_query(op_id, query, top_k)
+                    st.session_state.last_query = query
+                    just_ran = True
         else:
             with st.spinner("Running..."):
                 result = api.query(query, top_k=top_k, include_trace=include_trace)
             ok = require_ok(result)
             if result.data:
-                _record_query_run(query, top_k, result.data, result.request_id)
+                _record_query_run(query, int(top_k or 3), result.data, result.request_id or "")
                 just_ran = True
                 if ok:
                     _render_query_result(result.data, query)
@@ -1345,7 +1497,9 @@ def screen_query_studio() -> None:
             if not ok:
                 _failure_taxonomy(result)
 
-    if not just_ran:
+    if st.session_state.get("qs_active_operation"):
+        _render_async_operation(api)
+    elif not just_ran:
         last_entry = st.session_state.get("qs_last_entry")
         if last_entry:
             st.divider()
@@ -3712,6 +3866,8 @@ def main() -> None:
     _apply_incoming_workspace(access)
     _palette_from_query()
     _render_sidebar_navigation(access)
+    if can_access("Query Studio", access.get("capabilities") or []):
+        _render_operations_panel(api)
     _render_role_journey(access)
     _render_demo_sidebar(access)
     _render_workspace_sidebar(access)

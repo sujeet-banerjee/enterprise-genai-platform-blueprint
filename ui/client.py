@@ -33,10 +33,17 @@ class ApiResult:
 class ApiClient:
     """Thin ``requests``-based client for the documented /v1 endpoints."""
 
-    def __init__(self, base_url: str = "http://localhost:8000", api_key: str = "", timeout: float = 120.0):
+    def __init__(
+        self,
+        base_url: str = "http://localhost:8000",
+        api_key: str = "",
+        timeout: float = 120.0,
+        client_session: str = "",
+    ):
         self.base_url = base_url.rstrip("/")
         self.api_key = api_key
         self.timeout = timeout
+        self.client_session = client_session
 
     # -- plumbing ---------------------------------------------------------
 
@@ -46,6 +53,8 @@ class ApiClient:
             headers["X-API-Key"] = self.api_key
         if request_id:
             headers["X-Request-ID"] = request_id
+        if self.client_session:
+            headers["X-Client-Session"] = self.client_session
         return headers
 
     def _request(self, method: str, path: str, **kwargs) -> ApiResult:
@@ -128,6 +137,38 @@ class ApiClient:
         if top_k is not None:
             payload["top_k"] = top_k
         return self.post("/v1/query:batch", payload)
+
+    def submit_query_operation(
+        self,
+        query: str,
+        top_k: Optional[int] = None,
+        include_trace: bool = True,
+    ) -> ApiResult:
+        """Submit a long-running query and receive an immediate operation id (#279)."""
+        payload: Dict[str, Any] = {"query": query, "include_trace": include_trace}
+        if top_k is not None:
+            payload["top_k"] = top_k
+        return self.post("/v1/operations/query", payload)
+
+    def operation(self, op_id: str) -> ApiResult:
+        """Poll one owner-scoped async operation."""
+        return self.get(f"/v1/operations/{op_id}")
+
+    def operations(
+        self,
+        status: Optional[str] = None,
+        recent_window_seconds: Optional[int] = None,
+        limit: Optional[int] = None,
+    ) -> ApiResult:
+        """List owner-scoped in-progress and recent operations, including experiments."""
+        params: Dict[str, Any] = {"mine": True}
+        if status:
+            params["status"] = status
+        if recent_window_seconds is not None:
+            params["recent_window_seconds"] = recent_window_seconds
+        if limit is not None:
+            params["limit"] = limit
+        return self.get("/v1/operations", params=params)
 
     # -- evaluation / experiments ----------------------------------------
 
