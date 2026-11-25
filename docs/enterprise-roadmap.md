@@ -243,7 +243,7 @@ Issues are tracked in GitHub; see [capability-status.md](capability-status.md) f
   owner=`principal.subject` else tenant-scoped `X-Client-Session` fallback, coarse
   `queued|running|completed|failed|cancelled` + timestamps (+ stage), bounded in-memory
   + honor `BaseStore` when configured, in-progress + recent-completed window, and
-  unified listing including experiments. Backend #279 is implemented in
+  unified listing including experiments. Backend #279 landed in PR #289 via
   `core/services/operation_jobs.py`, `app/operations_api.py` and `app/main.py`;
   `POST /v1/operations/query`, `GET /v1/operations/{id}` and `GET /v1/operations`
   are contract-tested. Console #280 remains bot-win. Token streaming/SSE/WebSocket
