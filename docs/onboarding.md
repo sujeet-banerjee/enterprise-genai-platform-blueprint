@@ -90,7 +90,7 @@ touch most:
 | `observability.yaml` | logging, redaction, PII/DLP, OTel | redaction on, PII/OTel off |
 | `guardrails.yaml` | input/output guardrail chains + `standard`/`strict` profiles | enabled `standard` |
 | `eval_datasets.yaml` | evaluation datasets + regression thresholds | benchmark wired, regression gate off |
-| `api.yaml` | API-key stub, rebuild gate, batch/history limits | conservative (governed path) |
+| `api.yaml` | API-key stub, rebuild gate, batch/history limits, async operation bounds | conservative (governed path) |
 | `access_control.yaml` | RBAC roles, capabilities, per-role `top_k_max` | enabled (governed path) |
 | `tenants.yaml` | tenants/workspaces, policy overlays, API-key mapping | enabled (governed path) |
 | `acl.yaml` | permission-aware retrieval (`open`/`deny`, over-fetch, bypass roles) | enabled, `open` default |

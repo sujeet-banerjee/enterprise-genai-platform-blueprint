@@ -30,6 +30,18 @@ batch_max_workers: 4
 # envelope; the default page size is 50.
 approvals_page_size_max: 100
 
+# Async operations (issue #279). Disabled=false keeps async endpoints available
+# with bounded in-memory execution; BaseStore persistence is honored when
+# configured. Sync query endpoints remain unchanged.
+operations:
+  enabled: true
+  max_workers: 2
+  max_operations: 500
+  recent_window_seconds: 3600
+  store_ttl_seconds: 86400
+  list_limit_default: 100
+  list_limit_max: 500
+
 # Application-layer abuse protection (issue #224). Disabled by default so legacy
 # single-tenant deployments behave exactly as before; enable it at the edge or
 # alongside a gateway/WAF. This is a process-local token bucket plus in-flight

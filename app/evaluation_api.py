@@ -20,6 +20,7 @@ from typing import Any, Callable, Dict, List, Optional, Sequence, Union
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
+from app.operations_api import operation_owner
 from app.schemas import (
     EvaluateRequest,
     EvaluateResponse,
@@ -55,12 +56,17 @@ class _ExperimentStore:
         self._prefix = "experiments"
 
     def create(
-        self, exp_id: str, kind: str, tenant: Optional[str] = None
+        self,
+        exp_id: str,
+        kind: str,
+        tenant: Optional[str] = None,
+        owner: Optional[str] = None,
     ) -> Dict[str, Any]:
         with self._lock:
             entry = {
                 "id": exp_id,
                 "kind": kind,
+                "owner": owner,
                 "tenant": tenant,
                 "status": STATUS_RUNNING,
                 "created_at": time.time(),
@@ -92,6 +98,24 @@ class _ExperimentStore:
             if entry is None:
                 entry = self._entries.get(exp_id)
             return dict(entry) if entry is not None else None
+
+    def list_entries(self, limit: int = 100) -> List[Dict[str, Any]]:
+        """Return recent entries for the unified operations view (#279)."""
+        with self._lock:
+            entries = [dict(entry) for entry in self._entries.values()]
+            if self._store is not None:
+                try:
+                    for stored in self._store.list(
+                        prefix=f"{self._prefix}:", limit=max(1, int(limit))
+                    ):
+                        if isinstance(stored, dict) and stored.get("id"):
+                            exp_id = str(stored["id"])
+                            if not any(e.get("id") == exp_id for e in entries):
+                                entries.append(dict(stored))
+                except Exception:
+                    pass
+        entries.sort(key=lambda e: e.get("created_at") or 0.0, reverse=True)
+        return entries[: max(1, int(limit))]
 
     def complete(self, exp_id: str, result: Any) -> None:
         with self._lock:
@@ -306,7 +330,10 @@ class EvaluationService:
         return loaded
 
     def launch_experiment(
-        self, payload: ExperimentLaunchRequest, tenant: Optional[str] = None
+        self,
+        payload: ExperimentLaunchRequest,
+        tenant: Optional[str] = None,
+        owner: Optional[str] = None,
     ) -> Dict[str, Any]:
         docs = self._resolve_docs(payload.docs, payload.documents_path)
         params = payload.model_dump()
@@ -314,9 +341,15 @@ class EvaluationService:
         params.pop("documents_path", None)
 
         exp_id = str(uuid.uuid4())
-        self.store.create(exp_id, payload.kind, tenant=tenant)
+        self.store.create(exp_id, payload.kind, tenant=tenant, owner=owner)
         self._executor.submit(self._run_experiment, exp_id, params, docs)
-        return {"id": exp_id, "kind": payload.kind, "status": STATUS_RUNNING, "tenant": tenant}
+        return {
+            "id": exp_id,
+            "kind": payload.kind,
+            "status": STATUS_RUNNING,
+            "tenant": tenant,
+            "owner": owner,
+        }
 
     def _run_experiment(
         self,
@@ -384,6 +417,9 @@ class EvaluationService:
 
     def get_experiment(self, exp_id: str) -> Optional[Dict[str, Any]]:
         return self.store.get(exp_id)
+
+    def list_experiments(self, limit: int = 100) -> List[Dict[str, Any]]:
+        return self.store.list_entries(limit=limit)
 
 
 def register_evaluation_routes(
@@ -480,7 +516,9 @@ def register_evaluation_routes(
         request_id = getattr(request.state, "request_id", None) or str(uuid.uuid4())
         try:
             result = service.launch_experiment(
-                payload, tenant=getattr(request.state, "tenant_id", None)
+                payload,
+                tenant=getattr(request.state, "tenant_id", None),
+                owner=operation_owner(request),
             )
         except FileNotFoundError as exc:
             return JSONResponse(

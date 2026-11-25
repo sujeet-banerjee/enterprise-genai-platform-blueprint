@@ -69,6 +69,7 @@ Two rules keep this honest:
 | Input redaction (query + docs before prompt) | Tested | `app/pipeline.py`, `tests/test_input_redaction.py` | Closes the raw-egress gap (#72). |
 | Query-length guard | Tested | `core/services/guardrails.py`, `tests/test_query_length_guard.py` | `retrieval.guardrails.max_query_chars`; HTTP 400. |
 | API rate limits + in-flight cap | Tested | `core/services/rate_limit.py`, `app/main.py`, `tests/test_rate_limits.py` | `api.rate_limit` token bucket, 429/Retry-After, per-key/tenant scope, Prometheus counter; process-local and default-off. |
+| Async operations API | Tested | `core/services/operation_jobs.py`, `app/operations_api.py`, `tests/test_operations_api.py` | Bounded query jobs with instant `request_id`, owner/tenant scoping, unified experiment listing and `BaseStore` TTL; sync query endpoints unchanged. |
 
 ## Observability and operations
 

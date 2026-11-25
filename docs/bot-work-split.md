@@ -1,8 +1,8 @@
 # Bot work split (current open items)
 
-Reconciled 2026-11-20 after async-operations recalibration (`origin/main` @ `1fa67c7` baseline; no open PRs at reconcile). #240-#257 remain bot-win UI look/feel implementation items in Project #8 Workstream M; bot-uni cross-cutting guard/support #265 and maintainer-assigned docs exception #268 are done.
+Reconciled 2026-11-25 after #279 merge (`origin/main` @ `216a3c5`; no open PRs). Bot-win merged #249-#252 from the UI look/feel plan; remaining #240-#257 items stay in Project #8 Workstream M. Daily review of those merges produced **#290** for bot-win. Bot-uni cross-cutting guard/support #265, maintainer-assigned docs exception #268, and backend #279 are done.
 
-Open items: umbrella **#43**; **#193** (LinkedIn package, MANUAL, maintainer approves/publishes); **#232** (external demo capture links, MANUAL, bot-win); UI look/feel plan **#240-#257** (bot-win); **#279** (bot-uni, async operations API/contracts, D3/M); **#280** (bot-win, async operations console UX, depends on #279). Re-check open issues and PRs before each item.
+Open items: umbrella **#43**; **#193** (LinkedIn package, MANUAL, maintainer approves/publishes); **#232** (external demo capture links, MANUAL, bot-win); remaining UI look/feel items **#240-#248**, **#253-#257** (bot-win); **#280** (bot-win, async operations console UX, now unblocked); **#290** (bot-win, fixes from daily review of #249-#252). Re-check open issues and PRs before each item.
 
 ## Bot identities
 
@@ -21,7 +21,7 @@ Open items: umbrella **#43**; **#193** (LinkedIn package, MANUAL, maintainer app
 
 | Order | Item | Notes |
 |---|---|---|
-| 1 | **#279 Async operations API/contracts** (H4, D3/M, `owner:bot-uni`) | Add server-side async operation/job service for long-running query execution; keep `/v1/query` and `/v1/query:batch` synchronous. Accepted defaults: owner=`principal.subject` else tenant-scoped `X-Client-Session` fallback (no cross-caller enumeration/spoofable sole authz); v1 = query async + unified in-progress listing including experiments; coarse `queued|running|completed|failed|cancelled` + timestamps + optional stage; bounded in-memory + honor `BaseStore` when configured, in-progress + recent-completed window. Recommend `operation id == request_id` for query ops. |
+| 1 | **#279 Async operations API/contracts** (H4, D3/M, `owner:bot-uni`) | Done via PR #289 (`216a3c5`): bounded async query service, `POST /v1/operations/query` / `GET /v1/operations/{id}` / `GET /v1/operations`, owner+tenant scoping, unified experiment listing, `BaseStore` TTL, and no raw payload persistence. Sync `/v1/query` and `/v1/query:batch` remain unchanged. |
 | 2 | **Docs reconciliation after bot-win UI merges** | After each #240-#257 and #280 merge, update this split, `docs/ux-and-api.md`, `docs/capability-status.md`, `docs/enterprise-roadmap.md`, and README links when behaviour changes. Avoid concurrent edits to files bot-win is editing. |
 | 3 | **Manual #193 / umbrella #43 monitoring** | #193 draft is merged; only maintainer approval/publish remains. Update #43 checklist/status in small dedicated PRs. |
 | 4 | **Backend support for UX where explicitly agreed** | Prefer bot-win owns the `ui/` surface. Take narrowly scoped backend contracts only after agreement in the relevant issue. |
@@ -33,25 +33,27 @@ sweep + Pareto report, **#195-#199** showcase harness/results/comparison, **#187
 #190-#192** showcase docs, **#204** adoption kit, **#205** security qualification,
 **#206** durable multi-replica profile (PR #263), **#223** identity-bound tenant
 selection (PR #237), **#224** API rate limits (PR #261), **#225** supply-chain gates
-(PR #239), **#265** UI look/feel cross-cutting guards (PR #266), docs
-follow-ups #260/#262/#264, and Dependabot PRs #258/#259.
+(PR #239), **#265** UI look/feel cross-cutting guards (PR #266), **#279** async
+operations API (PR #289), docs follow-ups #260/#262/#264, and Dependabot PRs #258/#259.
 
 ## Work items for enterprise-gen-ai-bot-win — UX/console
 
 | Order | Item | Notes |
 |---|---|---|
-| 1 | **UI look/feel plan #240-#257** (H4, Workstream M) | 18 UI implementation trackers: P0 #240-#241, P1 #242-#248, P2 #249-#255, P3 #256-#257. Owner `owner:bot-win`, Status Todo, Project #8 Workstream M. |
+| 1 | **UI look/feel plan #240-#257** (H4, Workstream M) | 18 UI implementation trackers: P0 #240-#241, P1 #242-#248, P2 #249-#255, P3 #256-#257. #249-#252 merged; remaining items are Todo with `owner:bot-win` in Project #8 Workstream M. |
 | 2 | **#280 Async operations console** (H4, D3/M, `owner:bot-win`, depends on #279) | HTTP-only UI: submit async query op -> show instant `request_id`; poll lifecycle; server-backed in-flight operations panel visible across navigation/refresh (owner+tenant scoped), including experiments in v1; coarse status/timestamps/stage; handle 401/403/404/503 envelopes; no `app.*`/`core.*` imports. |
 | 3 | **#232 showcase external capture links** (H5, MANUAL) | Replace `_Pending - add external link_` placeholders in `docs/showcase/demo-walkthrough.md` once the maintainer publishes captures; then close. |
-| 4 | **UI plan document upkeep** | Keep `docs/ui-enterprise-look-and-feel-plan.md` consistent with implemented screen changes; do not edit backend/CI files without agreement. |
+| 4 | **#290 daily-review fixes** | Address CSV formula-injection gap in Admin export, evidence-id routing, admin capability display, decision-history rendering, and Audit docs drift from #249-#252. |
+| 5 | **UI plan document upkeep** | Keep `docs/ui-enterprise-look-and-feel-plan.md` consistent with implemented screen changes; do not edit backend/CI files without agreement. |
 
 Completed by this workstream since the last split: #130-#136, #145, #151 (workspace/deep
 links), #152 (background evaluation jobs), #153 (Dataset Studio authoring), #154
 (cross-object evidence), #155 (command palette + WCAG 2.2 AA), #156 (responsive
 layout/density/themes), #157 (role journeys + safe demo mode), #158 (collaboration/feedback,
 PR #230), #163 (HITL review console), #164 (queue operations/SLA/safe export), #189
-(showcase demo walkthrough, PR #231), the enterprise look-and-feel plan (PR #234) and #235
-(merge-artifact repairs).
+(showcase demo walkthrough, PR #231), the enterprise look-and-feel plan (PR #234), #235
+(merge-artifact repairs), and structured Approval/Audit/Access/Admin presentations
+(#249-#252).
 
 ## UI look/feel redistribution (2026-11-18)
 
@@ -67,7 +69,7 @@ PR #230), #163 (HITL review console), #164 (queue operations/SLA/safe export), #
 | Cross-cutting contract, AST and docs guards | #265 (done, PR #266) | bot-uni | `tests/`, docs and backend contracts only; never `ui/` |
 | README console walkthrough cleanup | #268 (maintainer-assigned exception) | bot-uni | README + `docs/` only; no `ui/` edits; external capture links stay with #232/bot-win |
 
-#240-#257, #265, #279, #280 are Project #8 items in Workstream **M UX polish & adoption** (or D3/M for async ops). #240-#257 and #280 remain Todo with `owner:bot-win`; #279 is Todo with `owner:bot-uni`; #265 is Done.
+#240-#257, #265, #279, #280 and #290 are Project #8 items in Workstream **M UX polish & adoption** (or D3/M for async ops). #240-#248, #253-#257, #280 and #290 remain Todo with `owner:bot-win`; #249-#252, #265 and #279 are Done.
 
 ## Showcase/proof workstream (H5)
 
