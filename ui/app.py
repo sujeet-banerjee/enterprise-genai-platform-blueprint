@@ -28,6 +28,7 @@ from ui.a11y import (
 from ui.a11y import (
     styles as a11y_styles,
 )
+from ui.access_view import access_view_models
 from ui.admin import audit_export_rows, confirm_action, scope_indicator
 from ui.approval_view import (
     approval_detail_view,
@@ -3024,29 +3025,19 @@ def screen_access() -> None:
     result = api.access()
     if not require_ok(result):
         return
-    data = result.data
+    view = access_view_models(result.data)
 
-    c1, c2, c3 = st.columns(3)
-    c1.metric("Access control", "enabled" if data.get("enabled") else "disabled")
-    c2.metric("Role", data.get("role"))
-    c3.metric("top_k_max", data.get("top_k_max") if data.get("top_k_max") is not None else "unbounded")
+    st.markdown(kpi_strip_markdown(view["kpis"]), unsafe_allow_html=True)
+    st.markdown(view["summary_markdown"], unsafe_allow_html=True)
+    st.markdown(view["capabilities_markdown"], unsafe_allow_html=True)
+    st.markdown(view["policy_markdown"], unsafe_allow_html=True)
 
-    capabilities = data.get("capabilities") or []
-    st.subheader("Capabilities")
-    if capabilities:
-        st.dataframe(
-            [{"capability": capability, "allowed": True} for capability in capabilities],
-            use_container_width=True,
-        )
-    else:
-        st.info("No capabilities reported.")
-
-    allowed_models = data.get("allowed_models")
-    if allowed_models:
-        st.caption("Allowed models: " + ", ".join(allowed_models))
+    with st.expander(DETAIL_EXPANDER_LABEL):
+        st.json(view["raw"])
     st.caption(
-        "The calling persona is resolved from `X-API-Key` (set it in the sidebar); "
-        "roles and capabilities live in `config/access_control.yaml`."
+        "The calling persona is resolved from `X-API-Key` (set it in the sidebar) "
+        "or your single sign-on session; roles and capabilities live in "
+        "`config/access_control.yaml`."
     )
 
 

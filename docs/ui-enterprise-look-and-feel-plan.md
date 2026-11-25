@@ -21,6 +21,7 @@ Wireframes are illustrative mock-ups, not screenshots or captured production dat
 | #248 | Evaluation | `<img src="wireframes/248-evaluation-view.svg" alt="Evaluation wireframe showing dataset, run and results cards, background job status badges and progress, a highlighted comparison matrix with charts, and structured experiment status before a redacted raw expander" width="900">` ([source](wireframes/248-evaluation-view.excalidraw)) |
 | #249 | Approvals (HITL) | `<img src="wireframes/249-approvals-view.svg" alt="Approvals wireframe showing a request summary header with status/SLA/action/requester/tenant, key-value context and policy panels, linked evidence chips, decision history and an explicit approve/reject confirmation" width="900">` ([source](wireframes/249-approvals-view.excalidraw)) |
 | #250 | Audit | `<img src="wireframes/250-audit-view.svg" alt="Audit wireframe showing filters, summary KPIs, prominent CSV/JSON export buttons, and a timeline table with event badges, actor/tenant/request correlation columns and expandable redacted per-event detail" width="900">` ([source](wireframes/250-audit-view.excalidraw)) |
+| #251 | Access / RBAC | `<img src="wireframes/251-access-view.svg" alt="Access wireframe showing persona and tenant summary KPIs, a role/tenant summary card, grouped capability checklists with granted and not-granted badges, plain-language policy notes and a redacted raw expander" width="900">` ([source](wireframes/251-access-view.excalidraw)) |
 
 ## 1. Review basis and verdict
 
