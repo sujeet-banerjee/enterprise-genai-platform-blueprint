@@ -807,6 +807,29 @@ def styles(
 .genai-card__title {{ font-weight: 700; overflow-wrap: anywhere; }}
 .genai-card__meta {{ color: var(--genai-muted); }}
 .genai-muted {{ color: var(--genai-muted); }}
+.genai-feedback-table {{ min-width: 60rem; }}
+.genai-feedback-table td:nth-child(4), .genai-feedback-table td:nth-child(5) {{ max-width: 18rem; overflow-wrap: anywhere; }}
+.genai-feedback-reasons {{
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: 0.5rem 0.75rem;
+  margin-bottom: 0.75rem;
+}}
+.genai-feedback-reason {{
+  display: grid;
+  grid-template-columns: minmax(5rem, 7rem) 1fr auto;
+  align-items: center;
+  gap: 0.5rem;
+}}
+.genai-feedback-reason-label {{ color: var(--genai-muted); font-size: var(--genai-font-caption); }}
+.genai-feedback-reason-track {{
+  height: 0.5rem;
+  border-radius: 999px;
+  background: var(--genai-border);
+  overflow: hidden;
+}}
+.genai-feedback-reason-bar {{ display: block; height: 100%; background: var(--genai-accent); }}
+.genai-feedback-reason-count {{ font-variant-numeric: tabular-nums; font-weight: 600; }}
 @media (min-width: 1024px) {{
   [data-testid="stSidebar"] > div:first-child {{
     position: sticky;
@@ -849,6 +872,9 @@ def styles(
   .genai-admin-sections, .genai-admin-cards, .genai-settings-sections {{ grid-template-columns: 1fr; }}
   .genai-settings-sections .genai-card dl {{ grid-template-columns: 1fr; gap: 0.15rem; }}
   .genai-settings-sections .genai-card dd {{ margin-bottom: 0.35rem; }}
+  .genai-feedback-table {{ min-width: 48rem; }}
+  .genai-feedback-reason {{ grid-template-columns: 1fr; gap: 0.15rem; }}
+  .genai-feedback-reason-track {{ width: 100%; }}
   .genai-admin-table {{ min-width: 42rem; }}
   .genai-evidence-chips {{ flex-direction: column; align-items: flex-start; }}
   .genai-evidence-chips .genai-chip {{ max-width: 100%; }}
