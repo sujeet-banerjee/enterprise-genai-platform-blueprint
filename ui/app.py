@@ -30,6 +30,7 @@ from ui.a11y import (
 )
 from ui.access_view import access_view_models
 from ui.admin import audit_export_rows, confirm_action, scope_indicator
+from ui.admin_view import admin_view_models
 from ui.approval_view import (
     approval_detail_view,
     decision_confirmation_markdown,
@@ -3054,10 +3055,22 @@ def screen_admin() -> None:
         return
 
     t_res = api.admin_list_tenants()
-    if require_ok(t_res):
+    u_res = api.admin_list_users()
+    audit = api.audit(limit=20)
+    tenants_ok = require_ok(t_res)
+    users_ok = require_ok(u_res)
+    audit_ok = require_ok(audit)
+    if not (tenants_ok or users_ok or audit_ok):
+        return
+
+    tenants_data = t_res.data if tenants_ok else {}
+    users_data = u_res.data if users_ok else {}
+    audit_data = audit.data if audit_ok else {}
+    view = admin_view_models(tenants_data, users_data, audit_data, access.data)
+
+    if tenants_ok:
         st.session_state.last_admin_at = "loaded"
-        st.subheader("Tenants")
-        tenants = t_res.data.get("tenants") or []
+        tenants = tenants_data.get("tenants") or []
         st.session_state.known_tenants = sorted(
             {
                 str(row.get("tenant") or row.get("id") or "")
@@ -3065,42 +3078,53 @@ def screen_admin() -> None:
                 if (row.get("tenant") or row.get("id"))
             }
         )
-        if tenants:
-            st.dataframe(tenants, use_container_width=True)
-        else:
-            st.info("No tenants returned")
-        ind = scope_indicator({"enabled": True, "default_tenant": tenants[0].get("tenant") if tenants else "default"})
-        st.warning(ind["warning"])
-        st.caption(confirm_action("update tenant configuration"))
+        scope = scope_indicator(
+            {
+                "enabled": bool(tenants_data.get("enabled")),
+                "default_tenant": tenants[0].get("tenant") if tenants else "default",
+            }
+        )
+    else:
+        scope = scope_indicator({})
 
-    st.subheader("Users (identity directory)")
-    u_res = api.admin_list_users()
-    if require_ok(u_res):
-        users = u_res.data.get("users") or []
-        if users:
-            st.dataframe(users, use_container_width=True)
-        else:
-            st.info("No users returned or identity disabled")
+    st.markdown(kpi_strip_markdown(view["kpis"]), unsafe_allow_html=True)
+    st.markdown(view["banners_markdown"], unsafe_allow_html=True)
+    st.markdown(view["sections_markdown"], unsafe_allow_html=True)
 
-    audit = api.audit(limit=20)
-    if require_ok(audit):
-        st.subheader("Recent audit (export)")
-        rows = audit_export_rows(audit.data.get("events") or [])
-        if rows:
-            st.dataframe(rows, use_container_width=True, hide_index=True)
-            import csv
-            import io
+    rows = audit_export_rows(audit_data.get("events") or [])
+    if rows:
+        import csv
+        import io
 
-            buf = io.StringIO()
-            w = csv.DictWriter(buf, fieldnames=["timestamp", "event_type", "action", "outcome", "request_id", "tenant"])
-            w.writeheader()
-            w.writerows(rows)
-            st.download_button("Download audit CSV", data=buf.getvalue(), file_name="audit.csv", mime="text/csv")
+        buf = io.StringIO()
+        w = csv.DictWriter(
+            buf,
+            fieldnames=["timestamp", "event_type", "action", "outcome", "request_id", "tenant"],
+        )
+        w.writeheader()
+        w.writerows(rows)
+        st.download_button(
+            "Download audit CSV",
+            data=buf.getvalue(),
+            file_name="audit.csv",
+            mime="text/csv",
+        )
+
+    with st.expander(DETAIL_EXPANDER_LABEL):
+        st.json(view["raw"])
 
     st.subheader("Tenant updates (proposal)")
+    st.caption(scope["warning"])
     tenant_id = st.text_input("Tenant ID")
     budget = st.number_input("Budget cap USD (optional)", value=0.0, step=0.01)
-    if st.button("Update tenant") and tenant_id:
+    st.caption(confirm_action("update tenant configuration"))
+    confirmed = st.checkbox(
+        "I understand this changes tenant policy",
+        key="admin_update_confirmed",
+    )
+    if not confirmed:
+        st.caption("Tick the confirmation above to enable the update button.")
+    if st.button("Update tenant", disabled=not confirmed) and tenant_id and confirmed:
         payload = {}
         if budget > 0:
             payload["budget_cap_usd"] = float(budget)

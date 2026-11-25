@@ -723,6 +723,39 @@ def styles(
 .genai-access-notes {{ margin-bottom: var(--genai-gap); }}
 .genai-access-notes ul {{ margin: 0; padding-left: 1.2rem; }}
 .genai-access-notes li {{ margin-bottom: 0.3rem; }}
+.genai-admin-sections {{
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(24rem, 1fr));
+  gap: 0.75rem;
+  margin-bottom: var(--genai-gap);
+}}
+.genai-admin-cards {{
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+  gap: 0.5rem;
+}}
+.genai-admin-card-head {{
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}}
+.genai-admin-card-head h4 {{ margin: 0; overflow-wrap: anywhere; }}
+.genai-admin-change p {{ color: var(--genai-muted); margin-bottom: 0; }}
+.genai-admin-table {{
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--genai-font-caption);
+}}
+.genai-admin-table th, .genai-admin-table td {{
+  padding: 0.45rem 0.5rem;
+  border-bottom: 1px solid var(--genai-border);
+  text-align: left;
+  vertical-align: top;
+}}
+.genai-admin-table th {{ color: var(--genai-muted); font-weight: 600; }}
+.genai-admin-user {{ font-weight: 600; overflow-wrap: anywhere; }}
+.genai-admin-status {{ white-space: nowrap; }}
 @media (min-width: 1024px) {{
   [data-testid="stSidebar"] > div:first-child {{
     position: sticky;
@@ -761,6 +794,8 @@ def styles(
   .genai-access-groups {{ grid-template-columns: 1fr; }}
   .genai-access-item {{ grid-template-columns: 1fr; gap: 0.15rem; }}
   .genai-access-note {{ grid-column: 1; }}
+  .genai-admin-sections, .genai-admin-cards {{ grid-template-columns: 1fr; }}
+  .genai-admin-table {{ min-width: 42rem; }}
   .genai-evidence-chips {{ flex-direction: column; align-items: flex-start; }}
   .genai-evidence-chips .genai-chip {{ max-width: 100%; }}
 }}
