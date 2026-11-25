@@ -112,6 +112,52 @@ class EffectiveConfigResponse(BaseModel):
     config: Dict[str, Any] = {}
 
 
+class QueryRequest(BaseModel):
+    query: str = Field(
+        ..., min_length=1, description="The user query to run through the RAG pipeline."
+    )
+    top_k: Optional[int] = Field(
+        None, ge=1, description="Override the number of retrieved documents."
+    )
+    include_trace: bool = Field(
+        True, description="Include the redacted observability trace in the response."
+    )
+
+
+class OperationSubmitRequest(QueryRequest):
+    """Async query submission (issue #279)."""
+
+
+class OperationStatusResponse(BaseModel):
+    id: str
+    request_id: Optional[str] = None
+    kind: str
+    status: str
+    stage: Optional[str] = None
+    created_at: Optional[float] = None
+    started_at: Optional[float] = None
+    finished_at: Optional[float] = None
+    updated_at: Optional[float] = None
+    progress: Dict[str, Any] = {}
+    tenant: Optional[str] = None
+    workspace: Optional[str] = None
+    app: Optional[str] = None
+    result: Optional[Dict[str, Any]] = None
+    error: Optional[str] = None
+    failure_type: Optional[str] = None
+    failure_tags: List[str] = []
+
+
+class OperationSubmitResponse(OperationStatusResponse):
+    pass
+
+
+class OperationListResponse(BaseModel):
+    operations: List[OperationStatusResponse] = []
+    count: int = 0
+    request_id: Optional[str] = None
+
+
 class EvaluateRequest(BaseModel):
     query: str
     response: str
@@ -234,9 +280,9 @@ class MetricsResponse(BaseModel):
     cost: Dict[str, Any] = {}
     guardrails: Dict[str, Any] = {}
     eval: Dict[str, Any] = {}
+    operations: Dict[str, Any] = {}
     tenant: Optional[str] = None
     request_id: Optional[str] = None
-
 
 
 class EvalTrendsResponse(BaseModel):

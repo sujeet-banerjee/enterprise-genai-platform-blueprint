@@ -575,6 +575,19 @@ def register_ops_routes(
                 "trends": eval_store.trends(tenant=scope, limit=50),
                 "alerts": eval_store.alerts(tenant=scope),
             }
+        ops = getattr(request.app.state, "operations", None)
+        operations: dict[str, Any] = {"enabled": bool(ops and getattr(ops, "enabled", True))}
+        if ops is not None:
+            try:
+                ops_items = ops.list_operations(owner=str(getattr(request.state, "subject", "") or f"tenant:{scope or 'default'}:anonymous"), tenant=scope, mine=False, recent_window_seconds=getattr(ops, "recent_window_seconds", 3600), limit=10000)
+            except Exception:
+                ops_items = []
+            by_status: dict[str, int] = {}
+            for item in ops_items:
+                s = str(item.get("status") or "unknown")
+                by_status[s] = by_status.get(s, 0) + 1
+            operations.update({"total": len(ops_items), "by_status": by_status})
+        payload["operations"] = operations
         payload["request_id"] = _request_id(request)
         return MetricsResponse(**payload)
 

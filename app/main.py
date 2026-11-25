@@ -18,6 +18,7 @@ from app.bootstrap import (
 )
 from app.evaluation_api import EvaluationService, register_evaluation_routes
 from app.introspection import IntrospectionService
+from app.operations_api import register_operations_routes
 from app.ops_api import RunHistory, register_ops_routes
 from app.pipeline import RAGPipeline
 from app.schemas import (
@@ -29,6 +30,7 @@ from app.schemas import (
     EvaluatorsResponse,
     GuardrailsResponse,
     ModelsResponse,
+    QueryRequest,
     RerankersResponse,
     RetrieversResponse,
     TenantInfo,
@@ -53,6 +55,7 @@ from core.services.identity import (
     IdentityResolver,
     ScimDirectory,
 )
+from core.services.operation_jobs import OperationJobsService
 from core.services.rate_limit import (
     RateLimiter,
     RateLimitSettings,
@@ -157,14 +160,6 @@ def build_pipeline(
             str(observability_config_path) if observability_config_path else None
         ),
         max_query_chars=components.max_query_chars,
-    )
-
-
-class QueryRequest(BaseModel):
-    query: str = Field(..., min_length=1, description="The user query to run through the RAG pipeline.")
-    top_k: Optional[int] = Field(None, ge=1, description="Override the number of retrieved documents.")
-    include_trace: bool = Field(
-        True, description="Include the redacted observability trace in the response."
     )
 
 
@@ -339,6 +334,23 @@ def create_app(
             _store = build_store(config_path=str(persistence_config_path))
         except Exception:
             _store = None
+        ops_cfg_raw = api_config.get("operations")
+        ops_cfg = ops_cfg_raw if isinstance(ops_cfg_raw, dict) else {}
+        ttl_raw = ops_cfg.get("store_ttl_seconds")
+        application.state.operations = OperationJobsService(
+            enabled=bool(ops_cfg.get("enabled", True)),
+            max_workers=int(ops_cfg.get("max_workers", 2)),
+            max_operations=int(ops_cfg.get("max_operations", 500)),
+            recent_window_seconds=int(ops_cfg.get("recent_window_seconds", 3600)),
+            store=_store,
+            store_ttl_seconds=int(ttl_raw) if ttl_raw is not None else None,
+        )
+        application.state.operations_list_limit_default = int(
+            ops_cfg.get("list_limit_default", 100)
+        )
+        application.state.operations_list_limit_max = int(
+            ops_cfg.get("list_limit_max", 500)
+        )
         application.state.history = RunHistory(
             max_runs=int(api_config.get("history_max_runs", 1000)),
             max_traces=int(api_config.get("trace_store_max", 500)),
@@ -412,6 +424,9 @@ def create_app(
             rebuild_service = getattr(application.state, "rebuild", None)
             if rebuild_service is not None:
                 rebuild_service.cleanup()
+            operations_service = getattr(application.state, "operations", None)
+            if operations_service is not None:
+                operations_service.shutdown()
             audit_logger = getattr(application.state, "audit", None)
             if audit_logger is not None:
                 audit_logger.close()
@@ -448,6 +463,8 @@ def create_app(
             return "evaluate"
         if path == "/v1/experiments" or path.startswith("/v1/experiments/"):
             return "experiment"
+        if path == "/v1/operations" or path.startswith("/v1/operations/"):
+            return "query"
         if path == "/v1/pipeline:rebuild":
             return "rebuild"
         if path == "/v1/approvals" or path.startswith("/v1/approvals/"):
@@ -825,10 +842,27 @@ def create_app(
                 **pipeline_kwargs,
             )
         except Exception as exc:  # pragma: no cover - defensive
-            return (
-                _error_envelope(str(exc), "unknown_failure", [], request_id),
-                500,
+            envelope = _error_envelope(
+                str(exc), FailureType.UNKNOWN_FAILURE.value, [], request_id
             )
+            if history is not None:
+                history.record(
+                    request_id,
+                    envelope,
+                    tenant=tenant_id,
+                    attribution=attribution.dimensions(),
+                )
+            telemetry = getattr(request.app.state, "telemetry", None)
+            if telemetry is not None:
+                telemetry.record(envelope)
+            _record_query_audit(
+                request,
+                request_id,
+                envelope,
+                tenant=tenant_id,
+                attribution=attribution.dimensions(),
+            )
+            return envelope, 500
 
         # Every response carries the attribution dimensions (default when a
         # lightweight/legacy pipeline does not populate them).
@@ -1197,6 +1231,52 @@ def create_app(
 
     register_evaluation_routes(application, _error_envelope)
     register_whatif_routes(application, _error_envelope)
+
+    def _record_operation_completion(request: Request, final: dict) -> None:
+        """Record only runner-level exceptions.
+
+        `_execute_query` already records normal successful/governed results in
+        history, telemetry and audit; re-recording them here would double-count.
+        """
+        result = final.get("result")
+        if isinstance(result, dict) and result:
+            return
+        request_id = str(final.get("id") or final.get("request_id") or "")
+        current_attribution = getattr(request.state, "attribution", None)
+        attribution = (
+            current_attribution.dimensions()
+            if isinstance(current_attribution, AttributionContext)
+            else None
+        )
+        envelope = _error_envelope(
+            str(final.get("error") or "Async operation failed."),
+            final.get("failure_type") or FailureType.UNKNOWN_FAILURE.value,
+            list(final.get("failure_tags") or []),
+            request_id,
+        )
+        envelope.update(
+            {
+                "attribution": attribution,
+                "observability": {"request_id": request_id, "status": "failed"},
+            }
+        )
+        tenant = getattr(request.state, "tenant_id", None)
+        history = getattr(request.app.state, "history", None)
+        if history is not None and request_id:
+            history.record(request_id, envelope, tenant=tenant, attribution=attribution)
+        telemetry = getattr(request.app.state, "telemetry", None)
+        if telemetry is not None:
+            telemetry.record(envelope)
+        _record_query_audit(
+            request, request_id, envelope, tenant=tenant, attribution=attribution
+        )
+
+    register_operations_routes(
+        application,
+        error_envelope=_error_envelope,
+        execute_query=_execute_query,
+        on_complete=_record_operation_completion,
+    )
     register_ops_routes(application, _error_envelope)
     register_audit_routes(application, _error_envelope)
     register_approval_routes(application, _error_envelope)

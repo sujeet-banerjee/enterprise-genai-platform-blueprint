@@ -70,6 +70,17 @@ non-trivial consumer and living proof that the contract is sufficient.
 - **Query** — `POST /v1/query` (+ legacy `/query`) and `POST /v1/query:batch`
   (sequential or bounded parallel; per-item envelopes with their own `request_id`,
   cost and latency; one query failing never aborts the batch; `api.max_batch_size`).
+- **Async operations (issue #279)** — `POST /v1/operations/query` returns an
+  immediate operation id/request_id and executes in a bounded background worker;
+  `GET /v1/operations/{op_id}` polls coarse status/progress; `GET /v1/operations`
+  lists in-progress and recent completed operations and includes experiments in
+  a unified view. Operations are owner+tenant scoped (identity subject when
+  present, else a tenant-qualified `X-Client-Session` possession token);
+  `mine=false` requires the `governance` capability, and a full bounded queue
+  returns `429 rate_limited/operation_queue_full`. `BaseStore` persistence is
+  honored when configured, with `store_ttl_seconds`; raw query payloads are not
+  persisted. Completion reuses run history/telemetry/audit/cost without
+  double-counting. Sync query endpoints remain unchanged.
 - **Evaluation & experiments** — `POST /v1/evaluate` (active or named evaluator;
   auto-retrieves through the live pipeline when docs are omitted; ground truth is
   used only when the evaluator advertises `supports_ground_truth`), `POST
@@ -121,6 +132,9 @@ Legend: **[E]**xisting. Every row is asserted by `tests/test_api_contract.py`
 |---|---|---|---|
 | 1 | `POST /v1/query` | Core | `RAGPipeline.run`; `top_k`, `include_trace`, optional `documents` |
 | 2 | `POST /v1/query:batch` | Core | sequential or parallel loop over #1; per-item envelopes + aggregate `summary`; `api.max_batch_size` |
+| 2a | `POST /v1/operations/query` | Core | async query submit (issue #279); 202 + immediate `id/request_id`; bounded worker; owner+tenant scoped; completion recorded to history/telemetry/audit/cost |
+| 2b | `GET /v1/operations/{op_id}` | Core | poll async operation status/result/error; coarse progress; no cross-owner/tenant enumeration |
+| 2c | `GET /v1/operations` | Core | list in-progress + recent completed operations; unified with experiments; `status/mine/recent_window_seconds/limit`; `mine=false` needs `governance` |
 | 3 | `POST /query` | Core | legacy alias of #1 (same envelope) |
 | 4 | `GET /health` | Ops | liveness: process up |
 | 5 | `GET /ready` | Ops | readiness: pipeline built; returns `config_revision` + `components` |

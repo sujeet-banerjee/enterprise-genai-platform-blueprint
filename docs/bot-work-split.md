@@ -1,8 +1,8 @@
 # Bot work split (current open items)
 
-Reconciled 2026-11-20 after async-operations recalibration (`origin/main` @ `1fa67c7` baseline; no open PRs at reconcile). #240-#257 remain bot-win UI look/feel implementation items in Project #8 Workstream M; bot-uni cross-cutting guard/support #265 and maintainer-assigned docs exception #268 are done.
+Reconciled 2026-11-20 after #279 implementation (`origin/main` @ `1fa67c7` baseline; #279 PR pending). #240-#257 remain bot-win UI look/feel implementation items in Project #8 Workstream M; bot-uni cross-cutting guard/support #265 and maintainer-assigned docs exception #268 are done.
 
-Open items: umbrella **#43**; **#193** (LinkedIn package, MANUAL, maintainer approves/publishes); **#232** (external demo capture links, MANUAL, bot-win); UI look/feel plan **#240-#257** (bot-win); **#279** (bot-uni, async operations API/contracts, D3/M); **#280** (bot-win, async operations console UX, depends on #279). Re-check open issues and PRs before each item.
+Open items: umbrella **#43**; **#193** (LinkedIn package, MANUAL, maintainer approves/publishes); **#232** (external demo capture links, MANUAL, bot-win); UI look/feel plan **#240-#257** (bot-win); **#279** (bot-uni, async operations API/contracts, D3/M, in review); **#280** (bot-win, async operations console UX, depends on #279). Re-check open issues and PRs before each item.
 
 ## Bot identities
 
@@ -21,7 +21,7 @@ Open items: umbrella **#43**; **#193** (LinkedIn package, MANUAL, maintainer app
 
 | Order | Item | Notes |
 |---|---|---|
-| 1 | **#279 Async operations API/contracts** (H4, D3/M, `owner:bot-uni`) | Add server-side async operation/job service for long-running query execution; keep `/v1/query` and `/v1/query:batch` synchronous. Accepted defaults: owner=`principal.subject` else tenant-scoped `X-Client-Session` fallback (no cross-caller enumeration/spoofable sole authz); v1 = query async + unified in-progress listing including experiments; coarse `queued|running|completed|failed|cancelled` + timestamps + optional stage; bounded in-memory + honor `BaseStore` when configured, in-progress + recent-completed window. Recommend `operation id == request_id` for query ops. |
+| 1 | **#279 Async operations API/contracts** (H4, D3/M, `owner:bot-uni`) | Implemented and awaiting PR review on `feature/279-async-operations-api`: bounded async query service, `POST /v1/operations/query` / `GET /v1/operations/{id}` / `GET /v1/operations`, owner+tenant scoping, unified experiment listing, `BaseStore` TTL, and no raw payload persistence. Sync `/v1/query` and `/v1/query:batch` remain unchanged. |
 | 2 | **Docs reconciliation after bot-win UI merges** | After each #240-#257 and #280 merge, update this split, `docs/ux-and-api.md`, `docs/capability-status.md`, `docs/enterprise-roadmap.md`, and README links when behaviour changes. Avoid concurrent edits to files bot-win is editing. |
 | 3 | **Manual #193 / umbrella #43 monitoring** | #193 draft is merged; only maintainer approval/publish remains. Update #43 checklist/status in small dedicated PRs. |
 | 4 | **Backend support for UX where explicitly agreed** | Prefer bot-win owns the `ui/` surface. Take narrowly scoped backend contracts only after agreement in the relevant issue. |
@@ -67,7 +67,7 @@ PR #230), #163 (HITL review console), #164 (queue operations/SLA/safe export), #
 | Cross-cutting contract, AST and docs guards | #265 (done, PR #266) | bot-uni | `tests/`, docs and backend contracts only; never `ui/` |
 | README console walkthrough cleanup | #268 (maintainer-assigned exception) | bot-uni | README + `docs/` only; no `ui/` edits; external capture links stay with #232/bot-win |
 
-#240-#257, #265, #279, #280 are Project #8 items in Workstream **M UX polish & adoption** (or D3/M for async ops). #240-#257 and #280 remain Todo with `owner:bot-win`; #279 is Todo with `owner:bot-uni`; #265 is Done.
+#240-#257, #265, #279, #280 are Project #8 items in Workstream **M UX polish & adoption** (or D3/M for async ops). #240-#257 and #280 remain Todo with `owner:bot-win`; #279 is In Progress with `owner:bot-uni` (implementation complete, PR pending); #265 is Done.
 
 ## Showcase/proof workstream (H5)
 
