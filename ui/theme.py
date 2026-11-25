@@ -723,6 +723,27 @@ def styles(
 .genai-access-notes {{ margin-bottom: var(--genai-gap); }}
 .genai-access-notes ul {{ margin: 0; padding-left: 1.2rem; }}
 .genai-access-notes li {{ margin-bottom: 0.3rem; }}
+.genai-settings-sections {{
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(24rem, 1fr));
+  gap: 0.75rem;
+  margin-bottom: var(--genai-gap);
+}}
+.genai-settings-sections .genai-card dl {{
+  display: grid;
+  grid-template-columns: minmax(9rem, 0.8fr) minmax(0, 1.2fr);
+  gap: 0.3rem 0.6rem;
+  margin: 0;
+}}
+.genai-settings-sections .genai-card dt {{
+  color: var(--genai-muted);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}}
+.genai-settings-sections .genai-card dd {{
+  margin: 0;
+  overflow-wrap: anywhere;
+}}
 .genai-admin-sections {{
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(24rem, 1fr));
@@ -825,7 +846,9 @@ def styles(
   .genai-access-groups {{ grid-template-columns: 1fr; }}
   .genai-access-item {{ grid-template-columns: 1fr; gap: 0.15rem; }}
   .genai-access-note {{ grid-column: 1; }}
-  .genai-admin-sections, .genai-admin-cards {{ grid-template-columns: 1fr; }}
+  .genai-admin-sections, .genai-admin-cards, .genai-settings-sections {{ grid-template-columns: 1fr; }}
+  .genai-settings-sections .genai-card dl {{ grid-template-columns: 1fr; gap: 0.15rem; }}
+  .genai-settings-sections .genai-card dd {{ margin-bottom: 0.35rem; }}
   .genai-admin-table {{ min-width: 42rem; }}
   .genai-evidence-chips {{ flex-direction: column; align-items: flex-start; }}
   .genai-evidence-chips .genai-chip {{ max-width: 100%; }}
