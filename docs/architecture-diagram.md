@@ -25,7 +25,7 @@ flowchart TB
 
         subgraph API [API layer - app/main.py]
             MW["HTTP middleware<br/>request id, identity/SCIM, tenancy,<br/>RBAC, attribution"]
-            ROUTES["40 HTTP routes<br/>query, batch, evaluate, experiments,<br/>rebuild, ops, admin, audit, approvals"]
+            ROUTES["43 HTTP routes<br/>query, batch, operations, evaluate,<br/>experiments, rebuild, ops, admin,<br/>audit, approvals"]
             STATE["Lifespan state<br/>pipeline, config revision, history,<br/>audit, approvals, stores"]
         end
 

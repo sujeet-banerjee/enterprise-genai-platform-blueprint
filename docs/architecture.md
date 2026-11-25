@@ -596,6 +596,21 @@ return `429 rate_limited` with `Retry-After`, are counted by
 `enabled: false`, so legacy deployments are unchanged; a gateway/WAF remains responsible for
 distributed/global quotas.
 
+**Async operations (issue #279).** The `operations:` block in `config/api.yaml` drives
+`core/services/operation_jobs.py`, built in `app/main.py::create_app` and exposed through
+`app/operations_api.py`. `POST /v1/operations/query` returns an operation id equal to the
+`request_id` immediately and runs the existing `_execute_query` path in a bounded thread
+pool; `GET /v1/operations/{id}` and `GET /v1/operations` expose coarse status, stage,
+timestamps and results. Active operations are capped by `max_operations` (a full queue
+returns `429 rate_limited/operation_queue_full`), recent entries are bounded by
+`recent_window_seconds`, and `store_ttl_seconds` applies when a `BaseStore` is configured.
+Ownership is the authenticated subject when identity is enabled, otherwise a
+tenant-qualified `X-Client-Session` possession token; `mine=false` requires the
+`governance` capability and cross-owner/cross-tenant reads return 404. Experiments are
+projected into the same listing, so the console can show one in-flight panel (#280). Raw
+query payloads are never persisted in operation records; completion reuses the normal
+history/telemetry/audit path instead of double-counting it.
+
 **Ingestion connectors (roadmap H, #115-#117).** `config/ingestion.yaml` drives
 `ConnectorRegistry` and `IngestionService` (disabled by default). Providers are
 `noop`, `filesystem`, `sharepoint`, `confluence`, `s3`, `azure_blob` and `gcs`;

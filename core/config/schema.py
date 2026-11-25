@@ -232,6 +232,18 @@ class RateLimitConfig(BaseModel):
     in_flight_max: Optional[int] = Field(default=None, ge=1)
 
 
+class OperationsConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    enabled: Optional[bool] = None
+    max_workers: Optional[int] = Field(default=None, ge=1)
+    max_operations: Optional[int] = Field(default=None, ge=1)
+    recent_window_seconds: Optional[int] = Field(default=None, ge=1)
+    store_ttl_seconds: Optional[int] = Field(default=None, ge=1)
+    list_limit_default: Optional[int] = Field(default=None, ge=1)
+    list_limit_max: Optional[int] = Field(default=None, ge=1)
+
+
 class ApiConfig(_StrictModel):
     require_api_key: Optional[bool] = None
     api_key: Optional[str] = None
@@ -242,6 +254,7 @@ class ApiConfig(_StrictModel):
     batch_max_workers: Optional[int] = None
     approvals_page_size_max: Optional[int] = None
     rate_limit: Optional[RateLimitConfig] = None
+    operations: Optional[OperationsConfig] = None
 
 
 # -- audit.yaml ----------------------------------------------------------
