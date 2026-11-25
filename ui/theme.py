@@ -756,6 +756,36 @@ def styles(
 .genai-admin-table th {{ color: var(--genai-muted); font-weight: 600; }}
 .genai-admin-user {{ font-weight: 600; overflow-wrap: anywhere; }}
 .genai-admin-status {{ white-space: nowrap; }}
+.genai-status {{
+  display: inline-block;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  font-size: var(--genai-font-caption);
+  font-weight: 700;
+  text-transform: capitalize;
+  border: 1px solid var(--genai-border);
+}}
+.genai-status--neutral {{ color: var(--genai-muted); }}
+.genai-status--info {{ color: var(--genai-accent); }}
+.genai-status--success {{ color: var(--genai-success); }}
+.genai-status--warning {{ color: var(--genai-warning); }}
+.genai-status--danger {{ color: var(--genai-danger); }}
+.genai-table {{
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--genai-font-caption);
+}}
+.genai-table th, .genai-table td {{
+  padding: 0.35rem 0.45rem;
+  border-bottom: 1px solid var(--genai-border);
+  text-align: left;
+  vertical-align: top;
+}}
+.genai-table th {{ color: var(--genai-muted); font-weight: 600; }}
+.genai-card--pending {{ border-left: 3px solid var(--genai-accent); }}
+.genai-card__title {{ font-weight: 700; overflow-wrap: anywhere; }}
+.genai-card__meta {{ color: var(--genai-muted); }}
+.genai-muted {{ color: var(--genai-muted); }}
 @media (min-width: 1024px) {{
   [data-testid="stSidebar"] > div:first-child {{
     position: sticky;
@@ -790,6 +820,7 @@ def styles(
   .genai-guardrail-node {{ display: flex; width: 100%; }}
   .genai-guardrail-node + .genai-guardrail-arrow {{ padding: 0.25rem 0; }}
   .genai-decision-table {{ min-width: 44rem; }}
+  .genai-table {{ min-width: 40rem; }}
   .genai-audit-table {{ min-width: 52rem; }}
   .genai-access-groups {{ grid-template-columns: 1fr; }}
   .genai-access-item {{ grid-template-columns: 1fr; gap: 0.15rem; }}

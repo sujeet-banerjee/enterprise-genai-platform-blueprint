@@ -661,6 +661,74 @@ def demo_fixture(path: str, method: str = "GET", payload: Optional[Mapping[str, 
             "guardrails": {"enabled": True, "profile": "standard"},
             "demo": True,
         }
+    if path == "/v1/operations/query" and method == "POST":
+        op_id = "demo-operation-0002"
+        result = copy.deepcopy(DEMO_RESULT)
+        result["request_id"] = op_id
+        return {
+            "id": op_id,
+            "request_id": op_id,
+            "kind": "query",
+            "status": "completed",
+            "stage": "completed",
+            "created_at": DEMO_EPOCH,
+            "started_at": DEMO_EPOCH,
+            "finished_at": DEMO_EPOCH + 1,
+            "updated_at": DEMO_EPOCH + 1,
+            "progress": {"stage": "completed", "message": "Completed"},
+            "tenant": DEMO_TENANT,
+            "workspace": DEMO_WORKSPACE,
+            "app": "console",
+            "result": result,
+            "error": None,
+            "failure_type": None,
+            "failure_tags": [],
+        }
+    if path == "/v1/operations":
+        return {
+            "operations": [
+                {
+                    "id": "demo-experiment-0001",
+                    "request_id": "demo-experiment-0001",
+                    "kind": "experiment",
+                    "status": "running",
+                    "stage": "running",
+                    "created_at": DEMO_EPOCH,
+                    "updated_at": DEMO_EPOCH,
+                    "tenant": DEMO_TENANT,
+                },
+                {
+                    "id": "demo-operation-0002",
+                    "request_id": "demo-operation-0002",
+                    "kind": "query",
+                    "status": "completed",
+                    "stage": "completed",
+                    "created_at": DEMO_EPOCH,
+                    "updated_at": DEMO_EPOCH + 1,
+                    "tenant": DEMO_TENANT,
+                },
+            ],
+            "count": 2,
+            "request_id": DEMO_REQUEST_ID,
+        }
+    if path.startswith("/v1/operations/"):
+        op_id = path.rsplit("/", 1)[-1]
+        result = copy.deepcopy(DEMO_RESULT)
+        result["request_id"] = op_id
+        return {
+            "id": op_id,
+            "request_id": op_id,
+            "kind": "query",
+            "status": "completed",
+            "stage": "completed",
+            "created_at": DEMO_EPOCH,
+            "finished_at": DEMO_EPOCH + 1,
+            "updated_at": DEMO_EPOCH + 1,
+            "progress": {"stage": "completed", "message": "Completed"},
+            "tenant": DEMO_TENANT,
+            "result": result,
+            "failure_tags": [],
+        }
     if path == "/v1/query" or path == "/v1/query:batch":
         if path == "/v1/query:batch":
             queries = list(payload.get("queries") or [DEMO_QUERY])
