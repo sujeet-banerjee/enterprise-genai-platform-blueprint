@@ -24,6 +24,7 @@ Wireframes are illustrative mock-ups, not screenshots or captured production dat
 | #251 | Access / RBAC | `<img src="wireframes/251-access-view.svg" alt="Access wireframe showing persona and tenant summary KPIs, a role/tenant summary card, grouped capability checklists with granted and not-granted badges, plain-language policy notes and a redacted raw expander" width="900">` ([source](wireframes/251-access-view.excalidraw)) |
 | #252 | Admin | `<img src="wireframes/252-admin-view.svg" alt="Admin wireframe showing segmented sections, tenant and user cards/tables with status badges, scope and change-control banners, a structured recent audit table and an explicit confirmation gate for tenant updates" width="900">` ([source](wireframes/252-admin-view.excalidraw)) |
 | #253 | Settings (read-only) | `<img src="wireframes/253-settings-view.svg" alt="Settings wireframe showing summary KPIs, grouped models/retrieval/reranking/evaluation/guardrails/observability/cache cards and a redacted raw expander" width="900">` ([source](wireframes/253-settings-view.excalidraw)) |
+| #254 | Feedback | `<img src="wireframes/254-feedback-view.svg" alt="Feedback wireframe showing privacy/redaction banner, summary KPIs, reason breakdown bars, annotation table with badges, export buttons, a selected-request card and a redacted raw expander" width="900">` ([source](wireframes/254-feedback-view.excalidraw)) |
 
 ## 1. Review basis and verdict
 

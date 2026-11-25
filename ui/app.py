@@ -154,22 +154,20 @@ from ui.feedback import (
     FLAG_REASONS,
     MAX_NOTE_CHARS,
     REASON_LABELS,
-    annotation_rows,
-    export_annotations_csv,
-    export_annotations_json,
-    filter_annotations,
     find_annotation,
     new_annotation,
     promote_to_dataset,
     promoted_dataset_name,
     reason_label,
-    reason_summary,
     remove_annotation,
     set_promoted,
     upsert_annotation,
 )
-from ui.feedback import (
-    export_filename as feedback_filename,
+from ui.feedback_view import (
+    RAW_EXPANDER_LABEL as FEEDBACK_RAW_EXPANDER_LABEL,
+)
+from ui.feedback_view import (
+    feedback_view_models,
 )
 from ui.governance import (
     alert_banner_markdown,
@@ -3564,142 +3562,62 @@ def screen_feedback() -> None:
     st.subheader("Feedback")
 
     notice = st.session_state.pop("feedback_notice", "")
-
     if notice:
-
         st.success(notice)
-
-    st.caption(
-
-        "Annotations are stored in your console workspace (persisted locally via UX8). "
-
-        "Share links include request id, flag and reason but never reviewer note text. "
-
-        "Exports and evidence packs are redacted before leaving the browser."
-
-    )
-
-
 
     annotations = list(st.session_state.get("annotations") or [])
 
-    summary = reason_summary(annotations)
-
-    c1, c2, c3, c4 = st.columns(4)
-
-    c1.metric("Total annotations", summary["total"])
-
-    c2.metric("Flagged", summary["flagged"])
-
-    c3.metric("Promoted", summary["promoted"])
-
-    c4.metric("Open flags", max(summary["flagged"] - summary["promoted"], 0))
-
-
-
     f1, f2, f3 = st.columns(3)
-
     reason_options = [ANY_REASON, *FLAG_REASONS]
-
     promoted_options = [ANY_PROMOTED, "yes", "no"]
-
     _ensure_choice("fb_reason", reason_options)
-
     _ensure_choice("fb_promoted", promoted_options)
-
     reason = f1.selectbox(
-
         "Reason",
-
         reason_options,
-
         key="fb_reason",
-
         format_func=lambda value: "any" if value == ANY_REASON else REASON_LABELS.get(value, value),
-
     )
-
     promoted = f2.selectbox("Promoted", promoted_options, key="fb_promoted")
-
     search = f3.text_input("Search (request id, query, note)", key="fb_search")
 
+    options = ["(select)"] + [item["request_id"] for item in annotations]
+    selected = st.selectbox("Annotated request", options, key="feedback_selected_request")
 
+    view = feedback_view_models(
+        annotations,
+        reason=reason,
+        promoted=promoted,
+        search=search,
+        selected=selected,
+    )
 
-    filtered = filter_annotations(annotations, reason=reason, promoted=promoted, search=search)
+    st.markdown(view["privacy_markdown"])
+    st.markdown(view["kpis_markdown"])
+    st.markdown(view["reasons_markdown"])
+    st.markdown(view["table_markdown"])
+    st.caption(f"Showing {view['filtered_count']} of {view['total_count']} annotation(s).")
 
-    st.caption(f"Showing {len(filtered)} of {len(annotations)} annotation(s).")
-
-    if filtered:
-
-        st.dataframe(annotation_rows(filtered), use_container_width=True, hide_index=True)
-
-    else:
-
-        st.info("No flagged runs match the current filters. Flag a run from Query Studio or Traces.")
-
-
-
-    if annotations:
-
-        export_json = export_annotations_json(annotations)
-
-        export_csv = export_annotations_csv(annotations)
-
-        d1, d2 = st.columns(2)
-
-        d1.download_button(
-
-            "Export feedback (JSON)",
-
-            data=export_json,
-
-            file_name=feedback_filename("json"),
-
-            mime="application/json",
-
-            key="feedback_export_json",
-
-        )
-
-        d2.download_button(
-
-            "Export feedback (CSV)",
-
-            data=export_csv,
-
-            file_name=feedback_filename("csv"),
-
-            mime="text/csv",
-
-            key="feedback_export_csv",
-
-        )
+    if view["exports"]:
+        export_columns = st.columns(len(view["exports"]))
+        for column, export in zip(export_columns, view["exports"]):
+            column.download_button(
+                export["label"],
+                data=export["data"],
+                file_name=export["file_name"],
+                mime=export["mime"],
+                key=export["key"],
+            )
 
 
 
     st.subheader("Review selected run")
 
-    options = ["(select)"] + [item["request_id"] for item in annotations]
-
-    selected = st.selectbox("Annotated request", options, key="feedback_selected_request")
-
     if selected and selected != "(select)":
 
-        item = _annotation_for(selected) or {}
+        item = view["selected"] or {}
 
-        st.caption(
-
-            f"reason={reason_label(item.get('reason'))} | flagged={'yes' if item.get('flag') else 'no'} "
-
-            f"| promoted={'yes' if item.get('promoted') else 'no'}"
-
-        )
-
-        if item.get("query"):
-
-            st.markdown("**Query**")
-
-            st.write(item.get("query"))
+        st.markdown(view["selected_markdown"])
 
         with st.form(f"feedback_edit::{selected}"):
 
@@ -3795,7 +3713,8 @@ def screen_feedback() -> None:
 
             st.rerun()
 
-
+    with st.expander(FEEDBACK_RAW_EXPANDER_LABEL, expanded=False):
+        st.json(view["raw"])
 
     st.caption("Feedback annotations are part of your workspace; use Export/Import workspace to persist or share (redacted).")
 

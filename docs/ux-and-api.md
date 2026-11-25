@@ -200,7 +200,7 @@ The repeatable demo/capture script is [`docs/showcase/demo-walkthrough.md`](show
 | **Audit** | filter by `limit`/`event_type`; inspect redacted events | `/v1/audit` |
 | **Access / RBAC** | roles, capabilities, request caps, allowed models | `/v1/access` |
 | **Admin** | tenant scope indicator, confirmation prompts for sensitive updates, tenant policy view/update + identity directory users, audit export; requires `admin`/`rebuild` capability | `/v1/admin/tenants`, `/v1/admin/tenants/{tenant_id}`, `/v1/admin/users`, `/v1/access`, `/v1/audit` |
-| **Feedback** | review queue for flagged runs/annotations, reasons and notes attached to request id, one-action promote to dataset, redacted feedback export (JSON/CSV) and evidence-pack handoff; notes stay out of share links | /v1/traces/{request_id}, /v1/audit (evidence) |
+| **Feedback** | structured review queue with privacy/redaction banner, annotation KPIs, reason breakdown bars, status/reason badges, ranked review table, redacted selected-request card, consistent JSON/CSV exports, one-action promote to dataset and evidence-pack handoff; notes stay out of share links | /v1/traces/{request_id}, /v1/audit (evidence) |
 | **Traces** | look up `request_id`; stage latency timeline/waterfall with span list, failure taxonomy, guardrail decisions, resilience, OTel ids, redaction-safe and raw trace views; cross-links to audit/metrics/governance/feedback for the same request; two-request diff; redacted JSON/Markdown evidence pack | `/v1/traces/{request_id}`, `/v1/audit`, `/v1/metrics`, `/v1/governance/status` |
 | **Settings (read-only)** | grouped, redacted effective-config cards (models/retrieval/reranking/evaluation/guardrails/observability/cache) with KPI summary, runtime provider summaries and raw payload behind `Raw (redacted)` | `/v1/config`, `/v1/models`, `/v1/embedding-models`, `/v1/retrievers`, `/v1/rerankers`, `/v1/evaluators`, `/v1/guardrails` |
 
@@ -423,6 +423,7 @@ Streamlit-free) and is covered by `tests/test_ui_dataset_studio.py`.
 | (added during delivery) | role journeys (five personas, docs-linked steps, Back/Next/Skip, progress) and safe local demo mode (fixtures only, no HTTP, banner + reset), plus guardrails/audit/admin checklist steps | #157 |
 | (added during delivery) | async operations UX: instant request id, owner-scoped polling in Query Studio, server-backed operations panel including experiments, client-session header, HTTP-only demo fixtures | #280 (backend #279) |
 | (added during delivery) | Settings parity: grouped effective-config cards, redacted KPI/provider summaries, responsive key-value tables and raw payload behind `Raw (redacted)` | #253 |
+| (added during delivery) | Feedback parity: privacy banners, KPI/reason breakdown, semantic badges, structured review table/card, consistent redacted exports and share-link cues | #254 |
 
 The forward roadmap (horizons H0-H4, workstreams A-M) is tracked in
 [enterprise-roadmap.md](enterprise-roadmap.md) and the GitHub Project board. Async
