@@ -258,6 +258,7 @@ from ui.query_studio import (
     stage_latency_markdown,
     trace_summary_markdown,
 )
+from ui.settings_view import RAW_EXPANDER_LABEL, settings_view_models
 from ui.shell import (
     PAGE_ICON,
     PAGE_TITLE,
@@ -3805,21 +3806,28 @@ def screen_settings() -> None:
 
     st.caption("Read-only view of the redacted effective configuration. YAML files are the source of truth.")
     config = api.effective_config()
-    if require_ok(config):
-        st.json(config.data.get("config", {}))
-    st.subheader("Providers")
-    for label, call in (
-        ("Models", api.models),
-        ("Embedding models", api.embedding_models),
-        ("Retrievers", api.retrievers),
-        ("Rerankers", api.rerankers),
-        ("Evaluators", api.evaluators),
-        ("Guardrails", api.guardrails),
+    if not require_ok(config):
+        return
+    effective = config.data.get("config", config.data)
+    providers: Dict[str, Any] = {}
+    for key, call in (
+        ("models", api.models),
+        ("embedding-models", api.embedding_models),
+        ("retrievers", api.retrievers),
+        ("rerankers", api.rerankers),
+        ("evaluators", api.evaluators),
+        ("guardrails", api.guardrails),
     ):
         result = call()
         if result.ok:
-            with st.expander(label):
-                st.json(result.data)
+            providers[key] = result.data
+        else:
+            require_ok(result)
+    view = settings_view_models(effective, providers)
+    st.markdown(view["kpis_markdown"], unsafe_allow_html=True)
+    st.markdown(view["sections_markdown"], unsafe_allow_html=True)
+    with st.expander(RAW_EXPANDER_LABEL, expanded=False):
+        st.json(view["raw"])
 
 
 SCREENS = {
