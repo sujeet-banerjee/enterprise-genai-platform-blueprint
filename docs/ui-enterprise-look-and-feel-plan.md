@@ -141,6 +141,8 @@ Delivered in #256 through `ui/trust_view.py`: reusable escaped banner/action/pro
 
 **Suggested capture set (README/docs/showcase, when maintained):** `overview-health`, `query-studio-result`, `traces-waterfall-compare`, `governance-cost`, `guardrails-decisions`, `approvals-queue`, `audit-timeline`, `settings-readonly` — each in Light @1280 plus one compact/mobile and one High contrast sample.
 
+**Delivery status (#257):** structural QA across the viewport/theme/mode matrix and the target capture manifest are recorded in [`docs/showcase/qa-and-captures.md`](showcase/qa-and-captures.md); maintainer-published external capture URLs remain tracked in #232.
+
 ## 7. Implementation notes & guardrails
 
 - **Keep** `ui/` HTTP-only (no `app.*`/`core.*` imports) and preserve existing AST/contract tests; extend tests for new pure helpers (badge/status mapping, formatters, view-model transforms).
