@@ -463,7 +463,8 @@ def test_app_wires_structured_query_studio_presentation():
         "stage_latency_markdown(",
         "trace_summary_markdown(",
         "resilience_summary_markdown(",
-        "comparison_markdown(comparison_rows(previous, current))",
+        "comparison_markdown(rows)",
+        "responsive_table_markdown(",
         "DETAIL_EXPANDER_LABEL",
     ):
         assert needle in text, f"ui/app.py is missing {needle!r}"

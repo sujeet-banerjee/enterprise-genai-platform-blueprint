@@ -211,7 +211,10 @@ survives navigation/reruns within the browser session.
 No config-editing UI in v1 (write path = files in `config/`); `pipeline:rebuild` in the
 UI is expressed as preset "what-if" selections, keeping humans as the owners of YAML.
 The sidebar also exposes the API base URL, the optional API key and an **Appearance**
-panel (theme, density, table layout, #156).
+panel (theme, density, table layout, #156). Dense tables use a shared responsive
+wrapper (#255): wide layouts show a contained table, while tablet/mobile widths show
+cards with the same columns and actions. Approvals, Audit, Traces and Admin add compact
+card density without hiding values or controls.
 
 ### Role-aware navigation and onboarding (#130)
 
@@ -424,6 +427,7 @@ Streamlit-free) and is covered by `tests/test_ui_dataset_studio.py`.
 | (added during delivery) | async operations UX: instant request id, owner-scoped polling in Query Studio, server-backed operations panel including experiments, client-session header, HTTP-only demo fixtures | #280 (backend #279) |
 | (added during delivery) | Settings parity: grouped effective-config cards, redacted KPI/provider summaries, responsive key-value tables and raw payload behind `Raw (redacted)` | #253 |
 | (added during delivery) | Feedback parity: privacy banners, KPI/reason breakdown, semantic badges, structured review table/card, consistent redacted exports and share-link cues | #254 |
+| (added during delivery) | Responsiveness/density parity: shared table→card wrapper for dense tables, tablet/mobile degradation without losing columns or actions, contained table scrolling, compact density for Approvals/Audit/Traces/Admin | #255 |
 
 The forward roadmap (horizons H0-H4, workstreams A-M) is tracked in
 [enterprise-roadmap.md](enterprise-roadmap.md) and the GitHub Project board. Async

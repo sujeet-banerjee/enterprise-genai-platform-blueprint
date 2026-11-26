@@ -22,6 +22,7 @@ from ui.components import (
     section_card_markdown,
     section_card_model,
 )
+from ui.responsive import responsive_table_markdown
 
 _MAX_TEXT = 120
 
@@ -317,10 +318,24 @@ def admin_view_models(
     user_models = user_rows(users_payload)
     audit_models = recent_audit_rows(audit_payload)
     alerts = admin_banners(tenants_payload, users_payload)
+    users_html = responsive_table_markdown(
+        user_models,
+        table_markdown=user_table_markdown(user_models),
+        title_columns=["name"],
+        class_name="admin-users",
+        screen="admin",
+    )
+    audit_html = responsive_table_markdown(
+        audit_models,
+        table_markdown=audit_table_markdown(audit_models),
+        title_columns=["event_type"],
+        class_name="admin-audit",
+        screen="admin",
+    )
     sections = section_cards(
         tenant_cards_markdown(tenant_models),
-        user_table_markdown(user_models),
-        audit_table_markdown(audit_models),
+        users_html,
+        audit_html,
         change_control_markdown(),
     )
     isolation = bool(tenants_payload.get("enabled"))

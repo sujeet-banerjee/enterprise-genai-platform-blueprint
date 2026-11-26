@@ -217,6 +217,7 @@ from ui.operations import (
     normalize_operation,
     operation_failure,
     operation_result,
+    operation_rows,
     operations_summary,
     operations_table_markdown,
     pending_operation_markdown,
@@ -256,6 +257,7 @@ from ui.query_studio import (
     stage_latency_markdown,
     trace_summary_markdown,
 )
+from ui.responsive import responsive_table_markdown
 from ui.settings_view import RAW_EXPANDER_LABEL, settings_view_models
 from ui.shell import (
     PAGE_ICON,
@@ -541,7 +543,14 @@ def _operations_panel_body(api: ApiClient) -> None:
         f"Operations: {counts['active']} active, {counts['completed']} completed, "
         f"{counts['failed']} failed, {counts['experiments']} experiments"
     )
-    st.markdown(operations_table_markdown(operations), unsafe_allow_html=True)
+    st.markdown(
+        responsive_table_markdown(
+            operation_rows(operations),
+            table_markdown=operations_table_markdown(operations),
+            class_name="operations",
+        ),
+        unsafe_allow_html=True,
+    )
 
 
 if hasattr(st, "fragment"):
@@ -684,9 +693,19 @@ def _shortcuts_dialog() -> None:
     )
     st.markdown(shortcut_help_markdown())
     with st.expander("WCAG 2.2 AA checklist", expanded=False):
-        st.dataframe(checklist_rows(), use_container_width=True, hide_index=True)
+        st.markdown(
+            responsive_table_markdown(
+                checklist_rows(), class_name="a11y-checklist"
+            ),
+            unsafe_allow_html=True,
+        )
     with st.expander("Known exceptions", expanded=False):
-        st.dataframe(exceptions_rows(), use_container_width=True, hide_index=True)
+        st.markdown(
+            responsive_table_markdown(
+                exceptions_rows(), class_name="a11y-exceptions"
+            ),
+            unsafe_allow_html=True,
+        )
     if st.button("Close", key="shortcuts_close"):
         st.session_state.show_shortcuts = False
         st.rerun()
@@ -1302,8 +1321,11 @@ def _render_query_history() -> None:
                 "it or compare against it."
             )
         else:
-            st.dataframe(
-                history_rows(history), use_container_width=True, hide_index=True
+            st.markdown(
+                responsive_table_markdown(
+                    history_rows(history), class_name="query-history"
+                ),
+                unsafe_allow_html=True,
             )
             if st.session_state.get("qs_history_index", 0) >= len(history):
                 st.session_state.qs_history_index = 0
@@ -1345,8 +1367,11 @@ def _render_query_history() -> None:
         st.subheader("Pinned runs")
         saved = _current_workspace()["saved_runs"]
         if saved:
-            st.dataframe(
-                history_rows(saved), use_container_width=True, hide_index=True
+            st.markdown(
+                responsive_table_markdown(
+                    history_rows(saved), class_name="query-history"
+                ),
+                unsafe_allow_html=True,
             )
         last = st.session_state.get("qs_last_entry")
         if last and last.get("request_id"):
@@ -1417,8 +1442,14 @@ def _render_run_comparison(
             "cost, retrieval, guardrail and answer deltas."
         )
         return
+    rows = comparison_rows(previous, current)
     st.markdown(
-        comparison_markdown(comparison_rows(previous, current)),
+        responsive_table_markdown(
+            rows,
+            table_markdown=comparison_markdown(rows),
+            title_columns=["metric"],
+            class_name="query-comparison",
+        ),
         unsafe_allow_html=True,
     )
     st.caption(
@@ -1791,10 +1822,26 @@ def screen_compare() -> None:
         st.subheader("Pipeline components")
         st.markdown(views["cards"], unsafe_allow_html=True)
         st.subheader("Component deltas")
-        st.markdown(delta_table_markdown(views["components"]), unsafe_allow_html=True)
+        st.markdown(
+            responsive_table_markdown(
+                views["components"],
+                table_markdown=delta_table_markdown(views["components"]),
+                title_columns=["field"],
+                class_name="compare-deltas",
+            ),
+            unsafe_allow_html=True,
+        )
         st.subheader("Applied config overrides")
         if views["overrides"]:
-            st.markdown(delta_table_markdown(views["overrides"]), unsafe_allow_html=True)
+            st.markdown(
+                responsive_table_markdown(
+                    views["overrides"],
+                    table_markdown=delta_table_markdown(views["overrides"]),
+                    title_columns=["field"],
+                    class_name="compare-deltas",
+                ),
+                unsafe_allow_html=True,
+            )
         else:
             st.caption("No config overrides were applied in this rebuild.")
         with st.expander(DETAIL_EXPANDER_LABEL, expanded=False):
@@ -1914,36 +1961,49 @@ def _render_eval_job_detail(store, api: ApiClient, job_id: str) -> None:
                 previous_rows = other.snapshot()["rows"]
                 break
 
-    st.dataframe(metric_matrix(rows), use_container_width=True, hide_index=True)
+    st.markdown(
+        responsive_table_markdown(
+            metric_matrix(rows), class_name="eval-job-matrix"
+        ),
+        unsafe_allow_html=True,
+    )
     summary = metric_summary(rows)
     if summary:
         st.bar_chart(summary)
-        st.dataframe(
-            [{"metric": key, "average": value} for key, value in summary.items()],
-            use_container_width=True,
-            hide_index=True,
+        summary_rows = [
+            {"metric": key, "average": value} for key, value in summary.items()
+        ]
+        st.markdown(
+            responsive_table_markdown(
+                summary_rows, class_name="eval-job-summary"
+            ),
+            unsafe_allow_html=True,
         )
     if previous_rows:
         st.subheader("Change vs previous run")
-        st.dataframe(
-            compare_metric_averages(previous_rows, rows),
-            use_container_width=True,
-            hide_index=True,
+        st.markdown(
+            responsive_table_markdown(
+                compare_metric_averages(previous_rows, rows),
+                class_name="eval-job-comparison",
+            ),
+            unsafe_allow_html=True,
         )
     failed_rows = [row for row in rows if row.get("status") == "error"]
     if failed_rows:
         with st.expander(f"Failed cases ({len(failed_rows)})", expanded=False):
-            st.dataframe(
-                [
-                    {
-                        "case": row.get("case"),
-                        "query": row.get("query"),
-                        "error": row.get("error"),
-                    }
-                    for row in failed_rows
-                ],
-                use_container_width=True,
-                hide_index=True,
+            st.markdown(
+                responsive_table_markdown(
+                    [
+                        {
+                            "case": row.get("case"),
+                            "query": row.get("query"),
+                            "error": row.get("error"),
+                        }
+                        for row in failed_rows
+                    ],
+                    class_name="eval-job-failures",
+                ),
+                unsafe_allow_html=True,
             )
     e1, e2 = st.columns(2)
     e1.download_button(
@@ -1972,7 +2032,12 @@ def _eval_jobs_panel_body(api: ApiClient) -> None:
         return
     snaps = [job.snapshot() for job in history]
     with st.expander(f"Job history ({len(snaps)}) - newest first", expanded=False):
-        st.dataframe(job_history_rows(snaps), use_container_width=True, hide_index=True)
+        st.markdown(
+            responsive_table_markdown(
+                job_history_rows(snaps), class_name="eval-job-history"
+            ),
+            unsafe_allow_html=True,
+        )
 
     def _focus_job() -> None:
         st.session_state.eval_job_id = st.session_state.get("eval_job_history_select") or ""
@@ -2168,10 +2233,12 @@ def _render_dataset_studio() -> None:
         if not errors:
             st.success(f"Dataset is valid: {len(dataset['cases'])} cases.")
         with st.expander("Preview cases"):
-            st.dataframe(
-                dataset_preview_rows(to_evaluation_cases(dataset)),
-                use_container_width=True,
-                hide_index=True,
+            st.markdown(
+                responsive_table_markdown(
+                    dataset_preview_rows(to_evaluation_cases(dataset)),
+                    class_name="dataset-preview",
+                ),
+                unsafe_allow_html=True,
             )
 
     with docs_tab:
@@ -2295,8 +2362,20 @@ def screen_evaluation() -> None:
             metrics = result.data.get("metrics", {})
             if metrics:
                 with st.expander("Metrics with explanations"):
-                    st.dataframe(metric_table_with_tooltips(metrics), use_container_width=True, hide_index=True)
-                st.dataframe(metric_rows(metrics), use_container_width=True)
+                    explain_rows = metric_table_with_tooltips(metrics)
+                    st.markdown(
+                        responsive_table_markdown(
+                            explain_rows, class_name="evaluation-metrics"
+                        ),
+                        unsafe_allow_html=True,
+                    )
+                metric_table = metric_rows(metrics)
+                st.markdown(
+                    responsive_table_markdown(
+                        metric_table, class_name="evaluation-metrics"
+                    ),
+                    unsafe_allow_html=True,
+                )
             else:
                 st.info("The selected evaluator returned no metrics.")
             if ground_truth and not result.data.get("ground_truth_used"):
@@ -2364,10 +2443,12 @@ def screen_evaluation() -> None:
         if len(cases) > MAX_JOB_CASES:
             st.caption(f"Only the first {MAX_JOB_CASES} cases will run.")
         with st.expander("Preview cases"):
-            st.dataframe(
-                dataset_preview_rows(cases[:MAX_PREVIEW_ROWS]),
-                use_container_width=True,
-                hide_index=True,
+            st.markdown(
+                responsive_table_markdown(
+                    dataset_preview_rows(cases[:MAX_PREVIEW_ROWS]),
+                    class_name="dataset-preview",
+                ),
+                unsafe_allow_html=True,
             )
             if len(cases) > MAX_PREVIEW_ROWS:
                 st.caption(f"Preview shows the first {MAX_PREVIEW_ROWS} of {len(cases)} cases.")
@@ -2425,7 +2506,15 @@ def screen_evaluation() -> None:
         st.session_state.evaluation_runs = runs
     matrix_rows = comparison_matrix_rows(runs)
     if matrix_rows:
-        st.markdown(comparison_matrix_markdown(matrix_rows), unsafe_allow_html=True)
+        st.markdown(
+            responsive_table_markdown(
+                matrix_rows,
+                table_markdown=comparison_matrix_markdown(matrix_rows),
+                title_columns=["run"],
+                class_name="evaluation-comparison",
+            ),
+            unsafe_allow_html=True,
+        )
         chart_data = comparison_chart_data(matrix_rows)
         if chart_data:
             st.bar_chart(chart_data)
@@ -2519,7 +2608,14 @@ def screen_governance() -> None:
             if st.session_state.get("ui_table_layout") == "Cards":
                 _render_card_rows(guardrail_rows, title_columns=["guardrail"])
             else:
-                st.dataframe(guardrail_rows, use_container_width=True)
+                st.markdown(
+                    responsive_table_markdown(
+                        guardrail_rows,
+                        title_columns=["guardrail"],
+                        class_name="guardrail-hit-rate",
+                    ),
+                    unsafe_allow_html=True,
+                )
         else:
             st.info("No guardrail decisions recorded yet (the feature may be disabled).")
         st.caption(
@@ -2580,7 +2676,14 @@ def _render_guardrail_decisions(decisions: list) -> None:
     if st.session_state.get("ui_table_layout") == "Cards":
         _render_card_rows(rows, title_columns=["guardrail"])
     else:
-        st.dataframe(rows, use_container_width=True)
+        st.markdown(
+            responsive_table_markdown(
+                rows,
+                title_columns=["guardrail"],
+                class_name="guardrail-decisions",
+            ),
+            unsafe_allow_html=True,
+        )
 
 
 def screen_guardrails() -> None:
@@ -2642,8 +2745,14 @@ def screen_guardrails() -> None:
             st.success("Request allowed by the input/output chains.")
 
     st.subheader("Decision history")
+    decisions = decision_rows(probe_decisions)
     st.markdown(
-        decision_history_markdown(decision_rows(probe_decisions)),
+        responsive_table_markdown(
+            decisions,
+            table_markdown=decision_history_markdown(decisions),
+            title_columns=["guardrail"],
+            class_name="guardrail-decision-history",
+        ),
         unsafe_allow_html=True,
     )
 
@@ -2840,7 +2949,15 @@ def screen_approvals() -> None:
         f"SLA thresholds: warning at {warning_hours:g}h, critical at {critical_hours:g}h."
     )
     if rows:
-        st.dataframe(rows, use_container_width=True, hide_index=True)
+        st.markdown(
+            responsive_table_markdown(
+                rows,
+                title_columns=["request_id"],
+                class_name="approvals-queue",
+                screen="approvals",
+            ),
+            unsafe_allow_html=True,
+        )
     else:
         st.info("No approval requests match these filters.")
 
@@ -2943,7 +3060,15 @@ def screen_approvals() -> None:
                 )
             else:
                 st.success(f"All {summary['succeeded']} decisions succeeded.")
-            st.dataframe(bulk_results, use_container_width=True, hide_index=True)
+            st.markdown(
+                responsive_table_markdown(
+                    bulk_results,
+                    title_columns=["request_id"],
+                    class_name="approvals-bulk",
+                    screen="approvals",
+                ),
+                unsafe_allow_html=True,
+            )
             if st.button("Clear bulk results", key="approval_clear_bulk_results"):
                 st.session_state.approval_bulk_results = []
                 st.rerun()
@@ -3168,7 +3293,16 @@ def screen_audit() -> None:
             key="audit_timeline_json",
         )
 
-    st.markdown(view["timeline_markdown"], unsafe_allow_html=True)
+    st.markdown(
+        responsive_table_markdown(
+            view["timeline"],
+            table_markdown=view["timeline_markdown"],
+            title_columns=["event_type"],
+            class_name="audit-timeline",
+            screen="audit",
+        ),
+        unsafe_allow_html=True,
+    )
     _render_saved_views("audit")
 
 
@@ -3373,7 +3507,16 @@ def _render_trace_view(trace: Dict[str, Any], *, key_prefix: str) -> None:
     waterfall = build_waterfall(trace)
     if waterfall:
         st.subheader("Timeline / waterfall")
-        st.markdown(waterfall_markdown(waterfall), unsafe_allow_html=True)
+        st.markdown(
+            responsive_table_markdown(
+                waterfall,
+                table_markdown=waterfall_markdown(waterfall),
+                title_columns=["stage"],
+                class_name="trace-waterfall",
+                screen="traces",
+            ),
+            unsafe_allow_html=True,
+        )
         stages = span_filters(build_timeline(trace))
         if stages:
             st.caption("Spans: " + ", ".join(stages))
@@ -3389,7 +3532,15 @@ def _render_trace_view(trace: Dict[str, Any], *, key_prefix: str) -> None:
     latency_detail = latency_rows(trace.get("latency", {}))
     if latency_detail:
         with st.expander("Latency detail", expanded=False):
-            st.dataframe(latency_detail, use_container_width=True, hide_index=True)
+            st.markdown(
+                responsive_table_markdown(
+                    latency_detail,
+                    title_columns=["stage"],
+                    class_name="trace-latency",
+                    screen="traces",
+                ),
+                unsafe_allow_html=True,
+            )
     rid = clean_request_id(trace.get("request_id"))
     if rid:
         _render_feedback_controls(
@@ -3537,9 +3688,26 @@ def screen_traces() -> None:
                 f"{len(highlights)} meaningful difference(s) across "
                 f"{len(comparison_rows)} compared metrics."
             )
-            st.markdown(compare_highlight_markdown(highlights), unsafe_allow_html=True)
+            st.markdown(
+                responsive_table_markdown(
+                    highlights,
+                    table_markdown=compare_highlight_markdown(highlights),
+                    title_columns=["metric"],
+                    class_name="trace-compare",
+                    screen="traces",
+                ),
+                unsafe_allow_html=True,
+            )
             with st.expander("All compared metrics", expanded=False):
-                st.dataframe(comparison_rows, use_container_width=True, hide_index=True)
+                st.markdown(
+                    responsive_table_markdown(
+                        comparison_rows,
+                        title_columns=["metric"],
+                        class_name="trace-compare",
+                        screen="traces",
+                    ),
+                    unsafe_allow_html=True,
+                )
         else:
             _failure_taxonomy(result)
 
@@ -3595,7 +3763,15 @@ def screen_feedback() -> None:
     st.markdown(view["privacy_markdown"])
     st.markdown(view["kpis_markdown"])
     st.markdown(view["reasons_markdown"])
-    st.markdown(view["table_markdown"])
+    st.markdown(
+        responsive_table_markdown(
+            view["rows"],
+            table_markdown=view["table_markdown"],
+            title_columns=["request_id"],
+            class_name="feedback-table",
+        ),
+        unsafe_allow_html=True,
+    )
     st.caption(f"Showing {view['filtered_count']} of {view['total_count']} annotation(s).")
 
     if view["exports"]:

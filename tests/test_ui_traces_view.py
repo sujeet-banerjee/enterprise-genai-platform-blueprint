@@ -157,8 +157,9 @@ def test_app_wires_structured_trace_view_and_keeps_raw_in_expanders():
     assert "waterfall_markdown" in src
     assert "summary_card_markdown" in src
     assert "compare_highlight_markdown" in src
-    assert "st.markdown(waterfall_markdown(waterfall)" in src
-    assert "st.markdown(compare_highlight_markdown(highlights)" in src
+    assert "table_markdown=waterfall_markdown(waterfall)" in src
+    assert "table_markdown=compare_highlight_markdown(highlights)" in src
+    assert 'screen="traces"' in src
     assert "st.json(redaction_safe_view(trace))" not in src
     assert "with st.expander(DETAIL_EXPANDER_LABEL, expanded=False):" in src
 

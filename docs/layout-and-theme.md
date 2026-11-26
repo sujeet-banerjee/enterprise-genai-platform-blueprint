@@ -51,8 +51,12 @@ values or actions.
 - `None` renders as `-`, booleans as `yes`/`no`, everything else as text;
 - cards use the `.genai-card` CSS class (surface, border, responsive grid).
 
-The Guardrails screen (resolved chains, per-request decisions, hit-rate table)
-is the first consumer; the same helper is available to any screen.
+`ui.responsive.responsive_table_markdown(rows, ...)` wraps a dense table and its
+card representation in `.genai-responsive-table`: the table is shown in a contained,
+scrollable region on wide layouts, and cards replace it at tablet/mobile widths.
+All console screens use the wrapper (#255). Approvals, Audit, Traces and Admin add
+`.genai-density-*` classes for tighter operational card density; labels, values and
+actions remain visible at every width.
 
 ## CSS tokens
 
