@@ -58,6 +58,11 @@ All console screens use the wrapper (#255). Approvals, Audit, Traces and Admin a
 `.genai-density-*` classes for tighter operational card density; labels, values and
 actions remain visible at every width.
 
+`ui.trust_view` (#256) adds `.genai-trust-banner`, `.genai-action` and
+`.genai-progress-note` classes for demo/redaction/scope notices, explicit action
+hierarchy, and loading/progress cues. These fragments are escaped HTML and do not
+introduce new dependencies or animation beyond the existing reduced-motion rules.
+
 ## CSS tokens
 
 `theme.styles(theme, density)` exposes these custom properties on `:root`:
