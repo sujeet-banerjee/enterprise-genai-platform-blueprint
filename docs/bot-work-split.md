@@ -1,8 +1,8 @@
 # Bot work split (current open items)
 
-Reconciled 2026-11-26 after #255 merge (`origin/main` @ `3d90325`; no open PRs). Bot-win merged #249-#255 from the UI look/feel plan and #280 (async operations console); remaining UI look/feel items #256-#257 plus daily-review follow-up #290 stay in Project #8 Workstream M. Bot-uni cross-cutting guard/support #265, maintainer-assigned docs exception #268, and backend #279 are done.
+Reconciled 2026-11-26 after #256 merge (`origin/main` @ `996ef57`). Bot-win merged #249-#256 from the UI look/feel plan and #280 (async operations console); remaining UI look/feel item #257 plus daily-review follow-up #290 stay in Project #8 Workstream M. Bot-uni cross-cutting guard/support #265, maintainer-assigned docs exception #268, and backend #279 are done.
 
-Open items: umbrella **#43**; **#193** (LinkedIn package, MANUAL, maintainer approves/publishes); **#232** (external demo capture links, MANUAL, bot-win); remaining UI look/feel items **#256**, **#257** (bot-win); **#290** (bot-win, fixes from daily review of #249-#252); new H4 operations/auth/admin tranche **#297-#304** (bot-uni backend/contracts #297-#302, bot-win UI #303-#304). Re-check open issues and PRs before each item.
+Open items: umbrella **#43**; **#193** (LinkedIn package, MANUAL, maintainer approves/publishes); **#232** (external demo capture links, MANUAL, bot-win); remaining UI look/feel item **#257** (bot-win); **#290** (bot-win, fixes from daily review of #249-#252); new H4 operations/auth/admin tranche **#297-#304** (bot-uni backend/contracts #297-#302, bot-win UI #303-#304). Re-check open issues and PRs before each item.
 
 ## Live reconciliation (2026-11-26)
 
@@ -11,7 +11,6 @@ Open items: umbrella **#43**; **#193** (LinkedIn package, MANUAL, maintainer app
 | **#43** | unassigned (umbrella) | Todo | Cross-cutting | — |
 | **#193** | bot-uni | In Progress | Cross-cutting | H5 - Proof & showcase |
 | **#232** | bot-win | Todo | Cross-cutting | — |
-| **#256** | bot-win | Todo | M UX polish & adoption | H4 - Post-G6 hardening & UX |
 | **#257** | bot-win | Todo | M UX polish & adoption | H4 - Post-G6 hardening & UX |
 | **#290** | bot-win | Todo | M UX polish & adoption | — |
 | **#297** | bot-uni | Todo | E Platform engineering | H4 - Post-G6 hardening & UX |
@@ -68,9 +67,9 @@ operations API (PR #289), docs follow-ups #260/#262/#264, and Dependabot PRs #25
 |---|---|---|
 | 1 | **#303 Ongoing tasks UI** (H4, M, `owner:bot-win`) | Todo. Depends on #297/#298: HTTP-only operations list/get/cancel/events client methods, `X-Client-Session`, filters/sort/pagination, progress timeline, cancel confirmation, redacted error/empty states. |
 | 2 | **#304 Admin auth/RBAC UI** (H4, M, `owner:bot-win`) | Todo. Depends on #297/#299/#300/#301: auth provider, tenant users/roles, API key lifecycle, superuser/admin screens; no raw keys/tokens/claims; capability-gated controls. |
-| 3 | **UI look/feel plan #256-#257** (H4, Workstream M) | Remaining P3 items: #256 trust/copy/loading polish and #257 QA pass/capture refresh. #240-#255 are merged; #256-#257 are Todo with `owner:bot-win` in Project #8 Workstream M. |
+| 3 | **UI look/feel plan #257** (H4, Workstream M) | Remaining P3 item: #257 QA pass/capture refresh. #240-#256 are merged; #257 is Todo with `owner:bot-win` in Project #8 Workstream M. Bot-win can run QA, but final capture refresh needs maintainer-provided external URLs or approval to commit images. |
 | 4 | **#290 daily-review fixes** | Address Admin audit CSV formula-injection, approval evidence-id routing, Access admin-capability display, approval decision-history rendering, and Audit docs drift from #249-#252. |
-| 5 | **#232 showcase external capture links** (H5, MANUAL) | Replace `_Pending - add external link_` placeholders in `docs/showcase/demo-walkthrough.md` once the maintainer publishes captures; then close. |
+| 5 | **#232 showcase external capture links** (H5, MANUAL) | Maintainer runs the demo walkthrough in demo mode and publishes a 3-5 min recording plus screenshots externally, or approves committing image files; then replace `_Pending - add external link_` placeholders in `docs/showcase/demo-walkthrough.md` and close. |
 | 6 | **UI plan document upkeep** | Keep `docs/ui-enterprise-look-and-feel-plan.md` consistent with implemented screen changes; do not edit backend/CI files without agreement. |
 
 Completed by this workstream since the last split: #130-#136, #145, #151 (workspace/deep
@@ -80,7 +79,7 @@ layout/density/themes), #157 (role journeys + safe demo mode), #158 (collaborati
 PR #230), #163 (HITL review console), #164 (queue operations/SLA/safe export), #189
 (showcase demo walkthrough, PR #231), the enterprise look-and-feel plan (PR #234), #235
 (merge-artifact repairs), structured Approval/Audit/Access/Admin/Settings/Feedback/
-responsive presentations (#249-#255), and the #280 async operations console (PR #292).
+responsive presentations (#249-#255), trust/copy/loading polish (#256, PR #306), and the #280 async operations console (PR #292).
 
 ## UI look/feel redistribution (2026-11-18)
 
@@ -90,13 +89,13 @@ responsive presentations (#249-#255), and the #280 async operations console (PR 
 | P0 design-system primitives | #241 | bot-win | `ui/` components/theme only |
 | P1 structured screens and visualizations | #242-#248 | bot-win | `ui/` screens; bot-uni verifies API contracts in #265 |
 | P2 screen parity and responsiveness | #249-#255 (done) | bot-win | `ui/` screens/components; bot-uni verified contracts/docs in #265 |
-| P3 trust/copy/loading polish, QA, captures | #256-#257 (open) | bot-win | `ui/` polish and visual QA; bot-uni verifies CI/API guards in #265 |
+| P3 trust/copy/loading polish, QA, captures | #256 (done, PR #306); #257 (open) | bot-win | `ui/` polish and visual QA; capture links/images need maintainer input; bot-uni verifies CI/API guards in #265 |
 | Async operations backend/contracts | #279 (done, PR #289) | bot-uni | `core/`, `app/`, `config/`, schemas/tests/docs; no `ui/` edits; keep sync query endpoints |
 | Async operations console UX | #280 (done, PR #292) | bot-win | `ui/` HTTP-only; no `app.*`/`core.*` imports; consume public operation APIs only |
 | Cross-cutting contract, AST and docs guards | #265 (done, PR #266) | bot-uni | `tests/`, docs and backend contracts only; never `ui/` |
 | README console walkthrough cleanup | #268 (maintainer-assigned exception) | bot-uni | README + `docs/` only; no `ui/` edits; external capture links stay with #232/bot-win |
 
-#240-#257, #265, #279, #280 and #290 are Project #8 items in Workstream **M UX polish & adoption** (or D3/M for async ops). #256-#257 and #290 remain Todo with `owner:bot-win`; #240-#255, #265, #279 and #280 are Done.
+#240-#257, #265, #279, #280 and #290 are Project #8 items in Workstream **M UX polish & adoption** (or D3/M for async ops). #257 and #290 remain Todo with `owner:bot-win`; #240-#256, #265, #279 and #280 are Done.
 
 ## Operations/auth/admin tranche (2026-11-26)
 
