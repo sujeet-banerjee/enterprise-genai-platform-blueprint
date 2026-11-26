@@ -2,7 +2,7 @@
 
 Reconciled 2026-11-26 after #255 merge (`origin/main` @ `3d90325`; no open PRs). Bot-win merged #249-#255 from the UI look/feel plan and #280 (async operations console); remaining UI look/feel items #256-#257 plus daily-review follow-up #290 stay in Project #8 Workstream M. Bot-uni cross-cutting guard/support #265, maintainer-assigned docs exception #268, and backend #279 are done.
 
-Open items: umbrella **#43**; **#193** (LinkedIn package, MANUAL, maintainer approves/publishes); **#232** (external demo capture links, MANUAL, bot-win); remaining UI look/feel items **#256**, **#257** (bot-win); **#290** (bot-win, fixes from daily review of #249-#252). Re-check open issues and PRs before each item.
+Open items: umbrella **#43**; **#193** (LinkedIn package, MANUAL, maintainer approves/publishes); **#232** (external demo capture links, MANUAL, bot-win); remaining UI look/feel items **#256**, **#257** (bot-win); **#290** (bot-win, fixes from daily review of #249-#252); new H4 operations/auth/admin tranche **#297-#304** (bot-uni backend/contracts #297-#302, bot-win UI #303-#304). Re-check open issues and PRs before each item.
 
 ## Live reconciliation (2026-11-26)
 
@@ -14,6 +14,16 @@ Open items: umbrella **#43**; **#193** (LinkedIn package, MANUAL, maintainer app
 | **#256** | bot-win | Todo | M UX polish & adoption | H4 - Post-G6 hardening & UX |
 | **#257** | bot-win | Todo | M UX polish & adoption | H4 - Post-G6 hardening & UX |
 | **#290** | bot-win | Todo | M UX polish & adoption | — |
+| **#297** | bot-uni | Todo | E Platform engineering | H4 - Post-G6 hardening & UX |
+| **#298** | bot-uni | Todo | D Serving & scale | H4 - Post-G6 hardening & UX |
+| **#299** | bot-uni | Todo | A Multi-tenancy & identity | H4 - Post-G6 hardening & UX |
+| **#300** | bot-uni | Todo | A Multi-tenancy & identity | H4 - Post-G6 hardening & UX |
+| **#301** | bot-uni | Todo | A Multi-tenancy & identity | H4 - Post-G6 hardening & UX |
+| **#302** | bot-uni | Todo | Cross-cutting | H4 - Post-G6 hardening & UX |
+| **#303** | bot-win | Todo | M UX polish & adoption | H4 - Post-G6 hardening & UX |
+| **#304** | bot-win | Todo | M UX polish & adoption | H4 - Post-G6 hardening & UX |
+
+New H4 tranche: durable ongoing tasks and admin identity state. Bot-uni owns backend/repositories/APIs/config/contracts/docs (#297-#302); bot-win owns HTTP-only UI consumers (#303-#304). New issues carry `owner:bot-uni` or `owner:bot-win` labels and are Project #8 Todo items. Umbrella #43 was updated with the tranche checklist.
 
 ## Bot identities
 
@@ -33,10 +43,15 @@ Open items: umbrella **#43**; **#193** (LinkedIn package, MANUAL, maintainer app
 | Order | Item | Notes |
 |---|---|---|
 | 1 | **#279 Async operations API/contracts** (H4, D3/M, `owner:bot-uni`) | Done via PR #289 (`216a3c5`): bounded async query service, `POST /v1/operations/query` / `GET /v1/operations/{id}` / `GET /v1/operations`, owner+tenant scoping, unified experiment listing, `BaseStore` TTL, and no raw payload persistence. Sync `/v1/query` and `/v1/query:batch` remain unchanged. |
-| 2 | **Docs reconciliation after bot-win UI merges** | After each #240-#257 and #280 merge, update this split, `docs/ux-and-api.md`, `docs/capability-status.md`, `docs/enterprise-roadmap.md`, and README links when behaviour changes. Avoid concurrent edits to files bot-win is editing. |
-| 3 | **Manual #193 / umbrella #43 monitoring** | #193 draft is merged; only maintainer approval/publish remains. Update #43 checklist/status in small dedicated PRs. |
-| 4 | **Backend support for UX where explicitly agreed** | Prefer bot-win owns the `ui/` surface. Take narrowly scoped backend contracts only after agreement in the relevant issue. |
-| 5 | **Standing daily review of bot-win work** | Check new bot-win PRs/check-ins (especially #240-#257, #280) for API coherence and contract regressions. Add inline PR review comments for discrepancies; for merged check-ins that are not coherent with shipped APIs, open an `owner:bot-win` issue with file:line evidence and expected-vs-actual behaviour. Latest result is **#290** (opened after #249-#252 review). Bot-uni stays read-only on `ui/*.py`. |
+| 2 | **#297 Typed persistence repositories** (H4, E, `owner:bot-uni`) | Todo. Foundation for durable operations and admin entities; typed repository layer above `BaseStore`, versioned records, tenant/owner predicates, TTL/retention, pagination, shared SQLite/Postgres store, separate in-memory namespaces. |
+| 3 | **#298 Ongoing-task APIs** (H4, D, `owner:bot-uni`) | Todo. Depends on #297: operations list filters/sort/pagination/total, queued-only cancel, optional redacted progress events. Enables bot-win #303. |
+| 4 | **#299 Third-party auth provider registry** (H4, A, `owner:bot-uni`) | Todo. Depends on #297: `config/auth_providers.yaml`, generic OIDC/Keycloak/Okta/Azure AD/Google, SCIM persistence, SAML bridge, redacted admin APIs. |
+| 5 | **#300 Per-tenant API keys + API auth** (H4, A, `owner:bot-uni`) | Todo. Depends on #297/#299: auth precedence, `X-API-Key`, digest-only key storage, rotate/revoke, key metadata, audit redaction. |
+| 6 | **#301 Org/tenant RBAC and superusers** (H4, A, `owner:bot-uni`) | Todo. Depends on #297/#299/#300: org scope, role hierarchy, admin user/role/superuser APIs, least-privilege capability checks, admin auth fixes. |
+| 7 | **#302 Contract/docs/qualification guards** (H4, Cross-cutting, `owner:bot-uni`) | Todo. After backend contracts and with bot-win #303/#304: route allowlist, typed schemas, redaction/tenant guards, docs reconciliation, multi-replica qualification boundary. |
+| 8 | **Docs reconciliation after bot-win UI merges** | After each remaining #240-#257, #280, #303 and #304 merge, update this split, `docs/ux-and-api.md`, `docs/capability-status.md`, `docs/enterprise-roadmap.md`, and README links when behaviour changes. Avoid concurrent edits to files bot-win is editing. |
+| 9 | **Manual #193 / umbrella #43 monitoring** | #193 draft is merged; only maintainer approval/publish remains. Update #43 checklist/status in small dedicated PRs. |
+| 10 | **Standing daily review of bot-win work** | Check new bot-win PRs/check-ins (especially #256-#257, #303-#304) for API coherence and contract regressions. Add inline PR review comments for discrepancies; for merged check-ins that are not coherent with shipped APIs, open an `owner:bot-win` issue with file:line evidence and expected-vs-actual behaviour. Latest result is **#290** (opened after #249-#252 review). Bot-uni stays read-only on `ui/*.py`. |
 
 Completed by this workstream since the last split: **#179** cost/latency experiment
 telemetry, **#180** budget-aware regression gates, **#181** config-driven parameter
@@ -51,10 +66,12 @@ operations API (PR #289), docs follow-ups #260/#262/#264, and Dependabot PRs #25
 
 | Order | Item | Notes |
 |---|---|---|
-| 1 | **UI look/feel plan #256-#257** (H4, Workstream M) | Remaining P3 items: #256 trust/copy/loading polish and #257 QA pass/capture refresh. #240-#255 are merged; #256-#257 are Todo with `owner:bot-win` in Project #8 Workstream M. |
-| 2 | **#290 daily-review fixes** | Address Admin audit CSV formula-injection, approval evidence-id routing, Access admin-capability display, approval decision-history rendering, and Audit docs drift from #249-#252. |
-| 3 | **#232 showcase external capture links** (H5, MANUAL) | Replace `_Pending - add external link_` placeholders in `docs/showcase/demo-walkthrough.md` once the maintainer publishes captures; then close. |
-| 4 | **UI plan document upkeep** | Keep `docs/ui-enterprise-look-and-feel-plan.md` consistent with implemented screen changes; do not edit backend/CI files without agreement. |
+| 1 | **#303 Ongoing tasks UI** (H4, M, `owner:bot-win`) | Todo. Depends on #297/#298: HTTP-only operations list/get/cancel/events client methods, `X-Client-Session`, filters/sort/pagination, progress timeline, cancel confirmation, redacted error/empty states. |
+| 2 | **#304 Admin auth/RBAC UI** (H4, M, `owner:bot-win`) | Todo. Depends on #297/#299/#300/#301: auth provider, tenant users/roles, API key lifecycle, superuser/admin screens; no raw keys/tokens/claims; capability-gated controls. |
+| 3 | **UI look/feel plan #256-#257** (H4, Workstream M) | Remaining P3 items: #256 trust/copy/loading polish and #257 QA pass/capture refresh. #240-#255 are merged; #256-#257 are Todo with `owner:bot-win` in Project #8 Workstream M. |
+| 4 | **#290 daily-review fixes** | Address Admin audit CSV formula-injection, approval evidence-id routing, Access admin-capability display, approval decision-history rendering, and Audit docs drift from #249-#252. |
+| 5 | **#232 showcase external capture links** (H5, MANUAL) | Replace `_Pending - add external link_` placeholders in `docs/showcase/demo-walkthrough.md` once the maintainer publishes captures; then close. |
+| 6 | **UI plan document upkeep** | Keep `docs/ui-enterprise-look-and-feel-plan.md` consistent with implemented screen changes; do not edit backend/CI files without agreement. |
 
 Completed by this workstream since the last split: #130-#136, #145, #151 (workspace/deep
 links), #152 (background evaluation jobs), #153 (Dataset Studio authoring), #154
@@ -80,6 +97,21 @@ responsive presentations (#249-#255), and the #280 async operations console (PR 
 | README console walkthrough cleanup | #268 (maintainer-assigned exception) | bot-uni | README + `docs/` only; no `ui/` edits; external capture links stay with #232/bot-win |
 
 #240-#257, #265, #279, #280 and #290 are Project #8 items in Workstream **M UX polish & adoption** (or D3/M for async ops). #256-#257 and #290 remain Todo with `owner:bot-win`; #240-#255, #265, #279 and #280 are Done.
+
+## Operations/auth/admin tranche (2026-11-26)
+
+| Area | Issues | Owner | Boundary |
+|---|---|---|---|
+| Typed persistence repositories | #297 | bot-uni | `core/`, `app/`, `config/`, `tests/`, backend docs; no `ui/` edits |
+| Ongoing-task APIs/contracts | #298 | bot-uni | operations list/filter/sort/paginate, queued-only cancel, redacted progress events; no `ui/` edits |
+| Third-party auth/identity providers | #299 | bot-uni | OIDC presets, SCIM persistence, SAML bridge, provider registry/config/admin APIs; no `ui/` edits |
+| Per-tenant API keys and API auth | #300 | bot-uni | digest-only key storage, auth precedence, key lifecycle APIs; no `ui/` edits |
+| Org/tenant RBAC and superusers | #301 | bot-uni | admin roles/users/superuser APIs, capability checks, audit redaction; no `ui/` edits |
+| Contract/docs/qualification guards | #302 | bot-uni | `tests/` and docs only; coordinates with #303/#304, never edits `ui/` |
+| Ongoing tasks console | #303 | bot-win | `ui/` HTTP-only; consumes public operation APIs only; no backend/config edits |
+| Admin auth/RBAC console | #304 | bot-win | `ui/` HTTP-only; consumes public admin APIs only; no backend/config edits |
+
+#297-#304 are Project #8 Todo items in milestone **H4 - Post-G6 hardening & UX**. Workstreams: #297 E, #298 D, #299-#301 A, #302 Cross-cutting, #303-#304 M. Bot-uni must not edit `ui/*.py`; bot-win must not edit `core/`, `app/`, `config/`, or backend docs for this tranche.
 
 ## Showcase/proof workstream (H5)
 
