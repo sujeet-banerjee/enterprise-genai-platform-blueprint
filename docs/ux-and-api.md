@@ -428,6 +428,7 @@ Streamlit-free) and is covered by `tests/test_ui_dataset_studio.py`.
 | (added during delivery) | Settings parity: grouped effective-config cards, redacted KPI/provider summaries, responsive key-value tables and raw payload behind `Raw (redacted)` | #253 |
 | (added during delivery) | Feedback parity: privacy banners, KPI/reason breakdown, semantic badges, structured review table/card, consistent redacted exports and share-link cues | #254 |
 | (added during delivery) | Responsiveness/density parity: shared table→card wrapper for dense tables, tablet/mobile degradation without losing columns or actions, contained table scrolling, compact density for Approvals/Audit/Traces/Admin | #255 |
+| (added during delivery) | Trust/copy polish: reusable demo/redacted/read-only/tenant-scoped/admin/destructive banners, primary/secondary/destructive action hierarchy, loading/skeleton/progress cues for query, batch, rebuild and evaluation jobs | #256 |
 
 The forward roadmap (horizons H0-H4, workstreams A-M) is tracked in
 [enterprise-roadmap.md](enterprise-roadmap.md) and the GitHub Project board. Async

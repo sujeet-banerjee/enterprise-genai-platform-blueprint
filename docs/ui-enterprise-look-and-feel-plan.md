@@ -26,6 +26,7 @@ Wireframes are illustrative mock-ups, not screenshots or captured production dat
 | #253 | Settings (read-only) | `<img src="wireframes/253-settings-view.svg" alt="Settings wireframe showing summary KPIs, grouped models/retrieval/reranking/evaluation/guardrails/observability/cache cards and a redacted raw expander" width="900">` ([source](wireframes/253-settings-view.excalidraw)) |
 | #254 | Feedback | `<img src="wireframes/254-feedback-view.svg" alt="Feedback wireframe showing privacy/redaction banner, summary KPIs, reason breakdown bars, annotation table with badges, export buttons, a selected-request card and a redacted raw expander" width="900">` ([source](wireframes/254-feedback-view.excalidraw)) |
 | #255 | Responsiveness & density parity | `<img src="wireframes/255-responsive-density-parity.svg" alt="Responsive wireframe showing dense tables at desktop width, automatic card degradation on tablet/mobile, and compact density for operational screens" width="900">` ([source](wireframes/255-responsive-density-parity.excalidraw)) |
+| #256 | Trust, actions and progress | `<img src="wireframes/256-trust-actions-progress.svg" alt="Trust wireframe showing demo/redacted/read-only/tenant-scoped/admin banners, primary/secondary/destructive action hierarchy, and loading/progress cues for long operations" width="900">` ([source](wireframes/256-trust-actions-progress.excalidraw)) |
 
 ## 1. Review basis and verdict
 
@@ -101,6 +102,8 @@ Delivered in #255 through a shared `ui/responsive.py` wrapper: dense tables rend
 - Consistent banners: demo/seeded, redacted, read-only, tenant-scoped, admin/destructive confirmation.
 - Action language and button hierarchy (primary/secondary/destructive) standardized.
 - Loading/skeleton/progress cues for long operations (eval jobs, batch, rebuild).
+
+Delivered in #256 through `ui/trust_view.py`: reusable escaped banner/action/progress helpers feed the relevant screens, long operations show deterministic loading and progress notes, and admin/destructive actions use explicit confirmation copy and hierarchy cues.
 
 ## 5. Screen-by-screen plan
 

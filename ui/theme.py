@@ -472,6 +472,69 @@ def styles(
 }}
 .genai-alert-hint {{ color: var(--genai-muted); }}
 .genai-alert-action {{ font-weight: 600; margin-top: 0.25rem; }}
+.genai-trust-banner {{
+  border: 1px solid var(--genai-border);
+  border-left: 4px solid var(--genai-accent);
+  border-radius: 0.5rem;
+  padding: var(--genai-padding);
+  margin-bottom: var(--genai-gap);
+  background: var(--genai-surface);
+}}
+.genai-trust-banner-warning {{ border-left-color: var(--genai-warning); }}
+.genai-trust-banner-danger {{ border-left-color: var(--genai-danger); }}
+.genai-trust-banner-success {{ border-left-color: var(--genai-success); }}
+.genai-trust-label {{
+  display: inline-block;
+  font-size: var(--genai-font-caption);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--genai-muted);
+  margin-bottom: 0.2rem;
+}}
+.genai-trust-title {{ font-weight: 700; margin-bottom: 0.2rem; }}
+.genai-trust-message {{ margin-bottom: 0.3rem; }}
+.genai-trust-scope, .genai-trust-detail {{ font-size: var(--genai-font-caption); color: var(--genai-muted); }}
+.genai-action {{
+  display: inline-block;
+  border: 1px solid var(--genai-border);
+  border-radius: 999px;
+  padding: 0.1rem 0.55rem;
+  font-size: var(--genai-font-caption);
+  font-weight: 600;
+}}
+.genai-action-primary {{ border-color: var(--genai-accent); color: var(--genai-accent); }}
+.genai-action-destructive {{ border-color: var(--genai-danger); color: var(--genai-danger); }}
+.genai-action-admin {{ border-color: var(--genai-warning); color: var(--genai-warning); }}
+.genai-progress-note {{
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: var(--genai-font-caption);
+  color: var(--genai-muted);
+  margin-bottom: 0.4rem;
+}}
+.genai-progress-text {{ font-weight: 600; color: var(--genai-text); }}
+.genai-progress-detail {{ color: var(--genai-muted); }}
+.genai-progress-track {{
+  display: block;
+  flex: 1 1 8rem;
+  min-width: 6rem;
+  height: 0.4rem;
+  border-radius: 999px;
+  background: var(--genai-border);
+  overflow: hidden;
+}}
+.genai-progress-fill {{ display: block; height: 100%; background: var(--genai-accent); }}
+.genai-progress-skeleton {{
+  display: block;
+  flex: 1 1 6rem;
+  min-width: 4rem;
+  height: 0.4rem;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--genai-border), var(--genai-surface), var(--genai-border));
+}}
 .genai-query-badges {{ display: flex; flex-wrap: wrap; gap: 0.35rem; margin-bottom: 0.6rem; }}
 .genai-query-answer {{ white-space: pre-wrap; line-height: 1.5; }}
 .genai-query-failure {{ color: var(--genai-danger); font-weight: 600; }}
@@ -900,6 +963,9 @@ def styles(
   .genai-admin-table {{ min-width: 42rem; }}
   .genai-evidence-chips {{ flex-direction: column; align-items: flex-start; }}
   .genai-evidence-chips .genai-chip {{ max-width: 100%; }}
+  .genai-trust-banner {{ padding: 0.5rem; }}
+  .genai-progress-note {{ gap: 0.25rem; }}
+  .genai-progress-track, .genai-progress-skeleton {{ flex-basis: 100%; width: 100%; }}
   .genai-responsive-table__cards {{ grid-template-columns: 1fr; }}
 }}
 </style>

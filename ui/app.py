@@ -292,6 +292,16 @@ from ui.traces import (
     trace_context,
     waterfall_markdown,
 )
+from ui.trust_view import (
+    action_markdown,
+    action_model,
+    button_kwargs,
+    confirmation_copy,
+    progress_markdown,
+    progress_model,
+    trust_banner_markdown,
+    trust_banner_model,
+)
 from ui.workspace import (
     MANAGED_PARAMS,
     WorkspaceError,
@@ -961,12 +971,18 @@ def _start_demo(role_key: str) -> None:
 
 def _render_demo_sidebar(access: Dict[str, Any]) -> None:
     with st.sidebar.expander("Demo mode", expanded=False):
-        st.caption(DEMO_WARNING)
+        _render_trust_banner("demo", DEMO_WARNING)
         if st.session_state.get("demo_mode"):
             role = journey_by_key(st.session_state.get("demo_role") or DEMO_ROLE)
             st.success(f"Demo active: {role.label}")
-            st.caption("All screens use local fixtures; no backend requests are made.")
-            if st.button("Exit demo and reset", key="demo_exit"):
+            _render_trust_banner("demo", "All screens use local fixtures; no backend requests are made.")
+            exit_action = action_model(
+                "Exit demo and reset",
+                "destructive",
+                detail="Local session state will be cleared.",
+            )
+            _render_action_hint(exit_action)
+            if st.button(exit_action["label"], key="demo_exit", **button_kwargs(exit_action)):
                 demo_reset_state(st.session_state)
                 st.rerun()
             return
@@ -979,7 +995,8 @@ def _render_demo_sidebar(access: Dict[str, Any]) -> None:
             index=options.index(default_label),
             key="demo_role_pick",
         )
-        if st.button("Start demo", key="demo_start", type="primary"):
+        start_action = action_model("Start demo", "primary")
+        if st.button(start_action["label"], key="demo_start", **button_kwargs(start_action)):
             _start_demo(journey_key_for_label(selected))
 
 
@@ -1065,6 +1082,31 @@ def render_role_journey() -> None:
 
 def _render_alert(alert: Dict[str, Any]) -> None:
     st.markdown(alert_markdown(alert), unsafe_allow_html=True)
+
+
+def _render_trust_banner(kind: str, detail: Any = None, scope: Any = None) -> None:
+    banner = trust_banner_model(kind, detail=detail, scope=scope)
+    st.markdown(trust_banner_markdown(banner), unsafe_allow_html=True)
+
+
+def _render_action_hint(action: Dict[str, Any]) -> None:
+    note = confirmation_copy(action)
+    if note:
+        st.caption(note)
+    if action.get("detail"):
+        st.markdown(action_markdown(action), unsafe_allow_html=True)
+
+
+def _render_progress(
+    kind: str,
+    done: Optional[float] = None,
+    total: Optional[float] = None,
+    status: str = "running",
+    detail: Any = None,
+) -> Dict[str, Any]:
+    progress = progress_model(kind, done=done, total=total, status=status, detail=detail)
+    st.markdown(progress_markdown(progress), unsafe_allow_html=True)
+    return progress
 
 
 def _render_kpi_strip(items: List[Dict[str, Any]]) -> None:
@@ -1481,12 +1523,16 @@ def screen_query_studio() -> None:
         disabled=use_batch,
         help="Long-running queries are submitted to /v1/operations/query and polled in place.",
     )
+    if include_trace:
+        _render_trust_banner("redacted", "Trace payloads are scrubbed before display.")
 
     just_ran = False
-    if st.button("Run query", type="primary"):
+    run_action = action_model("Run query", "primary")
+    if st.button(run_action["label"], **button_kwargs(run_action)):
         if use_batch:
             queries = [line.strip() for line in query.splitlines() if line.strip()]
-            with st.spinner("Running batch..."):
+            batch_progress = _render_progress("batch", detail=f"{len(queries)} queries")
+            with st.spinner(batch_progress["label"]):
                 result = api.batch_query(queries, top_k=top_k, include_trace=include_trace)
             if require_ok(result):
                 just_ran = True
@@ -1512,7 +1558,8 @@ def screen_query_studio() -> None:
                     st.session_state.last_query = query
                     just_ran = True
         else:
-            with st.spinner("Running..."):
+            query_progress = _render_progress("query")
+            with st.spinner(query_progress["label"]):
                 result = api.query(query, top_k=top_k, include_trace=include_trace)
             ok = require_ok(result)
             if result.data:
@@ -1798,7 +1845,14 @@ def screen_compare() -> None:
     )
     query = st.text_input("Query", key="cmp_query")
 
-    if st.button("Apply what-if & run", key="cmp_run"):
+    rebuild_action = action_model(
+        "Apply what-if & run",
+        "admin",
+        detail="The live pipeline is swapped after the new one builds successfully.",
+    )
+    _render_trust_banner("admin_confirm", rebuild_action["detail"])
+    _render_action_hint(rebuild_action)
+    if st.button(rebuild_action["label"], key="cmp_run", **button_kwargs(rebuild_action)):
         overrides = {}
         if metric != "(keep)":
             overrides["similarity_metric"] = metric
@@ -1806,7 +1860,8 @@ def screen_compare() -> None:
             overrides["default_retriever"] = retriever
         before_ready = api.ready()
         before_config = api.effective_config()
-        with st.spinner("Rebuilding pipeline..."):
+        rebuild_progress = _render_progress("rebuild")
+        with st.spinner(rebuild_progress["label"]):
             rebuild = api.rebuild(overrides)
         if not require_ok(rebuild):
             return
@@ -1892,6 +1947,14 @@ def _render_eval_job_detail(store, api: ApiClient, job_id: str) -> None:
     status = snap["status"]
 
     st.markdown(job_status_markdown(snap), unsafe_allow_html=True)
+    eval_progress = progress_model(
+        "eval_job",
+        snap["done"],
+        snap["total"],
+        status,
+        detail=f"{snap['done']} of {snap['total']} cases",
+    )
+    st.markdown(progress_markdown(eval_progress), unsafe_allow_html=True)
     st.progress(
         min(1.0, snap["progress"]),
         text=f"{snap['done']} of {snap['total']} cases evaluated ({status})",
@@ -1909,9 +1972,14 @@ def _render_eval_job_detail(store, api: ApiClient, job_id: str) -> None:
 
     a1, a2, a3 = st.columns(3)
     if status in ACTIVE_STATUSES:
-        if a1.button(
-            "Cancel job", key=f"eval_job_cancel::{job_id}", help="Stops after the current case; completed results are kept."
-        ):
+        cancel_action = action_model(
+            "Cancel job",
+            "destructive",
+            help="Stops after the current case; completed results are kept.",
+        )
+        _render_trust_banner("destructive", cancel_action["help"])
+        _render_action_hint(cancel_action)
+        if a1.button(cancel_action["label"], key=f"eval_job_cancel::{job_id}", **button_kwargs(cancel_action)):
             outcome = store.cancel(job_id)
             if outcome != "ok":
                 st.warning(f"Cancel returned `{outcome}`.")
@@ -1936,7 +2004,10 @@ def _render_eval_job_detail(store, api: ApiClient, job_id: str) -> None:
                 st.session_state.eval_job_id = resumed.job_id
                 _rerun_job_panel()
     if status in TERMINAL_STATUSES:
-        if a3.button("Remove from history", key=f"eval_job_remove::{job_id}"):
+        remove_action = action_model("Remove from history", "destructive")
+        _render_trust_banner("destructive", "Only finished jobs can be removed from this view.")
+        _render_action_hint(remove_action)
+        if a3.button(remove_action["label"], key=f"eval_job_remove::{job_id}", **button_kwargs(remove_action)):
             if store.remove(job_id):
                 st.session_state.eval_job_id = ""
                 _rerun_job_panel()
@@ -2787,11 +2858,13 @@ def screen_approvals() -> None:
         "Policy-gated actions waiting for human review. Decisions are submitted to "
         "`POST /v1/approvals/{request_id}/decision` and audited by the backend."
     )
+    _render_trust_banner("redacted", "Request context and evidence are shown redacted.")
     notice = st.session_state.pop("approval_notice", "")
     if notice:
         st.success(notice)
 
-    with st.spinner("Loading approvals..."):
+    approvals_progress = _render_progress("approvals")
+    with st.spinner(approvals_progress["label"]):
         result = api.approvals()
     if not require_ok(result):
         _failure_taxonomy(result)
@@ -3003,17 +3076,23 @@ def screen_approvals() -> None:
                 horizontal=True,
                 key="approval_bulk_decision",
             )
-            st.info(bulk_confirmation_text(len(selected_bulk), bulk_decision))
+            bulk_copy = bulk_confirmation_text(len(selected_bulk), bulk_decision)
+            _render_trust_banner("admin_confirm", bulk_copy)
             confirmed = st.checkbox(
                 "I understand partial failures are possible and successful "
                 "decisions are not rolled back.",
                 key="approval_bulk_confirm",
             )
-            if st.button(
+            bulk_action = action_model(
                 f"Submit {bulk_decision} for {len(selected_bulk)} request(s)",
-                type="primary",
+                "admin",
+            )
+            _render_action_hint(bulk_action)
+            if st.button(
+                bulk_action["label"],
                 disabled=not selected_bulk or not confirmed,
                 key="approval_bulk_submit",
+                **button_kwargs(bulk_action),
             ):
                 try:
                     payload = decision_payload(
@@ -3185,15 +3264,21 @@ def screen_approvals() -> None:
                     decision_confirmation_markdown(record, decision, reviewer, note),
                     unsafe_allow_html=True,
                 )
+                _render_trust_banner(
+                    "admin_confirm",
+                    "Approval decisions are recorded in the audit trail.",
+                )
                 confirm_decision = st.checkbox(
                     "I confirm this decision and understand it is recorded in the audit trail.",
                     key=f"approval_decision_confirm_{selected}_{decision}",
                 )
+                decision_action = action_model("Submit decision", "admin")
+                _render_action_hint(decision_action)
                 if st.button(
-                    "Submit decision",
-                    type="primary",
+                    decision_action["label"],
                     key="approval_submit",
                     disabled=not confirm_decision,
+                    **button_kwargs(decision_action),
                 ):
                     try:
                         payload = decision_payload(decision, reviewer, note)
@@ -3232,6 +3317,7 @@ def screen_audit() -> None:
         "Append-only, redacted trail. Queries and pipeline rebuilds write events; "
         "no secrets or PII values are stored."
     )
+    _render_trust_banner("redacted", "Audit payloads are masked before display and export.")
     col1, col2, col3 = st.columns(3)
     with col1:
         limit = st.number_input(
@@ -3315,6 +3401,9 @@ def screen_access() -> None:
         return
     view = access_view_models(result.data)
 
+    _render_trust_banner(
+        "tenant_scoped", "Role and tenant scope are resolved from the signed request."
+    )
     st.markdown(kpi_strip_markdown(view["kpis"]), unsafe_allow_html=True)
     st.markdown(view["summary_markdown"], unsafe_allow_html=True)
     st.markdown(view["capabilities_markdown"], unsafe_allow_html=True)
@@ -3401,17 +3490,19 @@ def screen_admin() -> None:
         st.json(view["raw"])
 
     st.subheader("Tenant updates (proposal)")
-    st.caption(scope["warning"])
+    _render_trust_banner("tenant_scoped", scope["warning"], scope=scope["scope_text"])
     tenant_id = st.text_input("Tenant ID")
     budget = st.number_input("Budget cap USD (optional)", value=0.0, step=0.01)
-    st.caption(confirm_action("update tenant configuration"))
+    _render_trust_banner("admin_confirm", confirm_action("update tenant configuration"))
     confirmed = st.checkbox(
         "I understand this changes tenant policy",
         key="admin_update_confirmed",
     )
     if not confirmed:
         st.caption("Tick the confirmation above to enable the update button.")
-    if st.button("Update tenant", disabled=not confirmed) and tenant_id and confirmed:
+    update_action = action_model("Update tenant", "admin")
+    _render_action_hint(update_action)
+    if st.button(update_action["label"], disabled=not confirmed, **button_kwargs(update_action)) and tenant_id and confirmed:
         payload = {}
         if budget > 0:
             payload["budget_cap_usd"] = float(budget)
@@ -3662,7 +3753,7 @@ def screen_traces() -> None:
             st.session_state.last_trace_request_id = clean_request_id(request_id)
             notice = cross_scope_notice(primary, scope.get("tenant", ""))
             if notice:
-                st.warning(notice)
+                _render_trust_banner("tenant_scoped", notice)
             else:
                 _render_evidence_links(
                     primary.get("request_id") or request_id,
@@ -3729,6 +3820,7 @@ def screen_feedback() -> None:
 
     st.subheader("Feedback")
 
+    _render_trust_banner("redacted", "Notes and exports are redacted before sharing.")
     notice = st.session_state.pop("feedback_notice", "")
     if notice:
         st.success(notice)
@@ -3900,6 +3992,8 @@ def screen_settings() -> None:
     api = client()
 
     st.caption("Read-only view of the redacted effective configuration. YAML files are the source of truth.")
+    _render_trust_banner("read_only", "YAML files are the source of truth.")
+    _render_trust_banner("redacted", "Secret-like values are masked in this view.")
     config = api.effective_config()
     if not require_ok(config):
         return
