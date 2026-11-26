@@ -403,6 +403,26 @@ def styles(
 .genai-card dt {{ color: var(--genai-muted); font-size: 0.85rem; }}
 .genai-card dd {{ margin: 0; word-break: break-word; }}
 .genai-card-description {{ color: var(--genai-muted); margin: 0 0 0.6rem 0; }}
+.genai-responsive-table {{ width: 100%; max-width: 100%; min-width: 0; }}
+.genai-responsive-table__table {{ width: 100%; max-width: 100%; min-width: 0; overflow-x: auto; }}
+.genai-responsive-table__table table {{ max-width: 100%; }}
+.genai-responsive-table__cards {{
+  display: none;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: var(--genai-gap);
+}}
+.genai-responsive-table__cards .genai-card {{ margin-bottom: 0; }}
+.genai-density-approvals .genai-card,
+.genai-density-audit .genai-card,
+.genai-density-traces .genai-card,
+.genai-density-admin .genai-card {{
+  padding: calc(var(--genai-padding) * 0.65);
+  margin-bottom: 0.4rem;
+}}
+.genai-density-approvals .genai-card dl,
+.genai-density-audit .genai-card dl,
+.genai-density-traces .genai-card dl,
+.genai-density-admin .genai-card dl {{ gap: 0.1rem 0.5rem; }}
 .genai-actions {{ display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.6rem; }}
 .genai-checklist {{ margin: 0; padding-left: 1.25rem; }}
 .genai-checklist-item {{ margin: 0 0 0.45rem 0; line-height: 1.5; }}
@@ -842,6 +862,8 @@ def styles(
   .stApp .block-container {{ padding-left: 1rem; padding-right: 1rem; }}
   .genai-card dl {{ grid-template-columns: 1fr; }}
   .genai-app-header {{ align-items: flex-start; flex-direction: column; }}
+  .genai-responsive-table__table {{ display: none; }}
+  .genai-responsive-table__cards {{ display: grid; }}
 }}
 @media (max-width: 640px) {{
   .stApp .block-container {{ padding-left: 0.5rem; padding-right: 0.5rem; }}
@@ -878,6 +900,7 @@ def styles(
   .genai-admin-table {{ min-width: 42rem; }}
   .genai-evidence-chips {{ flex-direction: column; align-items: flex-start; }}
   .genai-evidence-chips .genai-chip {{ max-width: 100%; }}
+  .genai-responsive-table__cards {{ grid-template-columns: 1fr; }}
 }}
 </style>
 """

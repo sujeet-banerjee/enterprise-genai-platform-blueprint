@@ -25,6 +25,7 @@ Wireframes are illustrative mock-ups, not screenshots or captured production dat
 | #252 | Admin | `<img src="wireframes/252-admin-view.svg" alt="Admin wireframe showing segmented sections, tenant and user cards/tables with status badges, scope and change-control banners, a structured recent audit table and an explicit confirmation gate for tenant updates" width="900">` ([source](wireframes/252-admin-view.excalidraw)) |
 | #253 | Settings (read-only) | `<img src="wireframes/253-settings-view.svg" alt="Settings wireframe showing summary KPIs, grouped models/retrieval/reranking/evaluation/guardrails/observability/cache cards and a redacted raw expander" width="900">` ([source](wireframes/253-settings-view.excalidraw)) |
 | #254 | Feedback | `<img src="wireframes/254-feedback-view.svg" alt="Feedback wireframe showing privacy/redaction banner, summary KPIs, reason breakdown bars, annotation table with badges, export buttons, a selected-request card and a redacted raw expander" width="900">` ([source](wireframes/254-feedback-view.excalidraw)) |
+| #255 | Responsiveness & density parity | `<img src="wireframes/255-responsive-density-parity.svg" alt="Responsive wireframe showing dense tables at desktop width, automatic card degradation on tablet/mobile, and compact density for operational screens" width="900">` ([source](wireframes/255-responsive-density-parity.excalidraw)) |
 
 ## 1. Review basis and verdict
 
@@ -93,6 +94,8 @@ High-impact instances observed (non-exhaustive): `ready.data.components`, query 
 - Apply table→card degradation consistently to all dense tables (not just selected Guardrails/Governance cases).
 - Verify no horizontal page scroll at 375/768/1280; ensure sticky/primary actions remain usable in compact mode.
 - Tune compact density for operational screens (Approvals, Audit, Traces, Admin) without hiding actions.
+
+Delivered in #255 through a shared `ui/responsive.py` wrapper: dense tables render as a contained table on wide widths and as cards at tablet/mobile widths, preserving every column and action. Operational screens add compact card density without hiding content.
 
 ### P3 — Trust, copy, and micro-polish
 - Consistent banners: demo/seeded, redacted, read-only, tenant-scoped, admin/destructive confirmation.
