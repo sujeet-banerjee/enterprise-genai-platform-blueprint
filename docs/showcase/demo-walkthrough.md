@@ -1,4 +1,4 @@
-﻿# End-to-end demo walkthrough (#189)
+# End-to-end demo walkthrough (#189)
 
 > **Repeatable showcase walkthrough (3-5 minutes).** This is a maintainer-reviewed demo
 > script for the Streamlit console. It uses the console's existing **Demo mode** (local
@@ -72,6 +72,8 @@ Use this flow in order. Each step notes what to show and which requirement it co
 ## External captures (maintainer-linked)
 
 Add or update links here when captures are published. Links are external by design.
+The refreshed target names, viewport/theme variants and QA results are tracked in
+[qa-and-captures.md](qa-and-captures.md).
 
 | Capture | Link | Notes |
 | --- | --- | --- |
