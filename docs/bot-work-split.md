@@ -113,9 +113,9 @@ responsive presentations (#249-#255), and the #280 async operations console (PR 
   CLI, eval/policy backend and reconciliation docs; bot-win = `ui/`, UX flows and
   console docs — except explicitly reassigned docs work (#268) or backend contracts
   agreed in the relevant issue.
-- **UI look/feel split:** bot-win implements #240-#257 and the #290 follow-up fixes;
-  bot-uni handles #265 and the maintainer-reassigned #268 README/docs cleanup only.
-  Bot-uni must not edit `ui/*.py` for this tranche.
+- **UI look/feel split:** bot-win implements #240-#257; bot-uni handles #265 and the
+  maintainer-reassigned #268 README/docs cleanup only. Bot-win also owns the #290 follow-up
+  fixes. Bot-uni must not edit `ui/*.py` for this tranche.
 - **Ownership labels:** every open issue carries exactly one `owner:bot-uni` or
   `owner:bot-win` label (umbrella #43 excepted). Keep them current when ownership changes.
 - **Rebase discipline:** both rebase feature branches onto latest `origin/main` before
