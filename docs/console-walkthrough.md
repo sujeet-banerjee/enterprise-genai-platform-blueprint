@@ -168,9 +168,9 @@ approve or reject with an optional reviewer/note. Bulk decisions submit pending 
 a time after explicit confirmation and report partial failures; export is safe metadata only
 (no raw context). The screen requires the `approve` capability.
 
-**Audit** reads the redacted trail with `limit`/`event_type` filters. **Access / RBAC** shows
-the calling persona's role and capabilities. **Admin** adds scope indicators, confirmation
-prompts and audit export.
+**Audit** reads the redacted trail with `limit`/`event_type`/request-id filters and exports
+metadata-only CSV/JSON. **Access / RBAC** shows the calling persona's role and capabilities.
+**Admin** adds scope indicators, confirmation prompts and a formula-safe audit CSV export.
 
 ## Navigation, onboarding and demo mode
 

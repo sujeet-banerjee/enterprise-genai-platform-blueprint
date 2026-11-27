@@ -43,9 +43,10 @@ CAPABILITY_NOTES: Mapping[str, str] = {
     "governance": "View spend, policy status, and metrics.",
     "audit": "Read the append-only activity trail.",
     "approve": "Review and decide pending approvals.",
-    "admin": "Manage tenants, users, and administrative changes.",
+    "admin": "Manage tenants, users, and administrative changes; the rebuild grant is accepted as an alias.",
 }
 
+ADMIN_EFFECTIVE_CAPABILITIES: frozenset[str] = frozenset({"admin", "rebuild"})
 OTHER_GROUP = "Other grants"
 _MAX_TEXT = 160
 
@@ -146,6 +147,8 @@ def capability_groups(data: Any) -> List[Dict[str, Any]]:
         for name in names:
             used.add(name)
             allowed = name in granted
+            if name == "admin" and not allowed:
+                allowed = bool(ADMIN_EFFECTIVE_CAPABILITIES & granted)
             items.append(
                 {
                     "name": name,
