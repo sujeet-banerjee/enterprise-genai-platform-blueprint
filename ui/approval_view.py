@@ -6,6 +6,7 @@ records and return escaped HTML fragments for thin renderers in ``ui/app.py``.
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from html import escape
 from typing import Any, Dict, List, Mapping, Optional
 from urllib.parse import urlencode
@@ -56,6 +57,16 @@ def _text(value: Any) -> str:
 
 def _mapping(value: Any) -> Mapping[str, Any]:
     return value if isinstance(value, Mapping) else {}
+
+
+def _format_decided_at(value: Any) -> str:
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        try:
+            moment = datetime.fromtimestamp(float(value), tz=timezone.utc)
+            return moment.strftime("%Y-%m-%d %H:%M:%S UTC")
+        except (OSError, OverflowError, ValueError):
+            return _text(value)
+    return _text(value)
 
 
 def flatten_metadata(value: Any, prefix: str = "", max_rows: int = MAX_METADATA_ROWS) -> Dict[str, Any]:
@@ -187,6 +198,15 @@ def context_policy_panels(record: Any) -> Dict[str, str]:
     }
 
 
+def _evidence_route(kind: str) -> Optional[tuple[str, str]]:
+    lower = kind.strip().lower()
+    if "audit" in lower:
+        return "Audit", "audit_request"
+    if lower == "request_id" or lower.endswith("_request_id"):
+        return "Traces", "traces_request_id"
+    return None
+
+
 def evidence_chips_markdown(links: Any, max_chips: int = MAX_EVIDENCE_CHIPS) -> str:
     chips: List[str] = []
     for raw_link in list(links or [])[:max_chips]:
@@ -195,13 +215,17 @@ def evidence_chips_markdown(links: Any, max_chips: int = MAX_EVIDENCE_CHIPS) -> 
         value = _text(link.get("value"))
         if not value:
             continue
-        lower = kind.lower()
-        if "audit" in lower:
-            screen, param = "Audit", "audit_request"
-        else:
-            screen, param = "Traces", "traces_request_id"
-        query = escape(urlencode({"screen": screen, param: value}), quote=True)
         label = escape(f"{kind}: {value}")
+        route = _evidence_route(kind)
+        if route is None:
+            chips.append(
+                '<span class="genai-chip" '
+                'title="Copy this id; it is not an API request id.">'
+                f"{label} <span class=\"genai-chip-note\">copy only</span></span>"
+            )
+            continue
+        screen, param = route
+        query = escape(urlencode({"screen": screen, param: value}), quote=True)
         chips.append(
             f'<a class="genai-chip genai-chip-link" href="?{query}" '
             f'title="Open in {escape(screen)}">{label}</a>'
@@ -227,6 +251,28 @@ def decision_history_markdown(record: Any, max_entries: int = MAX_DECISION_ROWS)
             f"<summary>Decision {index}: {escape(label)}</summary>"
             f"{key_value_markdown(rows)}</details>"
         )
+    if not entries:
+        scalar = {
+            "decided_at": source.get("decided_at"),
+            "decided_by": source.get("decided_by"),
+            "decision_note": source.get("decision_note"),
+        }
+        if any(_text(value) for value in scalar.values()):
+            status = _text(source.get("status")).lower()
+            label = status if status in {"approved", "rejected"} else "recorded"
+            rows = key_value_rows(
+                {
+                    "Decision": label,
+                    "Decided at": _format_decided_at(scalar["decided_at"]),
+                    "Decided by": _text(scalar["decided_by"]) or "-",
+                    "Note": _text(scalar["decision_note"]) or "-",
+                }
+            )
+            entries.append(
+                '<details class="genai-raw-record">'
+                f"<summary>Decision 1: {escape(label)}</summary>"
+                f"{key_value_markdown(rows)}</details>"
+            )
     if not entries:
         return '<div class="genai-card genai-muted">No decision history recorded yet.</div>'
     return f'<div class="genai-decision-history">{"".join(entries)}</div>'

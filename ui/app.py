@@ -29,7 +29,7 @@ from ui.a11y import (
     styles as a11y_styles,
 )
 from ui.access_view import access_view_models
-from ui.admin import audit_export_rows, confirm_action, scope_indicator
+from ui.admin import confirm_action, scope_indicator
 from ui.admin_view import admin_view_models
 from ui.approval_view import (
     approval_detail_view,
@@ -67,7 +67,15 @@ from ui.approvals import (
     sort_approval_records,
     summary_counts,
 )
-from ui.audit_view import audit_view_models
+from ui.audit_view import (
+    audit_view_models,
+)
+from ui.audit_view import (
+    export_csv as audit_export_csv,
+)
+from ui.audit_view import (
+    export_rows as audit_export_data_rows,
+)
 from ui.client import ApiClient, ApiResult
 from ui.common import api_base_url, latency_rows, metric_rows, require_ok
 from ui.compare import compare_view_models, delta_table_markdown
@@ -3467,21 +3475,11 @@ def screen_admin() -> None:
     st.markdown(view["banners_markdown"], unsafe_allow_html=True)
     st.markdown(view["sections_markdown"], unsafe_allow_html=True)
 
-    rows = audit_export_rows(audit_data.get("events") or [])
+    rows = audit_export_data_rows(audit_data.get("events") or [])
     if rows:
-        import csv
-        import io
-
-        buf = io.StringIO()
-        w = csv.DictWriter(
-            buf,
-            fieldnames=["timestamp", "event_type", "action", "outcome", "request_id", "tenant"],
-        )
-        w.writeheader()
-        w.writerows(rows)
         st.download_button(
             "Download audit CSV",
-            data=buf.getvalue(),
+            data=audit_export_csv(rows),
             file_name="audit.csv",
             mime="text/csv",
         )

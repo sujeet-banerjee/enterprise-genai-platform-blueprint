@@ -19,5 +19,7 @@ def test_admin_screen_wired():
     src = Path("ui/app.py").read_text(encoding="utf-8")
     assert "scope_indicator" in src
     assert "confirm_action" in src
-    assert "audit_export_rows" in src
+    assert "audit_export_data_rows" in src
+    assert "audit_export_csv(rows)" in src
+    assert "csv.DictWriter" not in src
     assert "Download audit CSV" in src

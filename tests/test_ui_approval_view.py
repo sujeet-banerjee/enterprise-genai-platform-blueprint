@@ -94,20 +94,29 @@ def test_context_policy_panels_flatten_nested_and_redact_secrets() -> None:
     assert "Labels.0" in panels["policy"]
 
 
-def test_evidence_chips_markdown_links_to_traces_and_audit() -> None:
+def test_evidence_chips_markdown_links_request_ids_and_copies_other_ids() -> None:
     html = approval_view.evidence_chips_markdown(
         [
+            {"kind": "request_id", "value": "req-1"},
             {"kind": "trace_request_id", "value": "trace-1"},
             {"kind": "audit_request_id", "value": "audit-1"},
             {"kind": "run_id", "value": "run-1"},
+            {"kind": "trace_id", "value": "otel-trace-1"},
+            {"kind": "span_id", "value": "otel-span-1"},
+            {"kind": "experiment_id", "value": "exp-1"},
+            {"kind": "correlation_id", "value": "corr-1"},
         ]
     )
     assert "genai-evidence-chips" in html
     links = [unescape(match) for match in re.findall(r'href="([^"]+)"', html)]
     queries = [parse_qs(urlsplit(link).query) for link in links]
-    assert queries[0] == {"screen": ["Traces"], "traces_request_id": ["trace-1"]}
-    assert queries[1] == {"screen": ["Audit"], "audit_request": ["audit-1"]}
-    assert queries[2] == {"screen": ["Traces"], "traces_request_id": ["run-1"]}
+    assert len(queries) == 3
+    assert queries[0] == {"screen": ["Traces"], "traces_request_id": ["req-1"]}
+    assert queries[1] == {"screen": ["Traces"], "traces_request_id": ["trace-1"]}
+    assert queries[2] == {"screen": ["Audit"], "audit_request": ["audit-1"]}
+    for value in ("run-1", "otel-trace-1", "otel-span-1", "exp-1", "corr-1"):
+        assert value in html
+    assert html.count("copy only") == 5
     assert "No correlation ids recorded." in approval_view.evidence_chips_markdown([])
 
 
