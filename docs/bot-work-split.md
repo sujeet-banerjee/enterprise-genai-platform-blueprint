@@ -1,8 +1,8 @@
 # Bot work split (current open items)
 
-Reconciled 2026-11-27 after #310-#320 issue creation and bot-win #257/#290 merges (`origin/main` @ `51f7e5b`). Bot-win has merged the UI look/feel plan (#240-#257), #280 async console, and daily-review contract fixes #290. Bot-uni cross-cutting guard/support #265, maintainer-assigned docs exception #268, and backend #279 are done.
+Reconciled 2026-11-27 after PR #322 split-doc merge, #310-#320 issue creation, and maintainer ALL OK on the 17 wireframes (`origin/main` @ `5f0efd0`). Bot-win has merged the UI look/feel plan (#240-#257), #280 async console, and daily-review contract fixes #290. Bot-uni cross-cutting guard/support #265, maintainer-assigned docs exception #268, and backend #279 are done.
 
-Open items: umbrella **#43**; **#193** (LinkedIn package, MANUAL, maintainer approves/publishes); **#232** (external demo capture links, MANUAL, bot-win); H4 operations/auth/admin tranche **#297-#304** (bot-uni backend/contracts #297-#302, bot-win UI #303-#304); wireframe review tracker **#308** (bot-win UI review, bot-uni backend follow-ups); wireframe backend follow-ups **#310-#320** (all bot-uni). Re-check open issues and PRs before each item.
+Open items: umbrella **#43**; **#193** (LinkedIn package, MANUAL, maintainer approves/publishes); **#232** (external demo capture links, MANUAL, bot-win); H4 operations/auth/admin tranche **#297-#304** (bot-uni backend/contracts #297-#302, bot-win UI #303-#304); wireframe backend follow-ups **#310-#320** (all bot-uni). Wireframe review tracker **#308** is CLOSED with all 17 SVGs approved; bot-win is unblocked to implement/refine the approved wireframes. Re-check open issues and PRs before each item.
 
 ## Live reconciliation (2026-11-27)
 
@@ -19,7 +19,7 @@ Open items: umbrella **#43**; **#193** (LinkedIn package, MANUAL, maintainer app
 | **#302** | bot-uni | Todo | Cross-cutting | H4 - Post-G6 hardening & UX |
 | **#303** | bot-win | Todo | M UX polish & adoption | H4 - Post-G6 hardening & UX |
 | **#304** | bot-win | Todo | M UX polish & adoption | H4 - Post-G6 hardening & UX |
-| **#308** | bot-win | Todo | M UX polish & adoption | — |
+| **#308** | bot-win | Done (ALL OK, closed) | M UX polish & adoption | — |
 | **#310** | bot-uni | Todo | D Serving & scale | H4 - Post-G6 hardening & UX |
 | **#311** | bot-uni | Todo | C Observability & eval | H4 - Post-G6 hardening & UX |
 | **#312** | bot-uni | Todo | C Observability & eval | H4 - Post-G6 hardening & UX |
@@ -32,7 +32,7 @@ Open items: umbrella **#43**; **#193** (LinkedIn package, MANUAL, maintainer app
 | **#319** | bot-uni | Todo | M UX polish & adoption | H4 - Post-G6 hardening & UX |
 | **#320** | bot-uni | Todo | A Multi-tenancy & identity | H4 - Post-G6 hardening & UX |
 
-New H4 tranche: durable ongoing tasks and admin identity state. Bot-uni owns backend/repositories/APIs/config/contracts/docs (#297-#302); bot-win owns HTTP-only UI consumers (#303-#304). The 2026-11-27 wireframe review follows the same boundary: every API/backend extension or new backend workflow (#310-#320) is bot-uni; every UI screen/refinement from the 17 wireframes is bot-win. New issues carry `owner:bot-uni` or `owner:bot-win` labels and are Project #8 Todo items.
+New H4 tranche: durable ongoing tasks and admin identity state. Bot-uni owns backend/repositories/APIs/config/contracts/docs (#297-#302); bot-win owns HTTP-only UI consumers (#303-#304). The 2026-11-27 wireframe review follows the same boundary: every API/backend extension or new backend workflow (#310-#320) is bot-uni; every UI screen/refinement from the 17 wireframes is bot-win. The maintainer approved all 17 wireframes in #308, so bot-win can start implementation now; API-dependent screens may use safe empty/demo states until bot-uni lands #310-#320. New issues carry `owner:bot-uni` or `owner:bot-win` labels and are Project #8 Todo items.
 
 ## Bot identities
 
@@ -78,7 +78,7 @@ operations API (PR #289), docs follow-ups #260/#262/#264, and Dependabot PRs #25
 |---|---|---|
 | 1 | **#303 Ongoing tasks UI** (H4, M, `owner:bot-win`) | Todo. Depends on #297/#298: HTTP-only operations list/get/cancel/events client methods, `X-Client-Session`, filters/sort/pagination, progress timeline, cancel confirmation, redacted error/empty states. |
 | 2 | **#304 Admin auth/RBAC UI** (H4, M, `owner:bot-win`) | Todo. Depends on #297/#299/#300/#301: auth provider, tenant users/roles, API key lifecycle, superuser/admin screens; no raw keys/tokens/claims; capability-gated controls. |
-| 3 | **Wireframe-driven UI refinements (#308)** (H4/H5, M, `owner:bot-win`) | Bot-win owns all UI implementation/refinement for the 17 wireframes in #308 (`240`-`256`). The UI plan slices are merged; future UI work follows the wireframe ownership map below. API-sufficient screens need no backend work; screens needing API extension/new backend workflows wait on bot-uni #310-#320 rather than editing `core/`, `app/`, `config/`, or backend docs. |
+| 3 | **Wireframe-driven UI refinements (#308 approved)** (H4/H5, M, `owner:bot-win`) | Bot-win owns all UI implementation/refinement for the 17 maintainer-approved wireframes in #308 (`240`-`256`). The maintainer confirmed ALL OK on 2026-11-27, so bot-win can start now; future UI work follows the wireframe ownership map below. API-sufficient screens need no backend work; screens needing API extension/new backend workflows wait on bot-uni #310-#320 rather than editing `core/`, `app/`, `config/`, or backend docs. |
 | 4 | **#232 showcase external capture links** (H5, MANUAL) | Maintainer runs the demo walkthrough in demo mode and publishes a 3-5 min recording plus screenshots externally, or approves committing image files; then replace `_Pending - add external link_` placeholders in `docs/showcase/demo-walkthrough.md` and close. |
 | 5 | **UI plan document upkeep** | Keep `docs/ui-enterprise-look-and-feel-plan.md` consistent with implemented screen changes; do not edit backend/CI files without agreement. |
 
@@ -105,7 +105,7 @@ responsive presentations (#249-#255), trust/copy/loading polish (#256, PR #306),
 | Cross-cutting contract, AST and docs guards | #265 (done, PR #266) | bot-uni | `tests/`, docs and backend contracts only; never `ui/` |
 | README console walkthrough cleanup | #268 (maintainer-assigned exception) | bot-uni | README + `docs/` only; no `ui/` edits; external capture links stay with #232/bot-win |
 
-#240-#257, #265, #279, #280 and #290 are Project #8 items in Workstream **M UX polish & adoption** (or D3/M for async ops). #240-#257, #265, #279, #280 and #290 are Done; #308 is the remaining wireframe review tracker and stays with bot-win.
+#240-#257, #265, #279, #280 and #290 are Project #8 items in Workstream **M UX polish & adoption** (or D3/M for async ops). #240-#257, #265, #279, #280, #290 and #308 are Done; #308 recorded maintainer ALL OK on all 17 wireframes and unblocks bot-win UI implementation.
 
 ## Operations/auth/admin tranche (2026-11-26)
 
@@ -124,7 +124,7 @@ responsive presentations (#249-#255), trust/copy/loading polish (#256, PR #306),
 
 ## Wireframe-driven ownership map (2026-11-27)
 
-The 17 rendered wireframes in #308 are UI targets owned by bot-win. The table records the
+The 17 rendered wireframes approved in #308 are UI targets owned by bot-win. The table records the
 backend dependencies from the PR #307 feasibility review; every backend/API item is owned by
 bot-uni, and no backend item is reassigned to bot-win. UI slices #240-#257 are already merged;
 this map governs refinements and follow-up work, not a reopening of merged issues.
@@ -149,9 +149,10 @@ this map governs refinements and follow-up work, not a reopening of merged issue
 | `255-responsive-density-parity.svg` | bot-win | #255 | none | Responsive/density parity; existing API contract suffices |
 | `256-trust-actions-progress.svg` | bot-win | #256/#303 | #298/#317 | bot-win renders progress/rebuild-and-run; bot-uni owns operations API |
 
-For any wireframe not listed as API-sufficient, bot-win may render a safe empty/demo state until
-the bot-uni API lands, but must not implement backend behaviour in `ui/`. #308 is a review
-tracker only; implementation ownership remains with the UI issue listed above.
+Wireframe review is complete (ALL OK, #308 closed); bot-win may start implementation now. For
+any wireframe not listed as API-sufficient, bot-win may render a safe empty/demo state until
+the bot-uni API lands, but must not implement backend behaviour in `ui/`. Implementation
+ownership remains with the UI issue listed above.
 
 ## Showcase/proof workstream (H5)
 
